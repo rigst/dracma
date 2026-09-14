@@ -1,0 +1,38 @@
+# Pins exatos, nas versões que produção roda hoje. O job `lock` do CI exige
+# `==` em toda linha, porque só assim o requirements.lock (com os hashes de
+# tudo, inclusive transitivas) pode ser conferido contra este arquivo.
+#
+# Para atualizar: suba o pin aqui e regere o lock com o script do CI central —
+#   python /home/rod/ci/scripts/gerar_lock.py --python-version 3.12
+Django==6.0.8
+celery==5.6.3
+redis==8.1.0
+python-dotenv==1.2.2
+# IA (Anthropic / Claude)
+anthropic==0.121.0
+# Transcrição dos áudios do WhatsApp, local, na fila `midia`. Requer ffmpeg no
+# sistema. Modelo `small` em int8: ~1,5 GB de RAM e ~6x tempo real em CPU.
+faster-whisper==1.2.0
+# `requests` é importado por faster_whisper/utils.py mas NÃO consta nos
+# Requires do pacote (conferido em 14/09/2026 com `pip show`). O `pip check`
+# passa e o import estoura em runtime, dentro da task — declarado aqui para o
+# venv limpo do lock subir.
+requests==2.32.5
+# Chamadas HTTP à Graph API da Meta (envio e download de mídia).
+httpx==0.28.1
+# App `legal`: renderiza as políticas em Markdown e sanitiza o HTML por
+# allowlist antes de publicar.
+markdown==3.10.3
+nh3==0.3.6
+# Produção
+gunicorn==26.2.0
+psycopg2-binary==2.9.12
+django-redis==6.0.0
+# Monitoramento de erros (ativo só com SENTRY_DSN definido)
+sentry-sdk==2.68.1
+# Tema do admin.
+django-unfold==0.104.0
+# O pip entra aqui como qualquer outra dependência, e não como ferramenta à
+# parte: é o que o CD executa a cada deploy, e sem estar declarado envelhece
+# sem que nada avise. Não use `pip install --upgrade pip` no deploy.
+pip==26.2.1

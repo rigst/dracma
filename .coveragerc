@@ -1,0 +1,29 @@
+# Sem isto, `pytest --cov` mede tudo que for importado, inclusive as
+# dependências instaladas, e o relatório que vai para o Codecov/Sonar fica sem
+# significado.
+[run]
+source = .
+branch = True
+omit =
+    */migrations/*
+    */tests.py
+    */tests_*.py
+    */test_*.py
+    */tests/*
+    */conftest.py
+    */venv/*
+    */.venv/*
+    */node_modules/*
+    manage.py
+    */wsgi.py
+    */asgi.py
+    */celery.py
+    deploy/*
+    scripts/*
+
+[report]
+skip_empty = True
+exclude_lines =
+    pragma: no cover
+    if TYPE_CHECKING:
+    raise NotImplementedError
