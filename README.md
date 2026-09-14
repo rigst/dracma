@@ -117,7 +117,7 @@ baixado na primeira transcrição, para `WHISPER_CACHE_DIR` — que fica **fora*
 ./venv/bin/python -m pytest
 ```
 
-255 testes, sem chamar a API da Anthropic nem a da Meta: `ai/fakes.py` tem um
+256 testes, sem chamar a API da Anthropic nem a da Meta: `ai/fakes.py` tem um
 cliente Claude falso e `zap/canais/fake.py` um canal que acumula em memória.
 
 ---
