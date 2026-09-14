@@ -9,4 +9,5 @@ urlpatterns = [
     path("transacoes/", views.transacoes, name="transacoes"),
     path("limites/", views.limites, name="limites"),
     path("relatorios/", views.relatorios, name="relatorios"),
+    path("exportar/", views.exportar, name="exportar"),
 ]

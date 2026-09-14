@@ -108,6 +108,12 @@ TIME_ZONE = "America/Sao_Paulo"
 USE_I18N = True
 USE_TZ = True
 
+# Com pt-br, o `floatformat` já troca o ponto decimal pela vírgula, mas o
+# separador de milhar só aparece com isto ligado. Sem ele a saída é "1800,00" e
+# a tentação é somar o `intcomma` do humanize — que usa a convenção INGLESA e
+# produz "1,800,00". Ligado, `{{ v|floatformat:2 }}` sozinho dá "1.800,00".
+USE_THOUSAND_SEPARATOR = True
+
 
 # Static files
 

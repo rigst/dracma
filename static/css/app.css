@@ -248,3 +248,47 @@ label { display: block; font-size: .85rem; font-weight: 600; margin-bottom: .25r
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
 }
+
+/* Linha de envio do console --------------------------------------------- */
+
+.linha-envio { display: flex; gap: .5rem; margin-top: .75rem; }
+.linha-envio input { flex: 1; }
+
+.visualmente-oculto {
+  position: absolute; width: 1px; height: 1px;
+  padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+/* Legenda e limites ------------------------------------------------------ */
+
+.legenda { list-style: none; padding: 0; margin: .75rem 0 0; font-size: .875rem; }
+.legenda li { display: flex; align-items: baseline; gap: .5rem; padding: .18rem 0; }
+.legenda-cor { width: 10px; height: 10px; border-radius: 3px; flex: none; align-self: center; }
+/* `min-width:0` libera o rótulo a encolher: sem ele o flex respeita o tamanho
+   do conteúdo, o valor é empurrado para baixo e cai por cima do nome. */
+.legenda-rotulo { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.legenda-valor {
+  margin-left: auto; flex: none; white-space: nowrap;
+  color: var(--texto-suave); font-variant-numeric: tabular-nums;
+}
+
+.limite { margin-bottom: .9rem; }
+.limite-topo { display: flex; justify-content: space-between; margin: 0 0 .3rem; font-size: .9rem; font-weight: 600; }
+
+/* Filtros e listas ------------------------------------------------------- */
+
+.filtros {
+  display: flex; gap: .75rem; align-items: flex-end; flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+.filtros .campo { margin-bottom: 0; min-width: 9rem; }
+.filtros .campo--acao { min-width: 0; }
+
+.etiqueta {
+  font-size: .7rem; padding: .1rem .4rem; border-radius: 99px;
+  background: var(--painel-2); color: var(--texto-suave); vertical-align: middle;
+}
+
+.insights { margin: 0; padding-left: 1.1rem; font-size: .9rem; }
+.insights li { margin-bottom: .4rem; }

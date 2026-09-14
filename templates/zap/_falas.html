@@ -1,0 +1,7 @@
+{% if aviso %}<div class="digitando">{{ aviso }}</div>{% endif %}
+{% for fala in falas %}
+<div class="fala {% if fala.direcao == 'entrada' %}fala--minha{% else %}fala--dela{% endif %}">
+  {{ fala.texto|linebreaks }}
+  <span class="fala-hora">{{ fala.criada_em|date:"H:i" }}</span>
+</div>
+{% endfor %}

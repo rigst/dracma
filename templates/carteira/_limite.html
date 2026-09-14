@@ -1,0 +1,14 @@
+<div class="limite">
+  <p class="limite-topo">
+    <span>{% if c.limite.categoria %}{{ c.limite.categoria }}{% else %}{{ c.limite.rotulo|default:"Teto geral" }}{% endif %}</span>
+    <span class="num">{{ c.percentual }}%</span>
+  </p>
+  <div class="barra {% if c.estourado %}barra--perigo{% elif c.percentual >= 80 %}barra--alerta{% endif %}">
+    <span style="width:{% if c.percentual > 100 %}100{% else %}{{ c.percentual }}{% endif %}%"></span>
+  </div>
+  <p class="nota">
+    R$ {{ c.gasto|floatformat:2 }} de R$ {{ c.limite.valor|floatformat:2 }}
+    {% if c.estourado %}· estourou{% else %}· restam R$ {{ c.restante|floatformat:2 }}{% endif %}
+    {% if c.limite.temporario %}· até {{ c.fim|date:"d/m" }}{% endif %}
+  </p>
+</div>

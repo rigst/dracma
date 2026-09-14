@@ -1,0 +1,25 @@
+<svg class="grafico" viewBox="-100 -100 200 200" role="img"
+     aria-label="Distribuição das despesas por categoria">
+  <g>
+    {% for f in rosca %}
+    <path class="fatia" d="{{ f.caminho }}" fill="{{ f.cor }}">
+      <title>{{ f.rotulo }}: R$ {{ f.valor|floatformat:2 }} ({{ f.percentual }}%)</title>
+    </path>
+    {% endfor %}
+  </g>
+</svg>
+{% comment %}
+A legenda mostra só o percentual. O valor em reais cabia no cartão largo do
+relatório, mas no cartão estreito do painel empurrava o rótulo para truncar em
+"M..." — e saber que é Moradia importa mais do que repetir o número, que já
+está na dica do gráfico e nas barras por categoria.
+{% endcomment %}
+<ul class="legenda">
+  {% for f in rosca %}
+  <li title="R$ {{ f.valor|floatformat:2 }}">
+    <span class="legenda-cor" style="background:{{ f.cor }}" aria-hidden="true"></span>
+    <span class="legenda-rotulo">{{ f.rotulo }}</span>
+    <span class="legenda-valor">{{ f.percentual }}%</span>
+  </li>
+  {% endfor %}
+</ul>

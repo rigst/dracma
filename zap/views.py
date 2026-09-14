@@ -14,10 +14,15 @@ import json
 import logging
 
 from django.conf import settings
+from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse, HttpResponseForbidden, HttpResponseNotFound, JsonResponse
+from django.shortcuts import render
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
+from accounts.limites import excedeu_limite
+
+from .console import conversar, historico
 from .models import Mensagem, NumeroWhatsApp
 from .webhook import assinatura_valida, extrair_mensagens, verificar_handshake
 
@@ -86,8 +91,34 @@ def _enfileirar(item: dict, payload: dict) -> None:
     processar_mensagem.delay(mensagem.pk, item.get("media_id") or "")
 
 
+@login_required
 def console(request):
-    """Console web do assistente. Implementado no passo do portal."""
-    from django.http import HttpResponse
+    """Conversa com a Centavo pelo navegador.
 
-    return HttpResponse("em construção", status=501)
+    Mesmo agente do WhatsApp; só o transporte muda. Com HTMX, o POST devolve
+    só o par de falas novas, e não a página inteira.
+    """
+    if request.method == "POST":
+        texto = request.POST.get("mensagem", "")
+        if not texto.strip():
+            return HttpResponse(status=204)
+
+        chave = f"console:{request.user.pk}"
+        if excedeu_limite(chave, settings.AI_LIMITE_MENSAGENS, settings.AI_JANELA_S):
+            return render(
+                request,
+                "zap/_falas.html",
+                {"falas": [], "aviso": "Devagar aí 😄 Espera um minutinho e manda de novo."},
+            )
+
+        pergunta, resposta = conversar(request.user, texto)
+        return render(request, "zap/_falas.html", {"falas": [pergunta, resposta]})
+
+    return render(
+        request,
+        "zap/console.html",
+        {
+            "falas": historico(request.user, limite=60),
+            "max_chars": settings.AI_MAX_CHARS_MENSAGEM,
+        },
+    )
