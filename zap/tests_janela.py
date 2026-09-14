@@ -50,9 +50,7 @@ class DecisaoTest(BaseJanelaTest):
 
     def test_janela_fechada_com_template_usa_template(self):
         self._inbound_ha(hours=25)
-        self.assertIs(
-            janela.decidir(self.numero, template="aviso_limite"), janela.Decisao.TEMPLATE
-        )
+        self.assertIs(janela.decidir(self.numero, template="aviso_limite"), janela.Decisao.TEMPLATE)
 
     def test_janela_fechada_sem_template_adia(self):
         self._inbound_ha(hours=25)

@@ -3,14 +3,14 @@ Configurações de desenvolvimento.
 Usa SQLite e sessões em banco de dados.
 """
 
-from .base import *  # noqa: F403
+from .base import *
 
 DEBUG = True
 
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",  # noqa: F405
+        "NAME": BASE_DIR / "db.sqlite3",
     }
 }
 

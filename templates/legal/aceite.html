@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}Antes de entrar · Centavo{% endblock %}
+
+{% block content %}
+<div class="legal-page legal-page--portao">
+    <div class="legal-doc">
+        <header class="legal-doc-header">
+            <p class="legal-eyebrow">Acesso visitante</p>
+            <h1>Antes de entrar</h1>
+            <p class="legal-lead">
+                O acesso visitante cria uma conta temporária para você conhecer o
+                sistema. Leia os documentos abaixo e confirme para continuar.
+            </p>
+        </header>
+
+        <ul class="legal-resumo">
+            <li>
+                <strong>A conta é temporária.</strong>
+                Ela e tudo o que você registrar nela são apagados automaticamente
+                depois de um período sem uso.
+            </li>
+            <li>
+                <strong>O aceite fica registrado.</strong>
+                Guardamos a data, a hora, o endereço IP, o navegador e a versão
+                exata do texto que você aceitar.
+            </li>
+            <li>
+                <strong>Não há rastreadores.</strong>
+                Só cookies essenciais de sessão. Seus dados não são vendidos nem
+                usados para publicidade.
+            </li>
+        </ul>
+
+        {% for documento in documentos %}
+            <section class="legal-painel">
+                <header class="legal-painel-topo">
+                    <h2>{{ documento.titulo }}</h2>
+                    {% include "legal/_registro.html" %}
+                </header>
+                <div class="legal-corpo legal-corpo--rolagem" tabindex="0" role="region"
+                     aria-label="{{ documento.titulo }}: texto completo">
+                    {{ documento.corpo_html|safe }}
+                </div>
+            </section>
+        {% endfor %}
+
+        <form method="post" action="{{ action }}" class="legal-acao">
+            {% csrf_token %}
+            {% for nome, valor in campos_extras.items %}
+                <input type="hidden" name="{{ nome }}" value="{{ valor }}">
+            {% endfor %}
+            {% include "legal/_checkbox_aceite.html" with field=form.aceite_legal %}
+            <div class="legal-acao-botoes">
+                <button class="btn btn-primary" type="submit">Aceitar e entrar</button>
+                <a class="btn btn-quiet" href="{% url 'login' %}">Voltar</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

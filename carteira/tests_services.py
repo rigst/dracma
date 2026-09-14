@@ -122,9 +122,7 @@ class RegistrarTransacaoTest(BaseEspacoTest):
 
     def test_codigos_nao_colidem(self):
         codigos = {
-            services.registrar_transacao(
-                espaco=self.espaco, valor="1", descricao=f"t{i}"
-            ).codigo
+            services.registrar_transacao(espaco=self.espaco, valor="1", descricao=f"t{i}").codigo
             for i in range(50)
         }
         self.assertEqual(len(codigos), 50)
@@ -138,9 +136,7 @@ class EditarExcluirTest(BaseEspacoTest):
         )
 
     def test_edita_valor(self):
-        editada = services.editar_transacao(
-            espaco=self.espaco, codigo=self.t.codigo, valor="41,50"
-        )
+        editada = services.editar_transacao(espaco=self.espaco, codigo=self.t.codigo, valor="41,50")
         self.assertEqual(editada.valor, Decimal("41.50"))
 
     def test_codigo_aceita_minusculo(self):
@@ -173,16 +169,26 @@ class ResumoTest(BaseEspacoTest):
         super().setUp()
         hoje = date(2026, 9, 10)
         services.registrar_transacao(
-            espaco=self.espaco, valor="4200", descricao="Salário",
-            tipo=TipoTransacao.RECEITA, categoria="Salário", data_lancamento=hoje,
+            espaco=self.espaco,
+            valor="4200",
+            descricao="Salário",
+            tipo=TipoTransacao.RECEITA,
+            categoria="Salário",
+            data_lancamento=hoje,
         )
         services.registrar_transacao(
-            espaco=self.espaco, valor="247,80", descricao="Mercado",
-            categoria="Mercado", data_lancamento=hoje,
+            espaco=self.espaco,
+            valor="247,80",
+            descricao="Mercado",
+            categoria="Mercado",
+            data_lancamento=hoje,
         )
         services.registrar_transacao(
-            espaco=self.espaco, valor="1800", descricao="Aluguel",
-            categoria="Moradia", data_lancamento=hoje,
+            espaco=self.espaco,
+            valor="1800",
+            descricao="Aluguel",
+            categoria="Moradia",
+            data_lancamento=hoje,
         )
 
     def test_soma_receitas_e_despesas(self):

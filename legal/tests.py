@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import default_token_generator
 from django.test import TestCase, override_settings
@@ -127,7 +129,7 @@ class AceiteVisitanteTests(TestCase):
             HTTP_USER_AGENT="Mozilla/5.0 (Teste)",
         )
 
-        self.assertRedirects(resposta, reverse("dashboard"))
+        self.assertRedirects(resposta, reverse("carteira:painel"))
         visitante = Usuario.objects.get(username__startswith="visitante_")
 
         aceites = AceiteLegal.objects.filter(usuario=visitante)
@@ -138,7 +140,7 @@ class AceiteVisitanteTests(TestCase):
         self.assertEqual(aceite.user_agent, "Mozilla/5.0 (Teste)")
         self.assertEqual(aceite.origem, OrigemAceite.VISITANTE)
         self.assertTrue(aceite.e_visitante)
-        self.assertEqual(aceite.usuario_label, visitante.username)
+        self.assertEqual(aceite.usuario_label, visitante.email)
         self.assertEqual(aceite.documento_sha256, self.termos.sha256)
         self.assertTrue(aceite.integro)
         self.assertTrue(aceite.session_key)
@@ -148,14 +150,15 @@ class AceiteVisitanteTests(TestCase):
         """O ponto mais delicado: visitante é apagado ao expirar, a prova não pode ir junto."""
         self.client.post(reverse("accounts:entrar_visitante"), {"aceite_legal": "on"})
         visitante = Usuario.objects.get(username__startswith="visitante_")
-        rotulo = visitante.username
+        usuario = visitante.username
+        rotulo = visitante.email
 
         # Expira o visitante e roda a limpeza real (queryset.delete()).
-        visitante.profile.expires_at = timezone.now() - timezone.timedelta(hours=1)
-        visitante.profile.save(update_fields=["expires_at"])
+        visitante.ultimo_acesso = timezone.now() - timedelta(days=30)
+        visitante.save(update_fields=["ultimo_acesso"])
         cleanup_expired_visitors()
 
-        self.assertFalse(Usuario.objects.filter(username=rotulo).exists())
+        self.assertFalse(Usuario.objects.filter(username=usuario).exists())
         aceites = AceiteLegal.objects.all()
         self.assertEqual(aceites.count(), 2)
         for aceite in aceites:
@@ -217,7 +220,7 @@ class ReaceiteMiddlewareTests(TestCase):
 
     def test_conta_sem_aceite_e_barrada(self):
         """Contas anteriores ao app caem no interstitial — backfill sem migração."""
-        resposta = self.client.get(reverse("dashboard"))
+        resposta = self.client.get(reverse("carteira:painel"))
         self.assertRedirects(resposta, reverse("legal:reaceite"))
 
     def test_rotas_da_allowlist_seguem_acessiveis(self):
@@ -226,7 +229,7 @@ class ReaceiteMiddlewareTests(TestCase):
 
     def test_aceitar_libera_a_navegacao(self):
         self.client.post(reverse("legal:reaceite"), {"aceite_legal": "on"})
-        self.assertEqual(self.client.get(reverse("dashboard")).status_code, 200)
+        self.assertEqual(self.client.get(reverse("carteira:painel")).status_code, 200)
         self.assertTrue(AceiteLegal.objects.filter(usuario=self.usuario).exists())
 
     def test_recusar_mantem_bloqueio(self):
@@ -241,7 +244,7 @@ class ReaceiteMiddlewareTests(TestCase):
         criar_documento(versao="2.0")
 
         self.assertTrue(precisa_reaceitar(self.usuario))
-        self.assertRedirects(self.client.get(reverse("dashboard")), reverse("legal:reaceite"))
+        self.assertRedirects(self.client.get(reverse("carteira:painel")), reverse("legal:reaceite"))
 
     def test_versao_nao_material_nao_exige_reaceite(self):
         self.client.post(reverse("legal:reaceite"), {"aceite_legal": "on"})

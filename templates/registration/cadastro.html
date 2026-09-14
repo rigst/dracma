@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Criar conta · Centavo{% endblock %}
+
+{% block content %}
+<div class="auth-wrap">
+  <div class="auth-card card">
+    <div class="pad">
+      <div class="auth-head">
+        <div class="logo-lg" aria-hidden="true"><svg><use href="#logo-trilhas"/></svg></div>
+        <h1>Criar conta</h1>
+        <p>Enviaremos um e-mail para confirmar sua conta antes do primeiro acesso.</p>
+      </div>
+
+      <form method="post">
+        {% csrf_token %}
+        {% if form.non_field_errors %}<div class="form-errors">{{ form.non_field_errors }}</div>{% endif %}
+        <div class="field">
+          <label for="{{ form.username.id_for_label }}">Usuário</label>
+          {{ form.username }}
+          {{ form.username.errors }}
+        </div>
+        <div class="field">
+          <label for="{{ form.email.id_for_label }}">E-mail</label>
+          {{ form.email }}
+          {{ form.email.errors }}
+        </div>
+        <div class="field">
+          <label for="{{ form.password1.id_for_label }}">Senha</label>
+          {{ form.password1 }}
+          {{ form.password1.errors }}
+          {% if form.password1.help_text %}<p class="auth-note">{{ form.password1.help_text }}</p>{% endif %}
+        </div>
+        <div class="field">
+          <label for="{{ form.password2.id_for_label }}">Confirme a senha</label>
+          {{ form.password2 }}
+          {{ form.password2.errors }}
+        </div>
+        {% include "legal/_checkbox_aceite.html" with field=form.aceite_legal %}
+        <button type="submit" class="btn btn-primary btn-block">Criar conta</button>
+      </form>
+
+      <div class="auth-sep">ou</div>
+      <a class="btn btn-ghost btn-block" href="{% url 'login' %}">Já tenho conta</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

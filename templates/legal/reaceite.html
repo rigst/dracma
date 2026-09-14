@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}Atualização dos termos · Centavo{% endblock %}
+
+{% block content %}
+<div class="legal-page legal-page--portao">
+    <div class="legal-doc">
+        <header class="legal-doc-header">
+            <p class="legal-eyebrow">Atualização</p>
+            <h1>
+                {% if documentos|length > 1 %}Atualizamos dois documentos{% else %}Atualizamos um documento{% endif %}
+            </h1>
+            <p class="legal-lead">
+                Para continuar usando o sistema, leia o que mudou e confirme.
+                Sua conta e seus dados seguem como estão.
+            </p>
+        </header>
+
+        {% for documento in documentos %}
+            <section class="legal-painel">
+                <header class="legal-painel-topo">
+                    <h2>{{ documento.titulo }}</h2>
+                    {% include "legal/_registro.html" %}
+                </header>
+                <div class="legal-corpo legal-corpo--rolagem" tabindex="0" role="region"
+                     aria-label="{{ documento.titulo }}: texto completo">
+                    {{ documento.corpo_html|safe }}
+                </div>
+            </section>
+        {% endfor %}
+
+        <form method="post" class="legal-acao">
+            {% csrf_token %}
+            {% include "legal/_checkbox_aceite.html" with field=form.aceite_legal %}
+            <div class="legal-acao-botoes">
+                <button class="btn btn-primary" type="submit">Aceitar e continuar</button>
+            </div>
+        </form>
+
+        {% comment %}
+        Sem onclick inline: a CSP do app só libera script com nonce, então a
+        recusa é um submit de verdade.
+        {% endcomment %}
+        <form method="post" action="{% url 'logout' %}" class="legal-recusa">
+            {% csrf_token %}
+            <p>Prefere não aceitar? <button type="submit" class="link-button">Sair da conta</button>.</p>
+        </form>
+    </div>
+</div>
+{% endblock %}

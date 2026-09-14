@@ -101,9 +101,7 @@ class CloudAPICanal(CanalMensagem):
                     "components": [
                         {
                             "type": "body",
-                            "parameters": [
-                                {"type": "text", "text": str(p)} for p in parametros
-                            ],
+                            "parameters": [{"type": "text", "text": str(p)} for p in parametros],
                         }
                     ],
                 },

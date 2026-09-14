@@ -282,8 +282,12 @@ def total_gasto(
 def resumo_periodo(espaco, inicio: date, fim: date, incluir_previstas: bool = False) -> Resumo:
     consulta = _base(espaco, inicio, fim, incluir_previstas)
 
-    receitas = consulta.filter(tipo=TipoTransacao.RECEITA).aggregate(t=Sum("valor"))["t"] or Decimal("0")
-    despesas = consulta.filter(tipo=TipoTransacao.DESPESA).aggregate(t=Sum("valor"))["t"] or Decimal("0")
+    receitas = consulta.filter(tipo=TipoTransacao.RECEITA).aggregate(t=Sum("valor"))[
+        "t"
+    ] or Decimal("0")
+    despesas = consulta.filter(tipo=TipoTransacao.DESPESA).aggregate(t=Sum("valor"))[
+        "t"
+    ] or Decimal("0")
 
     agrupado = (
         consulta.filter(tipo=TipoTransacao.DESPESA)
@@ -292,14 +296,16 @@ def resumo_periodo(espaco, inicio: date, fim: date, incluir_previstas: bool = Fa
         .order_by("-total")
     )
     por_categoria = [
-        (f"{linha['categoria__emoji'] or ''} {linha['categoria__nome'] or 'Sem categoria'}".strip(),
-         linha["total"])
+        (
+            f"{linha['categoria__emoji'] or ''} {linha['categoria__nome'] or 'Sem categoria'}".strip(),
+            linha["total"],
+        )
         for linha in agrupado
     ]
 
-    fixas = consulta.filter(
-        tipo=TipoTransacao.DESPESA, categoria__fixa=True
-    ).aggregate(t=Sum("valor"))["t"] or Decimal("0")
+    fixas = consulta.filter(tipo=TipoTransacao.DESPESA, categoria__fixa=True).aggregate(
+        t=Sum("valor")
+    )["t"] or Decimal("0")
 
     return Resumo(
         inicio=inicio,

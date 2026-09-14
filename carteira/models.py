@@ -83,7 +83,9 @@ class Categoria(models.Model):
     espaco = models.ForeignKey(Espaco, on_delete=models.CASCADE, related_name="categorias")
     nome = models.CharField("nome", max_length=60)
     emoji = models.CharField("emoji", max_length=8, blank=True)
-    tipo = models.CharField("tipo", max_length=20, choices=TipoTransacao, default=TipoTransacao.DESPESA)
+    tipo = models.CharField(
+        "tipo", max_length=20, choices=TipoTransacao, default=TipoTransacao.DESPESA
+    )
     # Distingue aluguel/assinatura (fixo) de mercado/lazer (variável). É o que
     # alimenta o "100% dos gastos foram variáveis no período" do relatório.
     fixa = models.BooleanField("é gasto fixo", default=False)

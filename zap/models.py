@@ -86,9 +86,7 @@ class JanelaAtendimento(models.Model):
     (`zap.janela`), em vez de um `if` espalhado por cada ponto de envio.
     """
 
-    numero = models.OneToOneField(
-        NumeroWhatsApp, on_delete=models.CASCADE, related_name="janela"
-    )
+    numero = models.OneToOneField(NumeroWhatsApp, on_delete=models.CASCADE, related_name="janela")
     ultimo_inbound_em = models.DateTimeField("último inbound em")
 
     class Meta:

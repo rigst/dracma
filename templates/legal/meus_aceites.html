@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}Meus aceites · Centavo{% endblock %}
+
+{% block content %}
+<div class="legal-page">
+    <div class="panel legal-doc">
+        <header class="legal-doc-header">
+            <h1>Meus aceites</h1>
+            <p class="legal-doc-meta">
+                Registro dos documentos que você aceitou, com data e origem. Você pode
+                pedir uma cópia completa desses dados pelo e-mail de contato na
+                <a href="{% url 'privacidade' %}">Política de Privacidade</a>.
+            </p>
+        </header>
+
+        {% if aceites %}
+            <div class="table-wrapper">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Documento</th>
+                            <th>Versão</th>
+                            <th>Aceito em</th>
+                            <th>Origem</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for aceite in aceites %}
+                            <tr>
+                                <td>
+                                    <a href="{% url 'legal:versao' aceite.documento.tipo aceite.documento.versao %}">
+                                        {{ aceite.documento.titulo }}
+                                    </a>
+                                </td>
+                                <td>{{ aceite.documento.versao }}</td>
+                                <td>{{ aceite.aceito_em|date:"d/m/Y H:i" }}</td>
+                                <td>{{ aceite.get_origem_display }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p>Nenhum aceite registrado nesta conta.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

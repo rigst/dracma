@@ -58,8 +58,11 @@ class LimiteTest(BaseTest):
         # herdar o que já tinha sido gasto antes de ele existir.
         ontem = date.today() - timedelta(days=1)
         services.registrar_transacao(
-            espaco=self.espaco, valor="80", descricao="Presente antigo",
-            categoria="Presentes", data_lancamento=ontem,
+            espaco=self.espaco,
+            valor="80",
+            descricao="Presente antigo",
+            categoria="Presentes",
+            data_lancamento=ontem,
         )
         limite = services.criar_limite(
             espaco=self.espaco, valor="200", categoria="Presentes", dias=10
@@ -75,8 +78,11 @@ class LimiteTest(BaseTest):
         # O limite mede o que JÁ saiu; a projeção é outro número.
         limite = services.criar_limite(espaco=self.espaco, valor="300", categoria="Moradia")
         regra = services.criar_recorrente(
-            espaco=self.espaco, descricao="Aluguel", valor="250",
-            dia_do_mes=5, categoria="Moradia",
+            espaco=self.espaco,
+            descricao="Aluguel",
+            valor="250",
+            dia_do_mes=5,
+            categoria="Moradia",
         )
         regra.inicio = date(2020, 1, 1)
         regra.save(update_fields=["inicio"])
@@ -97,9 +103,7 @@ class RecorrenteTest(BaseTest):
         return regra
 
     def test_projecao_cria_previstas(self):
-        self._regra_antiga(
-            descricao="Aluguel", valor="1800", dia_do_mes=5, categoria="Moradia"
-        )
+        self._regra_antiga(descricao="Aluguel", valor="1800", dia_do_mes=5, categoria="Moradia")
         criadas = services.projetar_recorrentes(self.espaco, meses=1)
         self.assertEqual(criadas, 1)
         prevista = Transacao.objects.get(prevista=True)
@@ -164,12 +168,18 @@ class SaldoPrevistoTest(BaseTest):
     def test_separa_realizado_de_previsto(self):
         hoje = date.today()
         services.registrar_transacao(
-            espaco=self.espaco, valor="4200", descricao="Salário",
-            tipo=TipoTransacao.RECEITA, data_lancamento=hoje,
+            espaco=self.espaco,
+            valor="4200",
+            descricao="Salário",
+            tipo=TipoTransacao.RECEITA,
+            data_lancamento=hoje,
         )
         regra = services.criar_recorrente(
-            espaco=self.espaco, descricao="Aluguel", valor="1800",
-            dia_do_mes=min(28, hoje.day), categoria="Moradia",
+            espaco=self.espaco,
+            descricao="Aluguel",
+            valor="1800",
+            dia_do_mes=min(28, hoje.day),
+            categoria="Moradia",
         )
         regra.inicio = date(2020, 1, 1)
         regra.save(update_fields=["inicio"])
@@ -192,20 +202,24 @@ class SaldoDaContaTest(BaseTest):
             espaco=self.espaco, valor="200", descricao="Mercado", conta="Nubank"
         )
         services.registrar_transacao(
-            espaco=self.espaco, valor="500", descricao="Freela",
-            tipo=TipoTransacao.RECEITA, conta="Nubank",
+            espaco=self.espaco,
+            valor="500",
+            descricao="Freela",
+            tipo=TipoTransacao.RECEITA,
+            conta="Nubank",
         )
         self.assertEqual(services.saldo_da_conta(conta), Decimal("1300.00"))
 
     def test_prevista_nao_entra_no_saldo(self):
         from carteira.models import Conta
 
-        conta = Conta.objects.create(
-            espaco=self.espaco, nome="Itaú", saldo_inicial=Decimal("500")
-        )
+        conta = Conta.objects.create(espaco=self.espaco, nome="Itaú", saldo_inicial=Decimal("500"))
         regra = services.criar_recorrente(
-            espaco=self.espaco, descricao="Aluguel", valor="300",
-            dia_do_mes=5, conta="Itaú",
+            espaco=self.espaco,
+            descricao="Aluguel",
+            valor="300",
+            dia_do_mes=5,
+            conta="Itaú",
         )
         regra.inicio = date(2020, 1, 1)
         regra.save(update_fields=["inicio"])

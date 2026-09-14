@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Entrar · Centavo{% endblock %}
+
+{% block content %}
+<div class="auth-wrap">
+  <div class="auth-card card">
+    <div class="pad">
+      <div class="auth-head">
+        <div class="logo-lg" aria-hidden="true"><svg><use href="#logo-trilhas"/></svg></div>
+        <h1>Centavo</h1>
+        <p>Diga o que quer aprender e a IA monta um plano completo: do básico ao avançado, com avaliações e títulos a cada nível.</p>
+      </div>
+
+      <form method="post" action="{% url 'login' %}">
+        {% csrf_token %}
+        {% if form.non_field_errors %}<div class="form-errors">{{ form.non_field_errors }}</div>{% endif %}
+        <div class="field">
+          <label for="{{ form.username.id_for_label }}">Usuário</label>
+          {{ form.username }}
+          {{ form.username.errors }}
+        </div>
+        <div class="field">
+          <label for="{{ form.password.id_for_label }}">Senha</label>
+          {{ form.password }}
+          {{ form.password.errors }}
+        </div>
+        <input type="hidden" name="next" value="{{ next }}">
+        <button type="submit" class="btn btn-primary btn-block">Entrar</button>
+        <p class="auth-note"><a href="{% url 'password_reset' %}">Esqueceu a senha?</a></p>
+      </form>
+
+      <div class="auth-sep">ou</div>
+
+      {# O aceite acontece na própria página de aceite, não aqui. #}
+      {# O texto que a pessoa precisa ler não cabe ao lado de um botão. #}
+      <a class="btn btn-ghost btn-block" href="{% url 'legal:aceite_visitante' %}">Entrar como visitante</a>
+      <p class="auth-note">Acesso temporário para experimentar. Suas trilhas expiram por inatividade.</p>
+
+      {% if signup_enabled %}
+      <p class="auth-note" style="text-align:center;margin-top:1rem">
+        Ainda não tem conta? <a href="{% url 'accounts:cadastro' %}">Criar conta</a>
+      </p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

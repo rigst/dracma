@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Confirme seu e-mail · Centavo{% endblock %}
+
+{% block content %}
+<div class="auth-wrap">
+  <div class="auth-card card">
+    <div class="pad">
+      <div class="auth-head">
+        <div class="logo-lg" aria-hidden="true"><svg><use href="#logo-trilhas"/></svg></div>
+        <h1>Quase lá!</h1>
+        <p>Enviamos um link de confirmação para o seu e-mail. Abra-o para ativar a conta. Não esqueça de conferir a caixa de spam.</p>
+      </div>
+      <a class="btn btn-ghost btn-block" href="{% url 'login' %}">Voltar ao login</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

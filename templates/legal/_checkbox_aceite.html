@@ -1,0 +1,14 @@
+{% comment %}
+Controle de confirmação. Nunca renderize `checked` aqui: o campo nasce com
+initial=False e a obrigatoriedade é validada no servidor.
+(Comentário em bloco: `{# #}` no Django só vale para uma linha.)
+{% endcomment %}
+<div class="confirmacao{% if field.errors %} confirmacao--erro{% endif %}">
+    <label class="confirmacao-alvo" for="{{ field.id_for_label }}">
+        {{ field }}
+        <span class="confirmacao-texto">{{ field.label }}</span>
+    </label>
+    {% if field.errors %}
+        <p class="confirmacao-msg" role="alert">{{ field.errors.0 }}</p>
+    {% endif %}
+</div>

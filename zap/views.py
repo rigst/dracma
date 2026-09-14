@@ -84,3 +84,10 @@ def _enfileirar(item: dict, payload: dict) -> None:
         return
 
     processar_mensagem.delay(mensagem.pk, item.get("media_id") or "")
+
+
+def console(request):
+    """Console web do assistente. Implementado no passo do portal."""
+    from django.http import HttpResponse
+
+    return HttpResponse("em construção", status=501)

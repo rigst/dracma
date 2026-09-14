@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}{{ documento.titulo }} · Centavo{% endblock %}
+
+{% block content %}
+<div class="legal-page">
+    <article class="legal-doc">
+        <header class="legal-doc-header">
+            <p class="legal-eyebrow">
+                {% if documento.tipo == 'termos' %}Termos{% else %}Privacidade{% endif %}
+            </p>
+            <h1>{{ documento.titulo }}</h1>
+            {% include "legal/_registro.html" %}
+        </header>
+
+        {% if not e_versao_vigente %}
+            <p class="legal-aviso">
+                Esta é uma versão anterior, mantida para consulta.
+                {% if documento.tipo == 'termos' %}
+                    <a href="{% url 'termos' %}">Ler a versão vigente</a>
+                {% else %}
+                    <a href="{% url 'privacidade' %}">Ler a versão vigente</a>
+                {% endif %}
+            </p>
+        {% endif %}
+
+        <div class="legal-corpo">
+            {{ documento.corpo_html|safe }}
+        </div>
+
+        <footer class="legal-doc-rodape">
+            <nav class="legal-atalhos" aria-label="Outros documentos">
+                {% if documento.tipo == 'termos' %}
+                    <a href="{% url 'privacidade' %}">Política de Privacidade</a>
+                {% else %}
+                    <a href="{% url 'termos' %}">Termos de Uso</a>
+                {% endif %}
+                {% if user.is_authenticated %}
+                    <a href="{% url 'legal:meus_aceites' %}">Meus aceites</a>
+                {% endif %}
+            </nav>
+
+            {% if versoes|length > 1 %}
+                <details class="legal-historico">
+                    <summary>Versões anteriores</summary>
+                    <ul>
+                        {% for v in versoes %}
+                            <li>
+                                <a href="{% url 'legal:versao' v.tipo v.versao %}">Versão {{ v.versao }}</a>
+                                <span>{{ v.publicado_em|date:"d/m/Y" }}{% if v.pk == documento.pk %} · em vigor{% endif %}</span>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </details>
+            {% endif %}
+        </footer>
+    </article>
+</div>
+{% endblock %}

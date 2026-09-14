@@ -1,0 +1,24 @@
+{% comment %}
+Faixa de identidade do documento: versão, vigência e a impressão digital do
+texto. O sha256 não é enfeite — é o mesmo valor gravado no registro de aceite,
+então mostrá-lo aqui é o que permite a alguém conferir, depois, que leu
+exatamente o texto que aceitou.
+{% endcomment %}
+<dl class="registro">
+    <div class="registro-item">
+        <dt>Versão</dt>
+        <dd>{{ documento.versao }}</dd>
+    </div>
+    {% if documento.vigente_desde %}
+        <div class="registro-item">
+            <dt>Vigente desde</dt>
+            <dd>{{ documento.vigente_desde|date:"d/m/Y" }}</dd>
+        </div>
+    {% endif %}
+    {% if documento.sha256 %}
+        <div class="registro-item registro-item--impressao">
+            <dt>Impressão do texto</dt>
+            <dd><code>{{ documento.sha256|slice:":16" }}</code></dd>
+        </div>
+    {% endif %}
+</dl>

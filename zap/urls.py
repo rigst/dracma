@@ -6,4 +6,5 @@ app_name = "zap"
 
 urlpatterns = [
     path("webhook/", views.webhook, name="webhook"),
+    path("console/", views.console, name="console"),
 ]

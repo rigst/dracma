@@ -22,9 +22,7 @@ def _inicio_do_mes():
 def tokens_consumidos(usuario) -> int:
     from .models import ConsumoIA
 
-    agregado = ConsumoIA.objects.filter(
-        usuario=usuario, criado_em__gte=_inicio_do_mes()
-    ).aggregate(
+    agregado = ConsumoIA.objects.filter(usuario=usuario, criado_em__gte=_inicio_do_mes()).aggregate(
         entrada=Sum("tokens_entrada"),
         saida=Sum("tokens_saida"),
         cache_w=Sum("tokens_cache_escrita"),

@@ -6,7 +6,7 @@ expiração estouraria MessageFailure (500) em vez de redirecionar ao login.
 """
 
 from django.contrib import messages
-from django.contrib.auth import logout
+from django.contrib.auth import get_user_model, logout
 from django.shortcuts import redirect
 from django.urls import reverse
 from django.utils import timezone
@@ -28,5 +28,9 @@ class VisitorExpiryMiddleware:
                 return redirect(reverse("login"))
             # Renova a janela de inatividade. `update` em vez de `save()` para
             # não disparar signals nem reescrever a linha inteira a cada request.
-            type(user).objects.filter(pk=user.pk).update(ultimo_acesso=timezone.now())
+            #
+            # `get_user_model()` e não `type(user)`: request.user é um
+            # SimpleLazyObject, e `type()` devolve o proxy — que não tem
+            # `.objects`.
+            get_user_model().objects.filter(pk=user.pk).update(ultimo_acesso=timezone.now())
         return self.get_response(request)
