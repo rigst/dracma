@@ -6,14 +6,14 @@ set -euo pipefail
 # que precisa de sudo é o reload/restart no fim e o backup pré-migração, este
 # último como "rod" (sudoers próprio de "deploy", nunca o de "rod").
 
-APP_DIR=/var/www/centavo
-FETCH_URL=https://github.com/rigst/centavo.git   # HTTPS anônimo — repo público, sem credencial
-VENV=/var/www/centavo/venv
-WEB_SERVICE=centavo.service               # reload (SIGHUP): zero downtime, socket nunca cai
-OTHER_SERVICES=(centavo_celery.service centavo_celery_midia.service)
-HEALTH_URL="https://centavo.stolben.com/"   # sem /healthz/ neste app; home redireciona pro login (302)
+APP_DIR=/var/www/dracma
+FETCH_URL=https://github.com/rigst/dracma.git   # HTTPS anônimo — repo público, sem credencial
+VENV=/var/www/dracma/venv
+WEB_SERVICE=dracma.service               # reload (SIGHUP): zero downtime, socket nunca cai
+OTHER_SERVICES=(dracma_celery.service dracma_celery_midia.service)
+HEALTH_URL="https://dracma.stolben.com/"   # sem /healthz/ neste app; home redireciona pro login (302)
 HEALTH_HEADER=""
-BACKUP_SCRIPT=/var/www/centavo/deploy/backup_postgres.sh
+BACKUP_SCRIPT=/var/www/dracma/deploy/backup_postgres.sh
 # manage.py aqui roda fora do systemd (que só injeta DJANGO_SETTINGS_MODULE
 # no processo do gunicorn) — sem isto, cairia no default "development" do
 # manage.py. O .env em si NÃO precisa de source: config/settings/base.py já
@@ -21,7 +21,7 @@ BACKUP_SCRIPT=/var/www/centavo/deploy/backup_postgres.sh
 # seja assim — este .env tem um valor (DEFAULT_FROM_EMAIL="Nome <e@ma.il>")
 # que é sintaxe válida pro python-dotenv e inválida pro bash.
 EXTRA_ENV="DJANGO_SETTINGS_MODULE=config.settings.production"
-LOCK_FILE=/tmp/centavo_cd_deploy.lock
+LOCK_FILE=/tmp/dracma_cd_deploy.lock
 
 # Versão realmente instalada no venv, ou "ausente". Consultar a metadata em vez
 # de `gunicorn --version` não depende do formato de saída do CLI.
@@ -68,7 +68,7 @@ main() {
     # nenhuma tinha entrado por CD.
     #
     # Depende desta linha no sudoers do deploy (visudo -f /etc/sudoers.d/deploy):
-    #   deploy ALL=(rod) NOPASSWD: /var/www/centavo/deploy/backup_postgres.sh
+    #   deploy ALL=(rod) NOPASSWD: /var/www/dracma/deploy/backup_postgres.sh
     # Falhar aqui é o comportamento certo: migração sem backup não deve subir.
     sudo -n -u rod "$BACKUP_SCRIPT"
   fi

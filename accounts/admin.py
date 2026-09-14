@@ -11,7 +11,7 @@ class UsuarioAdmin(UserAdmin, ModelAdmin):
     list_filter = ("is_visitante", "is_active", "is_staff")
     fieldsets = (
         *UserAdmin.fieldsets,
-        ("Centavo", {"fields": ("espaco", "is_visitante", "ultimo_acesso")}),
+        ("Dracma", {"fields": ("espaco", "is_visitante", "ultimo_acesso")}),
     )
 
 

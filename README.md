@@ -1,4 +1,4 @@
-# Centavo
+# Dracma
 
 Assistente financeira pessoal com IA que vive no **WhatsApp**, com portal web
 complementar. Você conta um gasto por texto, áudio, foto de comprovante ou PDF;
@@ -16,7 +16,7 @@ código curto (`0DFPK`) para corrigir depois.
 
 **Orçamento que se cuida sozinho.** Limites por categoria, teto geral do mês, e
 limites temporários avulsos ("R$ 200 pra presente essa semana"). Ao chegar em
-80% e ao estourar, a Centavo manda mensagem — antes da fatura fechar.
+80% e ao estourar, a Dracma manda mensagem — antes da fatura fechar.
 
 **Planejamento.** Ganhos e despesas recorrentes viram projeção: saldo previsto
 de fechamento do mês, o que ainda entra e o que ainda sai.
@@ -27,6 +27,13 @@ família ou time acompanham o mesmo mês, cada um lançando do próprio WhatsApp
 **Portal.** Painel, transações com filtro, relatórios com gráficos, exportação
 em CSV — e um **console** onde dá para conversar com a mesma assistente pelo
 navegador.
+
+**Onboarding.** A tela *Conectar WhatsApp* resolve os três pontos de partida:
+QR para quem está no desktop e precisa levar o link ao celular, deep link
+`wa.me` para quem já está no telefone, e o código de 6 dígitos para digitar à
+mão — com a opção de receber tudo por e-mail. Depois de conectar, a própria
+conversa ensina: três mensagens espaçadas mostram os formatos aceitos, sugerem
+o primeiro limite e apontam o portal.
 
 ---
 
@@ -81,7 +88,7 @@ no servidor — funcionam com o JavaScript desligado e herdam os tokens de tema.
 | App | Responsabilidade |
 |---|---|
 | `carteira` | domínio financeiro e telas do portal. Não conhece WhatsApp nem IA. |
-| `zap` | transporte: webhook, canais, mídia, janela de atendimento, pareamento |
+| `zap` | transporte: webhook, canais, mídia, janela de atendimento, onboarding |
 | `ai` | cliente Claude, tools, loop do agente, transcrição |
 | `accounts` | usuário, espaço, modo visitante, quota de IA |
 | `legal` | termos e privacidade versionados, com aceite obrigatório |
@@ -133,8 +140,11 @@ cliente Claude falso e `zap/canais/fake.py` um canal que acumula em memória.
 3. Aponte o webhook para `https://SEU_DOMINIO/zap/webhook/`, repetindo o mesmo
    verify token, e assine o campo `messages`.
 4. `WHATSAPP_ENABLED=True`.
-5. No portal, gere o código de pareamento e mande-o pelo WhatsApp para vincular
-   o número.
+5. Preencha também `WHATSAPP_NUMERO` com o número em E.164 sem o `+` (ex.:
+   `5511999998888`). Ele é diferente do `PHONE_NUMBER_ID` e é o que monta o
+   link `wa.me` e o QR da tela de conexão.
+6. No portal, abra **Conectar WhatsApp** e siga os passos — ou mande as
+   instruções para o seu e-mail e abra pelo celular.
 
 **Templates.** Os alertas fora da janela de 24h exigem template *utility*
 aprovado no painel. Sem `WHATSAPP_TEMPLATE_LIMITE` e
@@ -152,7 +162,7 @@ continuem sendo entregues.
 
 ## Custo da IA
 
-Um modelo só (`claude-opus-5`). As alavancas de custo são outras:
+Um modelo só (`claude-sonnet-5`). As alavancas de custo são outras:
 
 - **Prompt caching** no prefixo estável do system (instruções + tools). A data
   de hoje e as categorias do espaço vêm **depois** do breakpoint — no último

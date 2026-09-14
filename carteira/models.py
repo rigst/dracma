@@ -205,7 +205,7 @@ class Recorrente(models.Model):
 
 
 class Limite(models.Model):
-    """Teto de gasto acompanhado pela Centavo.
+    """Teto de gasto acompanhado pela Dracma.
 
     `categoria` nulo = teto geral do mês. Com `fim` preenchido vira limite
     temporário ("R$ 200 pra presente"), acompanhado à parte do orçamento

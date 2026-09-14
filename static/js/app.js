@@ -1,4 +1,4 @@
-// Centavo — JS clássico, sem módulo e sem build.
+// Dracma — JS clássico, sem módulo e sem build.
 
 // Alternância de tema. O valor fica em localStorage e o script de pré-pintura
 // no <head> o aplica antes do primeiro paint.

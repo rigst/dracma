@@ -37,7 +37,7 @@ class ConsoleTest(BaseConsoleTest):
     def test_get_mostra_a_tela(self):
         resposta = self.client.get(self.url)
         self.assertEqual(resposta.status_code, 200)
-        self.assertContains(resposta, "Conversar com a Centavo")
+        self.assertContains(resposta, "Conversar com a Dracma")
 
     def test_post_registra_e_devolve_as_duas_falas(self):
         cliente = (

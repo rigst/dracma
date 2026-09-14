@@ -1,4 +1,4 @@
-/* Centavo — folha única, sem bundler.
+/* Dracma — folha única, sem bundler.
  *
  * Os tokens ficam em :root e o tema troca por [data-theme]. Nenhuma cor é
  * definida SÓ dentro de um bloco de tema: a paleta clara é a base e a escura
@@ -13,6 +13,13 @@
   --roxo: #6d28d9;
   --roxo-claro: #8b5cf6;
   --roxo-fraco: #f5f3ff;
+
+  /* Botão primário: o par fundo/texto anda junto e é medido.
+     Texto branco sobre o --roxo do tema ESCURO dá 2,72:1 e reprova o WCAG —
+     por isso a cor do texto é token, e não um #fff fixo. */
+  --botao-fundo: #6d28d9;
+  --botao-fundo-hover: #5b21b6;
+  --botao-texto: #ffffff;
 
   --fundo: #fbfaff;
   --painel: #ffffff;
@@ -44,6 +51,9 @@
     --roxo: #a78bfa;
     --roxo-claro: #c4b5fd;
     --roxo-fraco: #251f3d;
+    --botao-fundo: #a78bfa;
+    --botao-fundo-hover: #c4b5fd;
+    --botao-texto: #14111f;
     --fundo: #14111f;
     --painel: #1c1830;
     --painel-2: #251f3d;
@@ -65,6 +75,9 @@
   --roxo: #a78bfa;
   --roxo-claro: #c4b5fd;
   --roxo-fraco: #251f3d;
+  --botao-fundo: #a78bfa;
+  --botao-fundo-hover: #c4b5fd;
+  --botao-texto: #14111f;
   --fundo: #14111f;
   --painel: #1c1830;
   --painel-2: #251f3d;
@@ -101,7 +114,8 @@ a { color: var(--roxo); }
 
 .pular {
   position: absolute; left: -9999px;
-  background: var(--roxo); color: #fff; padding: .6rem 1rem; border-radius: var(--raio-p);
+  background: var(--botao-fundo); color: var(--botao-texto);
+  padding: .6rem 1rem; border-radius: var(--raio-p);
 }
 .pular:focus { left: 1rem; top: 1rem; z-index: 50; }
 
@@ -201,11 +215,12 @@ label { display: block; font-size: .85rem; font-weight: 600; margin-bottom: .25r
 .erro { color: var(--perigo); font-size: .85rem; }
 
 .botao {
-  background: var(--roxo); color: #fff; border: 0; border-radius: var(--raio-p);
+  background: var(--botao-fundo); color: var(--botao-texto); border: 0;
+  border-radius: var(--raio-p);
   padding: .65rem 1.1rem; font: inherit; font-weight: 600; cursor: pointer;
   text-decoration: none; display: inline-block;
 }
-.botao:hover { background: var(--roxo-claro); }
+.botao:hover { background: var(--botao-fundo-hover); }
 .botao:disabled { opacity: .55; cursor: not-allowed; }
 
 /* Conversa -------------------------------------------------------------- */
@@ -219,7 +234,10 @@ label { display: block; font-size: .85rem; font-weight: 600; margin-bottom: .25r
 .fala { max-width: min(80%, 34rem); padding: .6rem .8rem; border-radius: var(--raio); font-size: .93rem; }
 .fala p { margin: 0 0 .4rem; }
 .fala p:last-child { margin-bottom: 0; }
-.fala--minha { align-self: flex-end; background: var(--roxo); color: #fff; }
+.fala--minha {
+  align-self: flex-end;
+  background: var(--botao-fundo); color: var(--botao-texto);
+}
 .fala--dela { align-self: flex-start; background: var(--painel); border: 1px solid var(--borda); }
 .fala-hora { font-size: .7rem; opacity: .75; display: block; margin-top: .25rem; }
 
@@ -292,3 +310,40 @@ label { display: block; font-size: .85rem; font-weight: 600; margin-bottom: .25r
 
 .insights { margin: 0; padding-left: 1.1rem; font-size: .9rem; }
 .insights li { margin-bottom: .4rem; }
+
+/* Conectar o WhatsApp ---------------------------------------------------- */
+
+.conectar {
+  display: grid; gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  align-items: start;
+}
+
+.qr-caixa {
+  background: #fff; border-radius: var(--raio-p);
+  padding: .5rem; margin: .75rem 0; width: fit-content;
+}
+/* O QR sai do segno sem cor fixa e é pintado aqui: fundo branco sempre, para
+   a câmera ler com contraste mesmo no tema escuro. */
+.qr { display: block; width: 190px; height: 190px; }
+.qr-linha { stroke: #000; }
+
+.codigo-grande {
+  font-family: var(--mono); font-size: 2.1rem; font-weight: 600;
+  letter-spacing: .22em; margin: .5rem 0;
+  color: var(--roxo); word-break: break-all;
+}
+.numero-bot { font-family: var(--mono); letter-spacing: .04em; }
+
+.passos-lista { list-style: none; padding: 0; margin: 0 0 .75rem; font-size: .925rem; }
+.passos-lista li { padding: .3rem 0; }
+
+.faixa-onboarding {
+  display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+  margin-bottom: 1rem;
+  border-color: var(--roxo);
+  background: var(--roxo-fraco);
+}
+.faixa-onboarding h2 { margin-bottom: .2rem; }
+.faixa-onboarding .nota { max-width: 60ch; }
+.faixa-onboarding .botao { margin-left: auto; }

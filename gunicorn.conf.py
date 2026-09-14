@@ -12,4 +12,4 @@
 #
 # Exige RESTART, não reload: o SIGHUP relê este arquivo, mas o arbiter não
 # reinicia o servidor de controle junto.
-control_socket = "/home/rod/.gunicorn/centavo.ctl"
+control_socket = "/home/rod/.gunicorn/dracma.ctl"

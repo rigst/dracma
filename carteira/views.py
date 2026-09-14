@@ -199,7 +199,7 @@ def exportar(request):
 
     resposta = HttpResponse(content_type="text/csv; charset=utf-8")
     resposta["Content-Disposition"] = (
-        f'attachment; filename="centavo-{inicio:%Y%m%d}-{fim:%Y%m%d}.csv"'
+        f'attachment; filename="dracma-{inicio:%Y%m%d}-{fim:%Y%m%d}.csv"'
     )
     # BOM para o Excel em pt-BR abrir com acento correto sem perguntar nada.
     resposta.write("﻿")

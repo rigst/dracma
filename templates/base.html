@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{% block title %}Centavo{% endblock %}</title>
+<title>{% block title %}Dracma{% endblock %}</title>
 <meta name="description" content="{% block description %}Assistente financeira com IA no WhatsApp.{% endblock %}">
 <link rel="icon" href="{% static 'img/favicon.svg' %}" type="image/svg+xml">
 <link rel="stylesheet" href="{% static 'css/app.css' %}">
@@ -20,7 +20,7 @@ escuro vê um lampejo branco em toda navegação.
 
 <header class="topo">
   <a class="marca" href="{% url 'carteira:painel' %}">
-    <span class="marca-icone" aria-hidden="true">◍</span> Centavo
+    <span class="marca-icone" aria-hidden="true">◍</span> Dracma
   </a>
 
   {% if user.is_authenticated %}
@@ -30,6 +30,7 @@ escuro vê um lampejo branco em toda navegação.
     <a href="{% url 'carteira:limites' %}">Limites</a>
     <a href="{% url 'carteira:relatorios' %}">Relatórios</a>
     <a href="{% url 'zap:console' %}">Conversar</a>
+    <a href="{% url 'zap:conectar' %}">WhatsApp</a>
   </nav>
   {% endif %}
 
@@ -62,7 +63,7 @@ escuro vê um lampejo branco em toda navegação.
     <a href="{% url 'privacidade' %}">Privacidade</a>
   </p>
   <p class="rodape-nota">
-    A Centavo organiza e orienta, mas <strong>não é consultoria financeira</strong>.
+    A Dracma organiza e orienta, mas <strong>não é consultoria financeira</strong>.
     As respostas são geradas por IA e podem conter erros — confira seus lançamentos.
   </p>
 </footer>

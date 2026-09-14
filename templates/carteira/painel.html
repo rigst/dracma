@@ -1,8 +1,21 @@
 {% extends "base.html" %}
-{% block title %}Painel · Centavo{% endblock %}
+{% block title %}Painel · Dracma{% endblock %}
 
 {% block content %}
 <h1>Seu mês</h1>
+
+{% if whatsapp_habilitado and not whatsapp_conectado %}
+<div class="cartao faixa-onboarding">
+  <div>
+    <h2>Conecte seu WhatsApp</h2>
+    <p class="nota">
+      É onde a Dracma trabalha melhor: você conta o gasto por áudio ou foto do
+      comprovante na hora, e ela avisa antes de um limite estourar.
+    </p>
+  </div>
+  <a class="botao" href="{% url 'zap:conectar' %}">Conectar</a>
+</div>
+{% endif %}
 
 <div class="grade">
   <div class="cartao">

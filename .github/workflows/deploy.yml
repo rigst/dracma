@@ -15,4 +15,4 @@ jobs:
     secrets:
       CD_SSH_KEY: ${{ secrets.CD_SSH_KEY }}
     with:
-      ssh-host: "centavo.stolben.com"
+      ssh-host: "dracma.stolben.com"

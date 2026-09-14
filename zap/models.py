@@ -42,6 +42,11 @@ class NumeroWhatsApp(models.Model):
     verificado_em = models.DateTimeField("verificado em", null=True, blank=True)
     criado_em = models.DateTimeField("criado em", auto_now_add=True)
 
+    # Onde a pessoa está no roteiro de primeiros passos. Guardado por NÚMERO e
+    # não por usuário porque é a conversa que tem o roteiro: num casal, quem
+    # entrou depois também precisa aprender a usar.
+    onboarding_etapa = models.PositiveSmallIntegerField("etapa do onboarding", default=0)
+
     class Meta:
         verbose_name = "número de WhatsApp"
         verbose_name_plural = "números de WhatsApp"

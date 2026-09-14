@@ -1,0 +1,37 @@
+Olá{% if usuario.first_name %}, {{ usuario.first_name }}{% endif %}!
+
+Para conectar seu WhatsApp à Dracma, siga estes três passos pelo CELULAR:
+
+1. Abra a conversa com a Dracma:
+   {{ link }}
+
+   (ou salve o número +{{ numero_bot }} e mande uma mensagem)
+
+2. Envie este código:
+
+   {{ codigo }}
+
+   Se você abrir pelo link acima, o código já vem escrito — é só enviar.
+   Ele vale até {{ expira_em|date:"H:i" }} de {{ expira_em|date:"d/m/Y" }}.
+
+3. Pronto. A Dracma confirma e já explica o que você pode mandar.
+
+--
+
+Depois de conectar, você pode registrar seus gastos do jeito que for mais
+fácil:
+
+  - escrevendo: "almocei 32 reais no cartão"
+  - mandando um áudio, útil quando você está na rua
+  - com uma foto do comprovante ou print do PIX
+  - com o PDF do extrato ou do boleto
+
+E pode pedir coisas: "cria um limite de R$ 400 pra delivery",
+"quanto sobra esse mês?", "dá pra comprar um tênis de 420?".
+
+Não quer usar o WhatsApp? A mesma assistente funciona pelo portal:
+{{ site }}
+
+--
+Dracma — {{ site }}
+Você recebeu este e-mail porque pediu as instruções de conexão no portal.

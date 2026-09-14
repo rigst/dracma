@@ -1,20 +1,20 @@
 [Unit]
-Description=Centavo (Gunicorn)
+Description=Dracma (Gunicorn)
 After=network.target
 
 [Service]
 Type=simple
 User=rod
 Group=www-data
-WorkingDirectory=/var/www/centavo
-EnvironmentFile=/var/www/centavo/.env
+WorkingDirectory=/var/www/dracma
+EnvironmentFile=/var/www/dracma/.env
 Environment=DJANGO_SETTINGS_MODULE=config.settings.production
-ExecStart=/var/www/centavo/venv/bin/gunicorn config.wsgi:application \
+ExecStart=/var/www/dracma/venv/bin/gunicorn config.wsgi:application \
     --bind 127.0.0.1:8015 \
     --workers 3 \
     --timeout 300 \
-    --access-logfile /var/www/centavo/logs/gunicorn.access.log \
-    --error-logfile /var/www/centavo/logs/gunicorn.error.log
+    --access-logfile /var/www/dracma/logs/gunicorn.access.log \
+    --error-logfile /var/www/dracma/logs/gunicorn.error.log
 Restart=always
 RestartSec=5
 KillSignal=SIGQUIT

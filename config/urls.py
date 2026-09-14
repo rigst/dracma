@@ -1,4 +1,4 @@
-"""URLs do projeto Centavo."""
+"""URLs do projeto Dracma."""
 
 from django.contrib import admin
 from django.contrib.auth import views as auth_views

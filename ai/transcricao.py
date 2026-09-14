@@ -76,7 +76,7 @@ def para_wav(origem: Path) -> Path:
     torna o comportamento previsível e é o formato que o modelo espera — sem
     isso, o resample acontece dentro da biblioteca e varia com a build.
     """
-    destino = Path(tempfile.mkstemp(suffix=".wav", prefix="centavo-audio-")[1])
+    destino = Path(tempfile.mkstemp(suffix=".wav", prefix="dracma-audio-")[1])
     subprocess.run(
         [
             settings.FFMPEG_BIN,

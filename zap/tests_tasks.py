@@ -88,7 +88,9 @@ class ProcessamentoTest(BaseTaskTest):
         transacao = Transacao.objects.get()
         self.assertEqual(transacao.valor, Decimal("34.00"))
         self.assertEqual(transacao.origem, Origem.TEXTO)
-        self.assertEqual(self.canal.ultimo_texto, "Registrei: Uber, R$ 34,00 🚗")
+        # A resposta do agente é a PRIMEIRA saída; depois dela o roteiro de
+        # primeiros passos manda as boas-vindas.
+        self.assertEqual(self.canal.enviadas[0]["texto"], "Registrei: Uber, R$ 34,00 🚗")
         mensagem.refresh_from_db()
         self.assertEqual(mensagem.status, Mensagem.Status.RESPONDIDA)
 
@@ -172,7 +174,8 @@ class PareamentoTest(BaseTaskTest):
 
     def test_numero_desconhecido_recebe_convite(self):
         processar_mensagem(self._entrada_desconhecida("oi").pk)
-        self.assertIn("pareamento", self.canal.ultimo_texto)
+        self.assertIn("Conectar WhatsApp", self.canal.ultimo_texto)
+        self.assertIn("6 dígitos", self.canal.ultimo_texto)
         self.assertEqual(Transacao.objects.count(), 0)
 
     def test_codigo_valido_vincula_o_numero(self):
@@ -186,7 +189,9 @@ class PareamentoTest(BaseTaskTest):
         self.desconhecido.refresh_from_db()
         self.assertEqual(self.desconhecido.usuario, self.usuario)
         self.assertTrue(self.desconhecido.vinculado)
+        # As boas-vindas do roteiro entram no lugar de uma confirmação solta.
         self.assertIn("conectei", self.canal.ultimo_texto)
+        self.assertIn("áudio", self.canal.ultimo_texto)
 
     def test_codigo_expirado_nao_vincula(self):
         CodigoPareamento.objects.create(

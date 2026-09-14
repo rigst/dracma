@@ -19,6 +19,9 @@ def espaco_context(request):
             "espaco": user.espaco,
             "quota_total": user.quota_tokens,
             "quota_restante": tokens_restantes(user),
+            # O aviso de "conecte seu WhatsApp" sai do base.html, então a
+            # informação precisa estar em toda página, não só no painel.
+            "whatsapp_conectado": user.numeros.filter(verificado_em__isnull=False).exists(),
         }
     )
     return ctx

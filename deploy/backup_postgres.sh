@@ -2,12 +2,12 @@
 set -euo pipefail
 
 # Porta de /var/www/sistema_arq/shared/scripts/backup_postgres.sh, adaptado
-# para o .env de centavo (DB_NAME/DB_USER/... em vez de DATABASE_URL)
+# para o .env de dracma (DB_NAME/DB_USER/... em vez de DATABASE_URL)
 # e para o checkout direto (sem shared/) — os dumps ficam fora do working
 # tree do git, em /home/rod/backups, para não interagir com git clean/status.
 
-APP="centavo"
-ENV_FILE="/var/www/centavo/.env"
+APP="dracma"
+ENV_FILE="/var/www/dracma/.env"
 BACKUP_DIR="/home/rod/backups/$APP/postgres"
 LOG_DIR="/home/rod/backups/$APP/logs"
 LOG_FILE="$LOG_DIR/postgres-backup.log"

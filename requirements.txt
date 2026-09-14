@@ -24,6 +24,10 @@ httpx==0.28.1
 # allowlist antes de publicar.
 markdown==3.10.3
 nh3==0.3.6
+# QR code do pareamento, em SVG inline. Python puro e sem dependências, então
+# combina com a regra do projeto de não ter bundler: o SVG sai do template do
+# mesmo jeito que os gráficos.
+segno==1.6.6
 # Produção
 gunicorn==26.2.0
 psycopg2-binary==2.9.12

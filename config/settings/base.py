@@ -1,5 +1,5 @@
 """
-Configurações base do Django — Centavo, assistente financeira no WhatsApp.
+Configurações base do Django — Dracma, assistente financeira no WhatsApp.
 Compartilhadas entre development e production.
 """
 
@@ -137,7 +137,7 @@ IS_TEST = (
 )
 
 if IS_TEST:
-    MEDIA_ROOT = Path(tempfile.mkdtemp(prefix="centavo-test-media-"))
+    MEDIA_ROOT = Path(tempfile.mkdtemp(prefix="dracma-test-media-"))
 
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
@@ -206,7 +206,7 @@ CELERY_BEAT_SCHEDULE = {
 }
 
 # A transcrição é pesada (ctranslate2 em CPU) e vai para uma fila própria,
-# consumida por um worker dedicado (deploy/systemd/centavo_celery_midia.service),
+# consumida por um worker dedicado (deploy/systemd/dracma_celery_midia.service),
 # para não travar o atendimento das mensagens de texto na fila default.
 CELERY_TASK_DEFAULT_QUEUE = "celery"
 CELERY_TASK_ROUTES = {
@@ -226,8 +226,8 @@ EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
 # Porta 587 → STARTTLS (EMAIL_USE_TLS). Porta 465 → SSL implícito (EMAIL_USE_SSL).
 EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True").lower() in ("true", "1", "yes")
 EMAIL_USE_SSL = os.getenv("EMAIL_USE_SSL", "False").lower() in ("true", "1", "yes")
-DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "Centavo <no-reply@centavo.stolben.com>")
-SITE_URL = os.getenv("SITE_URL", "https://centavo.stolben.com")
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "Dracma <no-reply@dracma.stolben.com>")
+SITE_URL = os.getenv("SITE_URL", "https://dracma.stolben.com")
 
 
 # ==============================================================================
@@ -239,7 +239,7 @@ ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 # Um modelo só. O agente do WhatsApp é curto (1-2 iterações de tool use) e a
 # alavanca de custo aqui é o prompt caching do prefixo estável + o `effort`,
 # não a troca de modelo.
-AI_MODEL = os.getenv("AI_MODEL", "claude-opus-5")
+AI_MODEL = os.getenv("AI_MODEL", "claude-sonnet-5")
 
 # `effort` é a primeira alavanca de custo dentro do mesmo modelo. Registrar um
 # gasto é trabalho mecânico e roda em `low`; pergunta analítica ("dá pra
@@ -263,8 +263,11 @@ AI_PRICES = {
     "claude-sonnet-5": (2.0, 10.0),
     "claude-haiku-4-5": (1.0, 5.0),
 }
-AI_PRICE_INPUT_PER_MTOK = float(os.getenv("AI_PRICE_INPUT_PER_MTOK", "5.0"))
-AI_PRICE_OUTPUT_PER_MTOK = float(os.getenv("AI_PRICE_OUTPUT_PER_MTOK", "25.0"))
+# Fallback para um modelo fora do dicionário acima. Alinhado ao Sonnet 5, que
+# é o padrão — se ficasse no preço do Opus, a quota de um modelo desconhecido
+# seria consumida quase três vezes mais rápido do que o real.
+AI_PRICE_INPUT_PER_MTOK = float(os.getenv("AI_PRICE_INPUT_PER_MTOK", "2.0"))
+AI_PRICE_OUTPUT_PER_MTOK = float(os.getenv("AI_PRICE_OUTPUT_PER_MTOK", "10.0"))
 
 # Quotas mensais (tokens). O visitante é anônimo e a demo é pública: sem um
 # teto próprio, uma visita insistente queima a conta da API.
@@ -291,7 +294,7 @@ AI_MAX_CHARS_MENSAGEM = int(os.getenv("AI_MAX_CHARS_MENSAGEM", "2000"))
 WHISPER_MODELO = os.getenv("WHISPER_MODELO", "small")
 WHISPER_COMPUTE_TYPE = os.getenv("WHISPER_COMPUTE_TYPE", "int8")
 WHISPER_DEVICE = os.getenv("WHISPER_DEVICE", "cpu")
-WHISPER_CACHE_DIR = os.getenv("WHISPER_CACHE_DIR", "/var/lib/centavo/whisper")
+WHISPER_CACHE_DIR = os.getenv("WHISPER_CACHE_DIR", "/var/lib/dracma/whisper")
 WHISPER_IDIOMA = os.getenv("WHISPER_IDIOMA", "pt")
 # Áudio mais longo que isto é recusado com uma mensagem, em vez de ocupar o
 # worker da fila `midia` por minutos.
@@ -309,6 +312,10 @@ WHATSAPP_ENABLED = os.getenv("WHATSAPP_ENABLED", "False").lower() in ("true", "1
 
 WHATSAPP_API_VERSION = os.getenv("WHATSAPP_API_VERSION", "v23.0")
 WHATSAPP_PHONE_NUMBER_ID = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "")
+# O número em si, em E.164 sem o "+", para montar o link wa.me e o QR da tela
+# de conexão. É diferente do PHONE_NUMBER_ID, que é o identificador interno da
+# Meta e não serve para discar.
+WHATSAPP_NUMERO = os.getenv("WHATSAPP_NUMERO", "")
 WHATSAPP_ACCESS_TOKEN = os.getenv("WHATSAPP_ACCESS_TOKEN", "")
 # Segredo escolhido por nós e repetido no painel da Meta; é o que ela devolve
 # no handshake GET do webhook.
@@ -349,8 +356,8 @@ MOEDA_PADRAO = os.getenv("MOEDA_PADRAO", "BRL")
 
 
 UNFOLD = {
-    "SITE_TITLE": "Centavo",
-    "SITE_HEADER": "Centavo",
+    "SITE_TITLE": "Dracma",
+    "SITE_HEADER": "Dracma",
     "SITE_SUBHEADER": "Administração",
     "SHOW_HISTORY": True,
     "SHOW_VIEW_ON_SITE": False,

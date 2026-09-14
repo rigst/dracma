@@ -16,7 +16,7 @@ from django.db import transaction
 from ai.agente import Contexto, SemQuota, responder
 from carteira.models import Origem
 
-from . import janela
+from . import janela, onboarding
 from .canais import obter_canal
 from .conteudo import montar
 from .models import Mensagem, Midia
@@ -29,12 +29,6 @@ ORIGENS = {
     Mensagem.Tipo.IMAGEM: Origem.IMAGEM,
     Mensagem.Tipo.DOCUMENTO: Origem.PDF,
 }
-
-CONVITE_PAREAMENTO = (
-    "Oi! Eu sou a Centavo 💜\n\n"
-    "Este número ainda não está ligado a nenhuma conta. Entre no portal, gere o "
-    "código de pareamento e me mande ele aqui que eu conecto."
-)
 
 SEM_QUOTA = (
     "Sua cota de conversas deste mês acabou 😕 Ela reinicia no dia 1º. "
@@ -103,6 +97,11 @@ def processar_mensagem(self, mensagem_id: int, media_id: str = "") -> None:
 
     _responder(mensagem, numero, canal, resposta.texto or "Ok!")
     Mensagem.objects.filter(pk=mensagem_id).update(status=Mensagem.Status.RESPONDIDA)
+
+    # O roteiro avança DEPOIS da resposta, e só quando o agente de fato fez
+    # algo: uma dica emendada numa conversa que falhou é ruído.
+    if numero is not None and resposta.ferramentas_usadas:
+        onboarding.avancar(numero, canal=canal)
 
 
 @shared_task
@@ -215,7 +214,7 @@ def _tentar_parear(mensagem: Mensagem, numero, canal) -> None:
     )
 
     if pareamento is None:
-        janela.responder(numero, CONVITE_PAREAMENTO, canal=canal)
+        janela.responder(numero, onboarding.texto_convite(), canal=canal)
         Mensagem.objects.filter(pk=mensagem.pk).update(status=Mensagem.Status.IGNORADA)
         return
 
@@ -226,12 +225,10 @@ def _tentar_parear(mensagem: Mensagem, numero, canal) -> None:
     pareamento.usado_em = timezone.now()
     pareamento.save(update_fields=["usado_em"])
 
-    janela.responder(
-        numero,
-        "Pronto, conectei este número à sua conta ✅\n\n"
-        "Agora é só me contar seus gastos: pode ser texto, áudio, print do PIX ou PDF.",
-        canal=canal,
-    )
+    # Boas-vindas são a primeira etapa do roteiro, não uma linha solta: sem
+    # elas a pessoa fica olhando para uma conversa vazia sem saber que pode
+    # mandar áudio, foto de comprovante ou pedir um limite.
+    onboarding.avancar(numero, canal=canal)
     Mensagem.objects.filter(pk=mensagem.pk).update(status=Mensagem.Status.RESPONDIDA)
 
 

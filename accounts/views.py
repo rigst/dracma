@@ -92,7 +92,7 @@ def _enviar_confirmacao(request, usuario):
         },
     )
     send_mail(
-        subject="Confirme sua conta · Centavo",
+        subject="Confirme sua conta · Dracma",
         message=corpo,
         from_email=getattr(settings, "DEFAULT_FROM_EMAIL", None),
         recipient_list=[usuario.email],
@@ -148,7 +148,7 @@ def confirmar_email(request, uidb64, token):
         # O aceite foi dado no formulário de cadastro; registra-se aqui, na
         # confirmação, que é quando a conta passa a existir de fato.
         registrar_aceite(request, usuario=usuario, origem=OrigemAceite.CADASTRO)
-        messages.success(request, "Conta confirmada! Boas-vindas à Centavo.")
+        messages.success(request, "Conta confirmada! Boas-vindas à Dracma.")
         return redirect(settings.LEGAL_REDIRECT_URL)
 
     messages.error(request, "Link de confirmação inválido ou expirado.")

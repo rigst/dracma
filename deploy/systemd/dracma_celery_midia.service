@@ -1,24 +1,24 @@
 [Unit]
-Description=Centavo — Celery Worker (fila midia: transcrição de áudio)
+Description=Dracma — Celery Worker (fila midia: transcrição de áudio)
 After=network.target redis-server.service
 
 [Service]
 Type=simple
 User=rod
 Group=www-data
-WorkingDirectory=/var/www/centavo
-EnvironmentFile=/var/www/centavo/.env
+WorkingDirectory=/var/www/dracma
+EnvironmentFile=/var/www/dracma/.env
 Environment=DJANGO_SETTINGS_MODULE=config.settings.production
 # Fila própria: a transcrição ocupa um núcleo por vários segundos e, na fila
 # default, seguraria as mensagens de texto atrás dela.
 # concurrency=1 porque o modelo do whisper fica carregado em memória por
 # processo (~1,5 GB em int8) — dois processos dobram a RAM sem dobrar a vazão
 # numa máquina que também serve o site.
-ExecStart=/var/www/centavo/venv/bin/celery -A config worker -l info \
+ExecStart=/var/www/dracma/venv/bin/celery -A config worker -l info \
     -Q midia \
     --concurrency=1 \
     --max-tasks-per-child=20 \
-    --logfile=/var/www/centavo/logs/celery_midia.log
+    --logfile=/var/www/dracma/logs/celery_midia.log
 Restart=always
 RestartSec=10
 

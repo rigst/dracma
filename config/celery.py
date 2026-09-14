@@ -1,5 +1,5 @@
 """
-Configuração do Celery para o projeto Centavo.
+Configuração do Celery para o projeto Dracma.
 """
 
 import os

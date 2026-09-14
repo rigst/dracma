@@ -34,8 +34,8 @@ jobs:
         SECRET_KEY=ci-only-7f2A9b1C4d6E8g0H-iJkLmNoPqRsTuVwXyZ-abcdefghij
         ALLOWED_HOSTS=example.com
         DEBUG=False
-        DB_NAME=centavo
-        DB_USER=centavo
+        DB_NAME=dracma
+        DB_USER=dracma
         DB_PASSWORD=ci-only
         DB_HOST=localhost
         DB_PORT=5432
@@ -74,7 +74,7 @@ jobs:
       # O dependabot não enxerga o SONAR_TOKEN: sem esta guarda o job recebe
       # token vazio e falha em toda PR dele.
       run-sonar: ${{ github.actor != 'dependabot[bot]' }}
-      sonar-project-key: rigst_centavo
+      sonar-project-key: rigst_dracma
       sonar-organization: rigst
       sonar-args: >-
         -Dsonar.qualitygate.wait=true
