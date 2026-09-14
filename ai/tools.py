@@ -5,10 +5,16 @@ argumentos, e delega. **Nenhuma tool escreve no banco por conta própria** — o
 serviço de domínio é o mesmo que as telas do portal usam, senão teríamos duas
 regras de negócio divergindo em silêncio.
 
-Todas declaram `strict: True` e `additionalProperties: False`, o que faz a API
-garantir que os argumentos batem com o schema. Sem isso, cada tool precisaria
-de uma camada de validação defensiva para o caso de vir um campo a mais ou um
-tipo errado.
+Todas declaram `additionalProperties: False`. Já o `strict: True` — que faz a
+API garantir que os argumentos batem com o schema — fica só nas ferramentas de
+ESCRITA.
+
+O motivo é um limite real da plataforma: o orçamento de complexidade do
+`strict` é agregado sobre TODAS as tools da requisição, e com as oito o
+servidor responde 400 "Schema is too complex." (medido em 14/09/2026: seis
+passam, oito não). Como o orçamento é escasso, ele é gasto onde um argumento
+inválido gravaria dinheiro errado no banco; numa consulta, o pior caso é uma
+leitura ruim que o modelo refaz.
 """
 
 from __future__ import annotations
@@ -64,14 +70,18 @@ TOOLS = [
         ),
         "strict": True,
         "input_schema": {
+            # Campo não informado vai como string vazia (ou 0, no valor), e não
+            # como tipo-união `["string", "null"]`: sob `strict` as uniões
+            # contam caro no orçamento de complexidade e o conjunto das tools
+            # estourava com 400 "Schema is too complex."
             "type": "object",
             "properties": {
                 "codigo": {"type": "string"},
-                "valor": {"type": ["number", "null"]},
-                "descricao": {"type": ["string", "null"]},
-                "categoria": {"type": ["string", "null"]},
-                "conta": {"type": ["string", "null"]},
-                "data": {"type": ["string", "null"], "description": "AAAA-MM-DD."},
+                "valor": {"type": "number", "description": "0 para não alterar."},
+                "descricao": {"type": "string", "description": "Vazio para não alterar."},
+                "categoria": {"type": "string", "description": "Vazio para não alterar."},
+                "conta": {"type": "string", "description": "Vazio para não alterar."},
+                "data": {"type": "string", "description": "AAAA-MM-DD, ou vazio."},
             },
             "required": ["codigo", "valor", "descricao", "categoria", "conta", "data"],
             "additionalProperties": False,
@@ -95,7 +105,6 @@ TOOLS = [
             "e o split entre gastos fixos e variáveis. Use para perguntas como 'quanto "
             "gastei com mercado esse mês?' ou 'como foi meu mês?'."
         ),
-        "strict": True,
         "input_schema": {
             "type": "object",
             "properties": {
@@ -117,7 +126,6 @@ TOOLS = [
             "vem dos recorrentes. Use para 'quanto sobra esse mês?', 'dá pra comprar X?' "
             "e 'posso parcelar?'."
         ),
-        "strict": True,
         "input_schema": {
             "type": "object",
             "properties": {},
@@ -130,7 +138,6 @@ TOOLS = [
         "description": (
             "Situação de todos os limites de gasto: quanto já foi consumido de cada um."
         ),
-        "strict": True,
         "input_schema": {
             "type": "object",
             "properties": {},
@@ -153,8 +160,8 @@ TOOLS = [
                 "categoria": {"type": "string", "description": "Vazio para teto geral."},
                 "rotulo": {"type": "string", "description": "Nome, se for um limite avulso."},
                 "dias": {
-                    "type": ["integer", "null"],
-                    "description": "Duração em dias, se for temporário. Null para mensal.",
+                    "type": "integer",
+                    "description": "Duração em dias se for temporário; 0 para limite mensal.",
                 },
             },
             "required": ["valor", "categoria", "rotulo", "dias"],
@@ -173,7 +180,15 @@ TOOLS = [
             "properties": {
                 "descricao": {"type": "string"},
                 "valor": {"type": "number"},
-                "dia_do_mes": {"type": "integer", "minimum": 1, "maximum": 31},
+                # Sem `minimum`/`maximum`: sob `strict: True` a API recusa
+                # esses validadores em `integer` (400: "For 'integer' type,
+                # properties maximum, minimum are not supported"). A faixa fica
+                # na descrição, e quem de fato valida é criar_recorrente, que
+                # levanta ErroDeDominio e vira tool_result de erro.
+                "dia_do_mes": {
+                    "type": "integer",
+                    "description": "Dia do vencimento, de 1 a 31.",
+                },
                 "tipo": {"type": "string", "enum": _TIPOS},
                 "categoria": {"type": "string"},
                 "conta": {"type": "string"},
@@ -245,13 +260,15 @@ def _registrar(args, contexto, espaco):
 
 
 def _editar(args, contexto, espaco):
+    # 0 e "" são o "não informado" deste schema (ver comentário no input_schema
+    # de editar_transacao): convertidos para None, que é o que o serviço espera.
     transacao = services.editar_transacao(
         espaco=espaco,
         codigo=args["codigo"],
-        valor=args.get("valor"),
-        descricao=args.get("descricao"),
-        categoria=args.get("categoria"),
-        conta=args.get("conta"),
+        valor=args.get("valor") or None,
+        descricao=args.get("descricao") or None,
+        categoria=args.get("categoria") or None,
+        conta=args.get("conta") or None,
         data_lancamento=_data(args.get("data")),
     )
     return (
@@ -331,7 +348,7 @@ def _criar_limite(args, contexto, espaco):
         valor=args["valor"],
         categoria=args.get("categoria") or None,
         rotulo=args.get("rotulo") or "",
-        dias=args.get("dias"),
+        dias=args.get("dias") or None,
     )
     alvo = limite.categoria.nome if limite.categoria else (limite.rotulo or "geral")
     prazo = f" até {limite.fim:%d/%m}" if limite.temporario else " por mês"

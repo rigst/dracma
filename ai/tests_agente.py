@@ -192,19 +192,60 @@ class PromptTest(BaseAgenteTest):
 class SchemaTest(TestCase):
     """A API só garante os argumentos se o schema estiver fechado."""
 
-    def test_toda_tool_e_strict_e_fechada(self):
+    def test_toda_tool_tem_schema_fechado(self):
         for tool in tools.TOOLS:
             with self.subTest(tool=tool["name"]):
-                self.assertTrue(tool["strict"])
                 self.assertFalse(tool["input_schema"]["additionalProperties"])
 
+    def test_strict_fica_nas_ferramentas_de_escrita(self):
+        """O orçamento de complexidade do `strict` é agregado sobre todas as
+        tools da requisição e não cabe para as oito (400 "Schema is too
+        complex."). Ele é gasto onde um argumento inválido gravaria dinheiro
+        errado; numa consulta, o pior caso é uma leitura ruim."""
+        for tool in tools.TOOLS:
+            escrita = tool["name"] not in tools.SOMENTE_LEITURA
+            with self.subTest(tool=tool["name"]):
+                self.assertEqual(tool.get("strict", False), escrita)
+
+    def test_no_maximo_seis_tools_strict(self):
+        # Medido contra a API em 14/09/2026: seis passam, oito dão 400.
+        quantas = sum(1 for t in tools.TOOLS if t.get("strict"))
+        self.assertLessEqual(quantas, 6)
+
     def test_required_cobre_todas_as_propriedades(self):
-        # `strict` exige que todo campo declarado esteja em `required`; um
-        # opcional se expressa com o tipo anulável.
+        # `strict` exige que todo campo declarado esteja em `required`; o
+        # "não informado" se expressa com string vazia ou 0.
         for tool in tools.TOOLS:
             with self.subTest(tool=tool["name"]):
                 esquema = tool["input_schema"]
                 self.assertEqual(set(esquema["required"]), set(esquema["properties"]), tool["name"])
+
+    def test_nenhum_schema_usa_validador_recusado_pela_api(self):
+        """Sob `strict: True` a API recusa alguns validadores do JSON Schema.
+
+        Descoberto numa chamada real: `minimum`/`maximum` num campo `integer`
+        derrubam a requisição INTEIRA com 400, e não só aquela ferramenta —
+        nenhum teste com cliente falso pegaria isso, porque a validação
+        acontece no servidor.
+        """
+        proibidos = {
+            "minimum",
+            "maximum",
+            "exclusiveMinimum",
+            "exclusiveMaximum",
+            "multipleOf",
+            "minLength",
+            "maxLength",
+            "pattern",
+            "minItems",
+            "maxItems",
+            "uniqueItems",
+        }
+        for tool in tools.TOOLS:
+            for campo, esquema in tool["input_schema"]["properties"].items():
+                usados = proibidos & set(esquema)
+                with self.subTest(tool=tool["name"], campo=campo):
+                    self.assertFalse(usados, f"validador não suportado: {usados}")
 
     def test_toda_tool_declarada_tem_manipulador(self):
         for tool in tools.TOOLS:
