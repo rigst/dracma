@@ -1,0 +1,22 @@
+[Unit]
+Description=Centavo — Celery Worker + Beat (fila default)
+After=network.target redis-server.service
+
+[Service]
+Type=simple
+User=rod
+Group=www-data
+WorkingDirectory=/var/www/centavo
+EnvironmentFile=/var/www/centavo/.env
+Environment=DJANGO_SETTINGS_MODULE=config.settings.production
+# Sem `-n`: o nodename sai do nome do serviço. Dois workers com o MESMO
+# nodename fazem o `inspect`/`ping` do Celery enxergar só um deles — o estado
+# real vem do systemctl, não do Celery.
+ExecStart=/var/www/centavo/venv/bin/celery -A config worker --beat -l info \
+    --max-tasks-per-child=100 \
+    --logfile=/var/www/centavo/logs/celery.log
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

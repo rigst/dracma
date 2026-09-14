@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  push: { branches: [main] }
+  pull_request:
+  workflow_dispatch:          # reprovocação manual; o CD pende de workflow_run
+
+permissions: { contents: read }
+
+jobs:
+  ci:
+    # SHA e não @v1: a tag é ponteiro móvel, e assim o Dependabot abre PR
+    # revisável quando o CI central muda.
+    uses: rigst/ci/.github/workflows/python-django.yml@03a24a7f0eb19ccea2eb5a70b909128fc41a41dd # v1
+    # Explícito em vez de `secrets: inherit`: o workflow chamado recebe só
+    # o que precisa.
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+    with:
+      python-version: "3.12"
+      django-settings-module: config.settings.production
+      test-settings-module: config.settings.development
+      source-paths: "accounts ai carteira config core legal zap"
+      postgres: false
+
+      # Projeto novo: sobe com as etapas pesadas tolerando falha e vai
+      # zerando até `soft-fail: ""`, na ordem do RUNBOOK.md §4 do rigst/ci.
+      soft-fail: "mypy,bandit,pip-audit"
+
+      # Valores fictícios só para os settings de produção carregarem no job
+      # `django` (check --deploy). Nada aqui toca serviço real.
+      django-env: |
+        SECRET_KEY=ci-only-7f2A9b1C4d6E8g0H-iJkLmNoPqRsTuVwXyZ-abcdefghij
+        ALLOWED_HOSTS=example.com
+        DEBUG=False
+        DB_NAME=centavo
+        DB_USER=centavo
+        DB_PASSWORD=ci-only
+        DB_HOST=localhost
+        DB_PORT=5432
+        REDIS_URL=redis://localhost:6379/6
+        CACHE_REDIS_URL=redis://localhost:6379/4
+        SESSION_REDIS_URL=redis://localhost:6379/5
+      test-env: |
+        ALLOWED_HOSTS=localhost,127.0.0.1,testserver
+        SIGNUP_ENABLED=True
+
+      run-diff-quality: true
+      diff-quality-fail-on: erro
+
+      run-frontend: true
+      frontend-paths: "static"
+      template-paths: "templates"
+
+      # Rotas públicas: sem login, sem dado de ninguém.
+      run-layout: true
+      layout-setup-command: python manage.py importar_documentos_legais --publicar
+      layout-paths: |
+        /login/
+        /termos/
+        /privacidade/
+      run-a11y: true
+      a11y-paths: |
+        /login/
+        /termos/
+        /privacidade/
+
+      run-licencas: true
+      run-sbom: true
+      run-lock: true
+      run-e2e: false
+
+      # O dependabot não enxerga o SONAR_TOKEN: sem esta guarda o job recebe
+      # token vazio e falha em toda PR dele.
+      run-sonar: ${{ github.actor != 'dependabot[bot]' }}
+      sonar-project-key: rigst_centavo
+      sonar-organization: rigst
+      sonar-args: >-
+        -Dsonar.qualitygate.wait=true
+        -Dsonar.coverage.exclusions=**/migrations/**,**/tests_*.py,**/tests.py,**/fakes.py,**/*.js,**/*.html
