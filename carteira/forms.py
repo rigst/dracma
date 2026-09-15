@@ -117,8 +117,8 @@ class TransacaoForm(_ComEspaco):
     pago = forms.BooleanField(label="Já foi pago", required=False, initial=True)
     compartilhada = forms.ChoiceField(
         label="Quem vê",
-        choices=[("1", "Todo mundo do espaço"), ("0", "Só eu")],
-        initial="1",
+        choices=[("0", "Só eu"), ("1", "Todo mundo do espaço")],
+        initial="0",
         widget=forms.RadioSelect,
     )
 
@@ -202,8 +202,8 @@ class RecorrenteForm(_ComEspaco):
     )
     compartilhada = forms.ChoiceField(
         label="Quem vê",
-        choices=[("1", "Todo mundo do espaço"), ("0", "Só eu")],
-        initial="1",
+        choices=[("0", "Só eu"), ("1", "Todo mundo do espaço")],
+        initial="0",
         widget=forms.RadioSelect,
     )
 

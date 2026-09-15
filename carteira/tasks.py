@@ -106,51 +106,67 @@ def _avisar(
 def verificar_limites() -> int:
     """Avisa ao se aproximar e ao estourar cada limite.
 
-    Dois avisos por limite e por período, não mais: um em
+    Um aviso POR PESSOA, com o número dela. O limite é do espaço, mas o consumo
+    é recortado pela visibilidade de quem olha — e mandar a todos o percentual
+    calculado com o gasto pessoal de alguém entregaria esse gasto: "você usou
+    80% de R$ 400" deixa deduzir que saíram R$ 320.
+
+    Dois avisos por limite, por pessoa e por período: um em
     LIMITE_ALERTA_PERCENTUAL e outro no estouro.
     """
     enviados = 0
 
     for limite in Limite.objects.filter(ativo=True).select_related("espaco", "categoria"):
-        consumo = services.consumo_do_limite(limite)
-        alvo = limite.categoria.nome if limite.categoria else (limite.rotulo or "geral")
-        referencia = f"{consumo['inicio']:%Y-%m}"
+        for membro in limite.espaco.membros.all():
+            enviados += _avisar_limite(limite, membro)
 
-        if consumo["estourado"]:
-            excedente = consumo["gasto"] - limite.valor
-            texto = (
-                f"⚠️ Você passou do limite de {alvo}: "
-                f"{_dinheiro(consumo['gasto'])} de {_dinheiro(limite.valor)} "
-                f"({_dinheiro(excedente)} acima).\n\n"
-                "Quer ajustar o limite ou segurar outra categoria pra compensar?"
-            )
-            if _avisar(
+    return enviados
+
+
+def _avisar_limite(limite, membro) -> int:
+    consumo = services.consumo_do_limite(limite, usuario=membro)
+    alvo = limite.categoria.nome if limite.categoria else (limite.rotulo or "geral")
+    referencia = f"{consumo['inicio']:%Y-%m}"
+
+    if consumo["estourado"]:
+        excedente = consumo["gasto"] - limite.valor
+        texto = (
+            f"⚠️ Você passou do limite de {alvo}: "
+            f"{_dinheiro(consumo['gasto'])} de {_dinheiro(limite.valor)} "
+            f"({_dinheiro(excedente)} acima).\n\n"
+            "Quer ajustar o limite ou segurar outra categoria pra compensar?"
+        )
+        return int(
+            _avisar(
                 limite.espaco,
                 Alerta.Tipo.LIMITE_ESTOURADO,
-                f"limite:{limite.pk}",
+                f"limite:{limite.pk}:{membro.pk}",
                 referencia,
                 texto,
                 [alvo, _dinheiro(consumo["gasto"]), _dinheiro(limite.valor)],
-            ):
-                enviados += 1
-
-        elif consumo["percentual"] >= settings.LIMITE_ALERTA_PERCENTUAL:
-            texto = (
-                f"Você já usou {consumo['percentual']}% do limite de {alvo} "
-                f"({_dinheiro(consumo['gasto'])} de {_dinheiro(limite.valor)}).\n\n"
-                f"Restam {_dinheiro(consumo['restante'])} até {consumo['fim']:%d/%m}."
+                destinatario=membro,
             )
-            if _avisar(
+        )
+
+    if consumo["percentual"] >= settings.LIMITE_ALERTA_PERCENTUAL:
+        texto = (
+            f"Você já usou {consumo['percentual']}% do limite de {alvo} "
+            f"({_dinheiro(consumo['gasto'])} de {_dinheiro(limite.valor)}).\n\n"
+            f"Restam {_dinheiro(consumo['restante'])} até {consumo['fim']:%d/%m}."
+        )
+        return int(
+            _avisar(
                 limite.espaco,
                 Alerta.Tipo.LIMITE_PROXIMO,
-                f"limite:{limite.pk}",
+                f"limite:{limite.pk}:{membro.pk}",
                 referencia,
                 texto,
                 [alvo, str(consumo["percentual"]), _dinheiro(consumo["restante"])],
-            ):
-                enviados += 1
+                destinatario=membro,
+            )
+        )
 
-    return enviados
+    return 0
 
 
 @shared_task

@@ -96,16 +96,40 @@ class VisibilidadeTest(BaseCasalTest):
 
 
 class LimiteTest(BaseCasalTest):
-    def test_limite_conta_so_o_que_e_do_espaco(self):
-        # O alerta vai para todo mundo: se o consumo somasse gasto pessoal, o
-        # percentual entregaria esse gasto aos outros.
-        limite = services.criar_limite(espaco=self.espaco, valor="500", categoria="Mercado")
+    """O limite é do espaço, mas o consumo é o de quem está olhando."""
+
+    def setUp(self):
+        super().setUp()
+        self.limite = services.criar_limite(espaco=self.espaco, valor="500", categoria="Mercado")
         self._lancar(self.ana, "200", "Mercado da casa", True, categoria="Mercado")
         self._lancar(self.ana, "300", "Mercado só meu", False, categoria="Mercado")
 
-        consumo = services.consumo_do_limite(limite)
+    def test_quem_gastou_ve_o_proprio_gasto_no_limite(self):
+        consumo = services.consumo_do_limite(self.limite, usuario=self.ana)
+        self.assertEqual(consumo["gasto"], Decimal("500.00"))
+        self.assertEqual(consumo["percentual"], 100)
+
+    def test_o_outro_ve_so_o_compartilhado(self):
+        # Ver o número da Ana seria ver o gasto pessoal da Ana.
+        consumo = services.consumo_do_limite(self.limite, usuario=self.bia)
         self.assertEqual(consumo["gasto"], Decimal("200.00"))
-        self.assertFalse(consumo["estourado"])
+        self.assertEqual(consumo["percentual"], 40)
+
+    def test_quem_usa_sozinho_ve_tudo_no_limite(self):
+        # É o caso que derruba a regra "limite conta só o compartilhado": com o
+        # padrão pessoal, o limite ficaria parado em zero para sempre.
+        sozinha = Espaco.objects.create(nome="Só eu")
+        semear_categorias(sozinha)
+        cris = Usuario.objects.create_user(
+            username="cris", email="cris@exemplo.com", password="x", espaco=sozinha
+        )
+        limite = services.criar_limite(espaco=sozinha, valor="300", categoria="Delivery")
+        services.registrar_transacao(
+            espaco=sozinha, valor="120", descricao="iFood", categoria="Delivery", autor=cris
+        )
+        self.assertEqual(
+            services.consumo_do_limite(limite, usuario=cris)["gasto"], Decimal("120.00")
+        )
 
 
 class RecorrenteCompartilhadoTest(BaseCasalTest):
@@ -477,10 +501,199 @@ class AlertaProativoTest(BaseCasalTest):
         # O total da Bia não pode conter o gasto pessoal da Ana.
         self.assertNotIn("R$ 600,00", por_destino[self.numeros[self.bia].numero])
 
-    def test_limite_estourado_so_pelo_compartilhado(self):
+    def test_alerta_de_limite_vai_so_para_quem_gastou(self):
+        # O percentual é o número de quem olha: mandá-lo a todos entregaria o
+        # gasto pessoal — "você usou 80% de R$ 400" deixa deduzir os R$ 320.
         from carteira.tasks import verificar_limites
 
         services.criar_limite(espaco=self.espaco, valor="100", categoria="Presentes")
         self._lancar(self.ana, "500", "Presente caro", False, categoria="Presentes")
-        self.assertEqual(verificar_limites(), 0)
-        self.assertEqual(self.canal.enviadas, [])
+
+        self.assertEqual(verificar_limites(), 1)
+        self.assertEqual(self._destinos(), {self.numeros[self.ana].numero})
+        self.assertIn("passou do limite", self.canal.ultimo_texto)
+
+    def test_alerta_de_limite_compartilhado_vai_para_os_dois(self):
+        from carteira.tasks import verificar_limites
+
+        services.criar_limite(espaco=self.espaco, valor="100", categoria="Presentes")
+        self._lancar(self.ana, "500", "Presente da casa", True, categoria="Presentes")
+
+        self.assertEqual(verificar_limites(), 2)
+        self.assertEqual(len(self._destinos()), 2)
+
+
+class PadraoPessoalTest(BaseCasalTest):
+    """Compartilhar é a escolha ativa: errar guardando não custa nada, errar
+    expondo não tem desfazer."""
+
+    def test_lancamento_nasce_pessoal(self):
+        transacao = services.registrar_transacao(
+            espaco=self.espaco, valor="50", descricao="Café", autor=self.ana
+        )
+        self.assertFalse(transacao.compartilhada)
+
+    def test_recorrente_nasce_pessoal(self):
+        regra = services.criar_recorrente(
+            espaco=self.espaco,
+            descricao="Academia",
+            valor="120",
+            dia_do_mes=10,
+            autor=self.ana,
+        )
+        self.assertFalse(regra.compartilhada)
+
+    def test_o_formulario_ja_vem_em_so_eu(self):
+        from carteira.forms import TransacaoForm
+
+        html = str(TransacaoForm(espaco=self.espaco)["compartilhada"])
+        # A opção marcada é a primeira, "Só eu" (value 0).
+        self.assertIn('value="0" required id="id_compartilhada_0" checked', html)
+
+    def test_o_agente_registra_como_pessoal_sem_pedirem(self):
+        from ai import tools
+        from ai.agente import Contexto
+
+        tools.executar(
+            "registrar_transacao",
+            {
+                "valor": 30,
+                "descricao": "Almoço",
+                "tipo": "despesa",
+                "categoria": "Alimentação",
+                "conta": "",
+                "data": timezone.localdate().isoformat(),
+                "pago": True,
+                "compartilhada": False,
+            },
+            Contexto(espaco=self.espaco, usuario=self.ana),
+        )
+        self.assertFalse(Transacao.objects.get(descricao="Almoço").compartilhada)
+
+    def test_o_prompt_manda_o_padrao_pessoal(self):
+        from ai.agente import Contexto, responder
+        from ai.fakes import ClienteFalso
+
+        cliente = ClienteFalso().responde("oi")
+        responder(Contexto(espaco=self.espaco, usuario=self.ana), "oi", cliente=cliente)
+        self.assertIn("PESSOAL por padrão", cliente.ultima_chamada["system"][1]["text"])
+
+
+class HistoricoAoEntrarTest(TestCase):
+    """Convidar é para dividir daqui pra frente, não para abrir o passado."""
+
+    def setUp(self):
+        self.casa = Espaco.objects.create(nome="Casa")
+        semear_categorias(self.casa)
+        self.ana = Usuario.objects.create_user(
+            username="ana", email="ana@exemplo.com", password="x", espaco=self.casa
+        )
+        self.bia = Usuario.objects.create_user(
+            username="bia",
+            email="bia@exemplo.com",
+            password="x",
+        )
+
+    def test_o_que_ja_existia_vira_pessoal_de_quem_convidou(self):
+        antigo = services.registrar_transacao(
+            espaco=self.casa, valor="900", descricao="Coisa antiga", autor=self.ana
+        )
+        Transacao.objects.filter(pk=antigo.pk).update(compartilhada=True)
+
+        espacos.entrar_com_codigo(self.bia, espacos.convite_vigente(self.casa, self.ana).codigo)
+
+        antigo.refresh_from_db()
+        self.assertFalse(antigo.compartilhada)
+        self.assertEqual(antigo.autor, self.ana)
+
+    def test_historico_sem_autor_ganha_o_dono_do_espaco(self):
+        # Registro vindo de importação ou de comando antigo, sem dono. Hoje o
+        # serviço presume o dono num espaço de uma pessoa; este caso cobre o
+        # dado que já estava no banco antes disso.
+        orfa = services.registrar_transacao(espaco=self.casa, valor="10", descricao="Sem autor")
+        Transacao.objects.filter(pk=orfa.pk).update(autor=None, compartilhada=True)
+        orfa.refresh_from_db()
+        self.assertIsNone(orfa.autor)
+
+        espacos.entrar_com_codigo(self.bia, espacos.convite_vigente(self.casa, self.ana).codigo)
+        orfa.refresh_from_db()
+        self.assertEqual(orfa.autor, self.ana)
+        self.assertFalse(orfa.compartilhada)
+
+    def test_recorrente_antigo_tambem_vira_pessoal(self):
+        regra = services.criar_recorrente(
+            espaco=self.casa,
+            descricao="Aluguel",
+            valor="1800",
+            dia_do_mes=5,
+            autor=self.ana,
+            compartilhada=True,
+        )
+        espacos.entrar_com_codigo(self.bia, espacos.convite_vigente(self.casa, self.ana).codigo)
+        regra.refresh_from_db()
+        self.assertFalse(regra.compartilhada)
+
+    def test_a_terceira_pessoa_nao_desfaz_escolhas_ja_feitas(self):
+        # Com duas pessoas dentro, o que está compartilhado foi marcado de
+        # propósito; entrar uma terceira não pode reverter isso.
+        espacos.entrar_com_codigo(self.bia, espacos.convite_vigente(self.casa, self.ana).codigo)
+        combinado = services.registrar_transacao(
+            espaco=self.casa,
+            valor="310",
+            descricao="Conta de luz",
+            autor=self.ana,
+            compartilhada=True,
+        )
+        cris = Usuario.objects.create_user(username="cris", email="cris@exemplo.com", password="x")
+        espacos.entrar_com_codigo(cris, espacos.convite_vigente(self.casa, self.ana).codigo)
+        combinado.refresh_from_db()
+        self.assertTrue(combinado.compartilhada)
+
+
+class DonoPresumidoTest(TestCase):
+    """Um lançamento pessoal sem dono não é de ninguém e some para todos — a
+    armadilha do padrão pessoal. Fechada na criação."""
+
+    def setUp(self):
+        self.espaco = Espaco.objects.create(nome="Casa")
+        semear_categorias(self.espaco)
+
+    def test_espaco_de_uma_pessoa_atribui_a_ela(self):
+        dono = Usuario.objects.create_user(
+            username="ana", email="ana@exemplo.com", password="x", espaco=self.espaco
+        )
+        transacao = services.registrar_transacao(
+            espaco=self.espaco, valor="10", descricao="Sem autor informado"
+        )
+        self.assertEqual(transacao.autor, dono)
+        self.assertIn(
+            transacao,
+            services.visiveis_para(Transacao.objects.all(), dono),
+        )
+
+    def test_com_duas_pessoas_nao_se_adivinha(self):
+        # Chutar o dono seria mostrar o gasto de alguém a quem não deve vê-lo.
+        ana = Usuario.objects.create_user(
+            username="ana", email="ana@exemplo.com", password="x", espaco=self.espaco
+        )
+        Usuario.objects.create_user(
+            username="bia", email="bia@exemplo.com", password="x", espaco=self.espaco
+        )
+        transacao = services.registrar_transacao(
+            espaco=self.espaco, valor="10", descricao="Sem autor informado"
+        )
+        self.assertIsNone(transacao.autor)
+        self.assertNotIn(transacao, services.visiveis_para(Transacao.objects.all(), ana))
+
+    def test_autor_informado_manda(self):
+        ana = Usuario.objects.create_user(
+            username="ana", email="ana@exemplo.com", password="x", espaco=self.espaco
+        )
+        bia = Usuario.objects.create_user(
+            username="bia", email="bia@exemplo.com", password="x", espaco=self.espaco
+        )
+        transacao = services.registrar_transacao(
+            espaco=self.espaco, valor="10", descricao="x", autor=bia
+        )
+        self.assertEqual(transacao.autor, bia)
+        self.assertNotEqual(transacao.autor, ana)

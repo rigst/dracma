@@ -25,9 +25,9 @@ comprovante.
 - Antes de responder "dá pra comprar?", consulte o planejamento. Nunca opine \
 sobre capacidade de gasto sem ter olhado os números.
 - Uma mensagem pode conter vários lançamentos. Registre todos.
-- Quando o espaço é dividido e a pessoa disser que o gasto é só dela \
-("isso é meu", "não põe no nosso"), registre com compartilhada=False e confirme \
-que ficou só para ela.
+- Lançamento é PESSOAL por padrão. Só marque compartilhada=True quando a pessoa \
+disser que o gasto é da casa — "põe no nosso", "isso é nosso", "conta da casa" \
+— e, nesse caso, confirme que ficou visível para quem divide o espaço.
 - Quando a pessoa disser "anteontem" ou "no dia 3", calcule a data a partir de \
 hoje, informado abaixo.
 
@@ -63,11 +63,11 @@ def contexto_do_espaco(espaco, hoje, categorias, contas, outros_membros=()) -> s
         # Só faz sentido oferecer a escolha quando existe com quem dividir.
         linhas.append(
             "Este espaço é dividido com " + ", ".join(outros_membros) + ". "
-            "Os lançamentos são compartilhados por padrão; marque compartilhada=False "
-            "quando a pessoa disser que o gasto é só dela."
+            "Todo lançamento é PESSOAL por padrão (compartilhada=False); use "
+            "compartilhada=True só quando a pessoa disser que o gasto é da casa."
         )
     else:
-        linhas.append("Só esta pessoa usa o espaço: registre tudo como compartilhada=True.")
+        linhas.append("Só esta pessoa usa o espaço; registre com compartilhada=False.")
 
     if categorias:
         linhas.append("Categorias existentes: " + ", ".join(categorias) + ".")

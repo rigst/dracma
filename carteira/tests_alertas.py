@@ -45,9 +45,15 @@ class BaseAlertaTest(TestCase):
             defaults={"ultimo_inbound_em": timezone.now() - timedelta(hours=horas_atras)},
         )
 
-    def _gastar(self, valor, categoria="Delivery"):
+    def _gastar(self, valor, categoria="Delivery", autor=None):
+        # `autor` importa: lançamento é pessoal por padrão, e o consumo do
+        # limite é recortado pela visibilidade de quem está olhando.
         return services.registrar_transacao(
-            espaco=self.espaco, valor=valor, descricao="iFood", categoria=categoria
+            espaco=self.espaco,
+            valor=valor,
+            descricao="iFood",
+            categoria=categoria,
+            autor=autor or self.usuario,
         )
 
 
@@ -91,8 +97,13 @@ class LimiteAlertaTest(BaseAlertaTest):
         verificar_limites()
         self._gastar("100")
         self.assertEqual(verificar_limites(), 1)
+        # A chave do alerta carrega o membro: cada pessoa recebe o número dela.
         self.assertEqual(
-            set(Alerta.objects.filter(chave=f"limite:{limite.pk}").values_list("tipo", flat=True)),
+            set(
+                Alerta.objects.filter(chave__startswith=f"limite:{limite.pk}:").values_list(
+                    "tipo", flat=True
+                )
+            ),
             {Alerta.Tipo.LIMITE_PROXIMO, Alerta.Tipo.LIMITE_ESTOURADO},
         )
 
@@ -102,8 +113,8 @@ class LimiteAlertaTest(BaseAlertaTest):
         self._gastar("160")
         self.assertEqual(verificar_limites(), 1)
 
-    def test_todo_mundo_do_espaco_e_avisado(self):
-        # Num casal, quem estourou o limite pode não ser quem o criou.
+    def test_gasto_compartilhado_avisa_todo_mundo_do_espaco(self):
+        # Num casal, quem estourou o limite da casa pode não ser quem o criou.
         parceiro = Usuario.objects.create_user(
             username="bia", email="bia@exemplo.com", password="x", espaco=self.espaco
         )
@@ -113,9 +124,33 @@ class LimiteAlertaTest(BaseAlertaTest):
         JanelaAtendimento.objects.create(numero=outro, ultimo_inbound_em=timezone.now())
 
         services.criar_limite(espaco=self.espaco, valor="300", categoria="Delivery")
-        self._gastar("250")
+        services.registrar_transacao(
+            espaco=self.espaco,
+            valor="250",
+            descricao="iFood da casa",
+            categoria="Delivery",
+            autor=self.usuario,
+            compartilhada=True,
+        )
         verificar_limites()
         self.assertEqual(len(self.canal.enviadas), 2)
+
+    def test_gasto_pessoal_avisa_so_quem_gastou(self):
+        # O percentual é o número de quem olha; mandá-lo aos dois entregaria o
+        # gasto pessoal de um deles.
+        parceiro = Usuario.objects.create_user(
+            username="bia", email="bia@exemplo.com", password="x", espaco=self.espaco
+        )
+        outro = NumeroWhatsApp.objects.create(
+            numero="5511888887777", usuario=parceiro, verificado_em=timezone.now()
+        )
+        JanelaAtendimento.objects.create(numero=outro, ultimo_inbound_em=timezone.now())
+
+        services.criar_limite(espaco=self.espaco, valor="300", categoria="Delivery")
+        self._gastar("250")  # pessoal, do self.usuario
+        verificar_limites()
+        self.assertEqual(len(self.canal.enviadas), 1)
+        self.assertEqual(self.canal.enviadas[0]["destino"], self.numero.numero)
 
 
 class JanelaFechadaTest(BaseAlertaTest):
@@ -235,9 +270,12 @@ class SemNumeroTest(TestCase):
         # Quem só usa o portal não tem número: a task não pode estourar.
         espaco = Espaco.objects.create(nome="Só portal")
         semear_categorias(espaco)
+        dono = Usuario.objects.create_user(
+            username="zeca", email="zeca@exemplo.com", password="x", espaco=espaco
+        )
         services.criar_limite(espaco=espaco, valor="100", categoria="Delivery")
         services.registrar_transacao(
-            espaco=espaco, valor="90", descricao="iFood", categoria="Delivery"
+            espaco=espaco, valor="90", descricao="iFood", categoria="Delivery", autor=dono
         )
         self.assertEqual(verificar_limites(), 0)
         self.assertTrue(Alerta.objects.get().adiado)

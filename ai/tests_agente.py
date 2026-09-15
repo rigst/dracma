@@ -332,6 +332,8 @@ class ToolsTest(BaseAgenteTest):
             dia_do_mes=30,
             tipo=TipoTransacao.DESPESA,
             inicio=date(2020, 1, 1),
+            # Recorrente nasce pessoal: sem autor, ninguém o enxergaria.
+            autor=self.usuario,
         )
         saida = tools.executar("consultar_planejamento", {}, self.contexto)
         self.assertIn("R$ 1.800,00", saida)

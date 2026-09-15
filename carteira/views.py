@@ -93,10 +93,16 @@ def _contexto_do_mes(espaco, usuario, hoje=None) -> dict:
     }
 
 
-def _consumos(espaco, hoje=None):
+def _consumos(espaco, usuario, hoje=None):
+    """Consumo dos limites como ESTA pessoa o enxerga.
+
+    Duas pessoas podem ver percentuais diferentes do mesmo limite, porque veem
+    conjuntos diferentes de gastos. É o certo — ver o número do outro seria ver
+    o gasto do outro.
+    """
     hoje = hoje or timezone.localdate()
     consumos = [
-        services.consumo_do_limite(limite, hoje)
+        services.consumo_do_limite(limite, hoje, usuario=usuario)
         for limite in Limite.objects.filter(espaco=espaco, ativo=True).select_related("categoria")
     ]
     return sorted(consumos, key=lambda c: -c["percentual"])
@@ -111,7 +117,7 @@ def painel(request):
     contexto = _contexto_do_mes(espaco, request.user, hoje)
     contexto.update(
         {
-            "consumos": _consumos(espaco, hoje),
+            "consumos": _consumos(espaco, request.user, hoje),
             "transacoes": _consulta_transacoes(request, espaco)[:60],
             "total": _consulta_transacoes(request, espaco).count(),
             "inicio": inicio,
@@ -227,7 +233,7 @@ def _fragmento_apos_escrita(request, espaco):
     contexto = _contexto_do_mes(espaco, request.user)
     contexto.update(
         {
-            "consumos": _consumos(espaco),
+            "consumos": _consumos(espaco, request.user),
             "transacoes": _consulta_transacoes(request, espaco)[:60],
             "total": _consulta_transacoes(request, espaco).count(),
             "contas": [

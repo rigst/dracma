@@ -61,8 +61,9 @@ TOOLS = [
                 "compartilhada": {
                     "type": "boolean",
                     "description": (
-                        "True (padrão) para todo mundo do espaço ver. False quando a pessoa "
-                        "disser que o gasto é só dela — 'isso é meu', 'não põe no nosso'."
+                        "False (padrão) para o gasto ficar só com quem lançou. True só "
+                        "quando a pessoa disser que é da casa — 'põe no nosso', 'isso é "
+                        "nosso', 'conta da casa'."
                     ),
                 },
             },
@@ -265,7 +266,7 @@ def _registrar(args, contexto, espaco):
         pago=args.get("pago", True),
         origem=contexto.origem,
         autor=contexto.usuario,
-        compartilhada=args.get("compartilhada", True),
+        compartilhada=args.get("compartilhada", False),
     )
     categoria = transacao.categoria.nome if transacao.categoria else "sem categoria"
     conta = transacao.conta.nome if transacao.conta else "sem conta"
@@ -356,7 +357,7 @@ def _consultar_limites(args, contexto, espaco):
 
     linhas = []
     for limite in limites:
-        c = services.consumo_do_limite(limite, contexto.hoje)
+        c = services.consumo_do_limite(limite, contexto.hoje, usuario=contexto.usuario)
         alvo = limite.categoria.nome if limite.categoria else (limite.rotulo or "geral")
         marca = " ESTOUROU" if c["estourado"] else ""
         linhas.append(

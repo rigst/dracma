@@ -134,7 +134,9 @@ def registrar_transacao(
     pago: bool = True,
     origem: str = Origem.PORTAL,
     autor=None,
-    compartilhada: bool = True,
+    # Pessoal por padrão: compartilhar é a escolha ativa. Errar para o lado de
+    # guardar não custa nada; errar para o lado de expor não tem desfazer.
+    compartilhada: bool = False,
     observacao: str = "",
 ) -> Transacao:
     if tipo not in TipoTransacao.values:
@@ -146,7 +148,7 @@ def registrar_transacao(
 
     return Transacao.objects.create(
         espaco=espaco,
-        autor=autor,
+        autor=dono_presumido(espaco, autor),
         tipo=tipo,
         valor=para_decimal(valor),
         descricao=descricao,
@@ -242,6 +244,23 @@ def dia_valido(ano: int, mes: int, dia: int) -> date:
 # ---------------------------------------------------------------------------
 
 
+def dono_presumido(espaco, autor):
+    """Quem assina um lançamento quando ninguém disse.
+
+    Um lançamento pessoal SEM autor não é de ninguém e some para todo mundo —
+    é a armadilha do padrão pessoal. Num espaço de uma pessoa só não existe
+    ambiguidade: o dono é ela, e atribuir aqui evita o registro órfão que
+    apareceria de comandos, importações e de qualquer caminho sem request.
+
+    Com duas pessoas dentro não se adivinha: chutar o dono de um gasto pessoal
+    seria mostrar a gasto de alguém a quem não deve vê-lo.
+    """
+    if autor is not None:
+        return autor
+    membros = list(espaco.membros.all()[:2])
+    return membros[0] if len(membros) == 1 else None
+
+
 def visiveis_para(consulta, usuario):
     """Filtra o que uma pessoa pode ver dentro do próprio espaço.
 
@@ -255,17 +274,6 @@ def visiveis_para(consulta, usuario):
     if usuario is None:
         return consulta
     return consulta.filter(Q(compartilhada=True) | Q(autor=usuario))
-
-
-def apenas_compartilhadas(consulta):
-    """Só o que é do espaço.
-
-    Usado pelos limites: o alerta vai para todo mundo do espaço, e calcular o
-    consumo com gasto pessoal de alguém vazaria esse gasto para os outros pelo
-    percentual. Limite é orçamento da casa; o que é pessoal fica de fora, e a
-    tela diz isso.
-    """
-    return consulta.filter(compartilhada=True)
 
 
 # ---------------------------------------------------------------------------
@@ -310,13 +318,10 @@ def total_gasto(
     conta=None,
     incluir_previstas: bool = False,
     usuario=None,
-    so_compartilhadas: bool = False,
 ) -> Decimal:
     consulta = _base(espaco, inicio, fim, incluir_previstas, usuario).filter(
         tipo=TipoTransacao.DESPESA
     )
-    if so_compartilhadas:
-        consulta = apenas_compartilhadas(consulta)
     if categoria is not None:
         consulta = consulta.filter(categoria=categoria)
     if conta is not None:
@@ -440,8 +445,18 @@ def criar_limite(
     )
 
 
-def consumo_do_limite(limite: Limite, referencia: date | None = None) -> dict:
-    """Quanto já saiu contra este teto.
+def consumo_do_limite(limite: Limite, referencia: date | None = None, usuario=None) -> dict:
+    """Quanto já saiu contra este teto, PARA QUEM ESTÁ OLHANDO.
+
+    O limite é do espaço, mas o consumo é recortado pela visibilidade de quem
+    pergunta: cada pessoa vê o compartilhado mais o próprio. Duas pessoas podem
+    ver percentuais diferentes do mesmo limite — e isso é o certo, porque elas
+    veem conjuntos diferentes de gastos.
+
+    A alternativa seria contar só o compartilhado, mas aí quem usa sozinho
+    ficaria com o limite parado em zero, já que o padrão dos lançamentos é
+    pessoal. O vazamento que essa alternativa evitava é resolvido no alerta:
+    cada pessoa recebe o número dela (ver `carteira.tasks.verificar_limites`).
 
     O limite temporário conta desde a criação até o fim; o mensal conta o mês
     corrente. Misturar os dois faria o presente de aniversário estourar o
@@ -452,10 +467,7 @@ def consumo_do_limite(limite: Limite, referencia: date | None = None) -> dict:
     else:
         inicio, fim = limites_do_mes(referencia)
 
-    # Só o que é do espaço: ver a justificativa em `apenas_compartilhadas`.
-    gasto = total_gasto(
-        limite.espaco, inicio, fim, categoria=limite.categoria, so_compartilhadas=True
-    )
+    gasto = total_gasto(limite.espaco, inicio, fim, categoria=limite.categoria, usuario=usuario)
     percentual = int(gasto / limite.valor * 100) if limite.valor else 0
 
     return {
@@ -484,7 +496,7 @@ def criar_recorrente(
     categoria: str | None = None,
     conta: str | None = None,
     autor=None,
-    compartilhada: bool = True,
+    compartilhada: bool = False,
 ) -> Recorrente:
     if not 1 <= int(dia_do_mes) <= 31:
         raise ErroDeDominio("O dia do mês precisa estar entre 1 e 31.")
@@ -497,7 +509,7 @@ def criar_recorrente(
         tipo=tipo,
         categoria=achar_categoria(espaco, categoria, tipo),
         conta=achar_conta(espaco, conta),
-        autor=autor,
+        autor=dono_presumido(espaco, autor),
         compartilhada=compartilhada,
     )
 

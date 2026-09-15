@@ -82,6 +82,14 @@ def entrar_com_codigo(usuario, codigo: str):
     if origem is not None and origem.pk == destino.pk:
         raise ErroDeEspaco("Você já está neste espaço.")
 
+    # Quem convidou vinha usando o espaço sozinho, onde a escolha "quem vê" nem
+    # aparece. Tudo que já estava lá é histórico de uma pessoa só, e passa a ser
+    # dela: o convite é para dividir daqui pra frente, não para abrir o passado.
+    # Só vale na PRIMEIRA vez; com duas pessoas já dentro, as escolhas foram
+    # feitas de propósito e não se mexe nelas.
+    if destino.membros.count() == 1:
+        _tornar_historico_pessoal(destino, destino.membros.first())
+
     if origem is not None:
         _mudar_de_espaco(usuario, origem, destino, Categoria, Conta, Limite, Recorrente, Transacao)
 
@@ -97,6 +105,17 @@ def entrar_com_codigo(usuario, codigo: str):
         origem.delete()
 
     return destino
+
+
+def _tornar_historico_pessoal(espaco, dono):
+    """Marca como pessoal tudo que já existe no espaço, atribuindo ao dono."""
+    from carteira.models import Recorrente, Transacao
+
+    for modelo in (Transacao, Recorrente):
+        modelo.objects.filter(espaco=espaco).update(compartilhada=False)
+        modelo.objects.filter(espaco=espaco, autor__isnull=True).update(autor=dono)
+
+    logger.info("Histórico de %s virou pessoal de %s.", espaco, dono)
 
 
 def _mudar_de_espaco(usuario, origem, destino, Categoria, Conta, Limite, Recorrente, Transacao):

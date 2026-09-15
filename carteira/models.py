@@ -142,14 +142,14 @@ class Transacao(models.Model):
     pago = models.BooleanField("pago", default=True)
     # Compartilhada = todo mundo do espaço vê. Pessoal = só quem lançou.
     #
-    # Num espaço de uma pessoa só a distinção não muda nada, e o padrão é
-    # compartilhada. Ela passa a importar quando entra alguém: dividir a conta
-    # da casa não significa abrir o extrato inteiro para o outro.
+    # O padrão é PESSOAL. Compartilhar é a escolha ativa, não o contrário:
+    # errar para o lado de guardar não custa nada — a pessoa marca de novo —,
+    # enquanto errar para o lado de expor não tem desfazer.
     #
     # A regra de visibilidade mora em `services.visiveis_para` e é UMA só —
     # espalhada, o primeiro relatório novo esqueceria dela e vazaria gasto
     # pessoal num total do casal.
-    compartilhada = models.BooleanField("compartilhada", default=True)
+    compartilhada = models.BooleanField("compartilhada", default=False)
     origem = models.CharField("origem", max_length=20, choices=Origem, default=Origem.PORTAL)
     # Previstas nascem do recorrente e ainda não aconteceram; entram na
     # projeção do mês, mas não no "já saiu".
@@ -201,9 +201,10 @@ class Recorrente(models.Model):
     conta = models.ForeignKey(
         Conta, on_delete=models.PROTECT, null=True, blank=True, related_name="recorrentes"
     )
-    # O salário de uma pessoa pode ser dela; o aluguel costuma ser da casa.
-    # A previsão que cada um vê usa a mesma regra dos lançamentos.
-    compartilhada = models.BooleanField("compartilhada", default=True)
+    # O salário de uma pessoa costuma ser dela; o aluguel, da casa. A previsão
+    # que cada um vê usa a mesma regra dos lançamentos, e o padrão é o mesmo:
+    # pessoal.
+    compartilhada = models.BooleanField("compartilhada", default=False)
     autor = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
