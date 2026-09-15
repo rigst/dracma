@@ -271,12 +271,17 @@ def _registrar(args, contexto, espaco):
     categoria = transacao.categoria.nome if transacao.categoria else "sem categoria"
     conta = transacao.conta.nome if transacao.conta else "sem conta"
     quem_ve = "todo o espaço" if transacao.compartilhada else "só quem lançou"
-    return (
+    linha = (
         f"Registrado. código={transacao.codigo} valor={_dinheiro(transacao.valor)} "
         f"descricao={transacao.descricao} categoria={categoria} conta={conta} "
         f"data={transacao.data:%d/%m/%Y} tipo={transacao.get_tipo_display()} "
         f"quem_ve={quem_ve}"
     )
+    # Quando dividiu, a parte de quem falou é o número que interessa a ela.
+    minha = transacao.rateios.filter(pessoa=contexto.usuario).first()
+    if minha is not None and minha.valor != transacao.valor:
+        linha += f" sua_parte={_dinheiro(minha.valor)}"
+    return linha
 
 
 def _editar(args, contexto, espaco):

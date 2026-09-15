@@ -64,3 +64,42 @@
   document.addEventListener("DOMContentLoaded", aoFim);
   document.body.addEventListener("htmx:afterSwap", aoFim);
 })();
+
+// Divisão do gasto: mostra o bloco quando o lançamento é da casa, e dentro
+// dele só as colunas do modo escolhido. Sem isto a caixa abre com dois campos
+// por pessoa, e só um deles importa.
+(function () {
+  function colunas(bloco, modo) {
+    var tabela = bloco.querySelector("[data-partes]");
+    if (!tabela) return;
+    var porPessoa = modo === "percentual" || modo === "valor";
+    tabela.hidden = !porPessoa;
+    tabela.querySelectorAll("[data-col]").forEach(function (celula) {
+      celula.hidden = celula.dataset.col !== modo;
+    });
+  }
+
+  function sincronizar(raiz) {
+    var bloco = raiz.querySelector("[data-divisao]");
+    if (!bloco) return;
+
+    var daCasa = raiz.querySelector('input[name="compartilhada"][value="1"]');
+    var modo = bloco.querySelector('[name="modo_rateio"]');
+
+    function aplicar() {
+      // Sem radio na tela (espaço de uma pessoa), não há o que dividir.
+      bloco.hidden = !(daCasa && daCasa.checked);
+      colunas(bloco, modo ? modo.value : "padrao");
+    }
+
+    raiz.querySelectorAll('input[name="compartilhada"]').forEach(function (opcao) {
+      opcao.addEventListener("change", aplicar);
+    });
+    if (modo) modo.addEventListener("change", aplicar);
+    aplicar();
+  }
+
+  document.body.addEventListener("htmx:afterSwap", function (evento) {
+    if (evento.detail.target.id === "dialogo-corpo") sincronizar(evento.detail.target);
+  });
+})();

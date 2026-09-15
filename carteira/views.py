@@ -24,8 +24,15 @@ from django.views.decorators.http import require_POST
 from accounts import espacos
 from zap.console import historico
 
-from . import graficos, services
-from .forms import ContaForm, EntrarNoEspacoForm, LimiteForm, RecorrenteForm, TransacaoForm
+from . import graficos, rateios, services
+from .forms import (
+    ContaForm,
+    DivisaoPadraoForm,
+    EntrarNoEspacoForm,
+    LimiteForm,
+    RecorrenteForm,
+    TransacaoForm,
+)
 from .models import Conta, Limite, Origem, Recorrente, TipoTransacao, Transacao
 
 
@@ -138,6 +145,7 @@ def painel(request):
             .order_by("data")[:5],
             "membros": espaco.membros.order_by("username"),
             "compartilhado": espaco.membros.count() > 1,
+            "acerto": services.acerto_do_periodo(espaco, inicio, fim),
             # A conversa mora no próprio painel: perguntar "quanto sobra?" e
             # ver o número na mesma tela é o ponto.
             "falas": historico(request.user, limite=40),
@@ -189,8 +197,11 @@ def _insights(resumo) -> list[str]:
 def _consulta_transacoes(request, espaco):
     inicio, fim = _periodo(request)
     consulta = (
-        services.visiveis_para(
-            Transacao.objects.filter(espaco=espaco, data__gte=inicio, data__lte=fim),
+        services.com_minha_parte(
+            services.visiveis_para(
+                Transacao.objects.filter(espaco=espaco, data__gte=inicio, data__lte=fim),
+                request.user,
+            ),
             request.user,
         )
         .select_related("categoria", "conta", "autor")
@@ -271,7 +282,7 @@ def _fragmento_apos_escrita(request, espaco):
 def nova_transacao(request):
     espaco = _espaco(request)
     if request.method == "POST":
-        form = TransacaoForm(request.POST, espaco=espaco)
+        form = TransacaoForm(request.POST, espaco=espaco, usuario=request.user)
         if form.is_valid():
             dados = form.cleaned_data
             services.registrar_transacao(
@@ -286,11 +297,14 @@ def nova_transacao(request):
                 origem=Origem.PORTAL,
                 autor=request.user,
                 compartilhada=dados["compartilhada"],
+                pago_por=dados.get("pago_por") or request.user,
+                modo_rateio=dados.get("modo_rateio") or "padrao",
+                partes=form.partes_do_rateio(),
             )
             messages.success(request, "Lançamento registrado.")
             return _fragmento_apos_escrita(request, espaco)
     else:
-        form = TransacaoForm(espaco=espaco)
+        form = TransacaoForm(espaco=espaco, usuario=request.user)
 
     return render(
         request,
@@ -313,7 +327,7 @@ def editar_transacao(request, codigo):
     )
 
     if request.method == "POST":
-        form = TransacaoForm(request.POST, espaco=espaco)
+        form = TransacaoForm(request.POST, espaco=espaco, usuario=request.user)
         if form.is_valid():
             dados = form.cleaned_data
             alvo.tipo = dados["tipo"]
@@ -324,12 +338,15 @@ def editar_transacao(request, codigo):
             alvo.conta = dados["conta"]
             alvo.pago = dados["pago"]
             alvo.compartilhada = dados["compartilhada"]
+            alvo.pago_por = dados.get("pago_por") or alvo.pago_por or request.user
             alvo.save()
+            rateios.aplicar(alvo, dados.get("modo_rateio") or "padrao", form.partes_do_rateio())
             messages.success(request, f"Lançamento {alvo.codigo} atualizado.")
             return _fragmento_apos_escrita(request, espaco)
     else:
         form = TransacaoForm(
             espaco=espaco,
+            usuario=request.user,
             initial={
                 "tipo": alvo.tipo,
                 "valor": alvo.valor,
@@ -339,6 +356,12 @@ def editar_transacao(request, codigo):
                 "conta": alvo.conta_id,
                 "pago": alvo.pago,
                 "compartilhada": "1" if alvo.compartilhada else "0",
+                "pago_por": alvo.pago_por_id,
+                # Reabre em "por valor" com as partes atuais: é o modo que
+                # mostra a divisão que de fato está gravada, em vez de sugerir
+                # recalcular pelo padrão e apagar um ajuste feito à mão.
+                "modo_rateio": "valor" if alvo.rateios.exists() else "padrao",
+                **{f"val_{r.pessoa_id}": r.valor for r in alvo.rateios.all()},
             },
         )
 
@@ -590,6 +613,38 @@ def compartilhar(request):
             "convite": convite,
             "membros": espaco.membros.order_by("username"),
             "form": form,
+            "form_divisao": DivisaoPadraoForm(espaco=espaco),
+            "compartilhado": espaco.membros.count() > 1,
+        },
+    )
+
+
+@login_required
+@require_POST
+def divisao_padrao(request):
+    """Como o espaço divide, quando ninguém disser o contrário."""
+    espaco = _espaco(request)
+    form = DivisaoPadraoForm(request.POST, espaco=espaco)
+    if form.is_valid():
+        rateios.definir_padrao(
+            espaco,
+            form.cleaned_data.get("percentuais")
+            if form.cleaned_data["modo"] == "percentual"
+            else None,
+        )
+        messages.success(request, "Divisão padrão salva.")
+        return _fragmento_apos_escrita(request, espaco)
+
+    return render(
+        request,
+        "carteira/_compartilhar.html",
+        {
+            "espaco": espaco,
+            "convite": espacos.convite_vigente(espaco, request.user),
+            "membros": espaco.membros.order_by("username"),
+            "form": EntrarNoEspacoForm(),
+            "form_divisao": form,
+            "compartilhado": espaco.membros.count() > 1,
         },
     )
 

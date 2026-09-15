@@ -150,6 +150,17 @@ class Transacao(models.Model):
     # espalhada, o primeiro relatório novo esqueceria dela e vazaria gasto
     # pessoal num total do casal.
     compartilhada = models.BooleanField("compartilhada", default=False)
+    # Quem TIROU o dinheiro do bolso. Diferente de `autor`, que é quem digitou:
+    # é comum um lançar o que o outro pagou, e sem separar os dois o acerto de
+    # contas fica errado.
+    pago_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="pagamentos",
+        verbose_name="pago por",
+    )
     origem = models.CharField("origem", max_length=20, choices=Origem, default=Origem.PORTAL)
     # Previstas nascem do recorrente e ainda não aconteceram; entram na
     # projeção do mês, mas não no "já saiu".
@@ -177,6 +188,67 @@ class Transacao(models.Model):
         if self.tipo == TipoTransacao.RECEITA:
             return self.valor
         return -self.valor
+
+
+class Rateio(models.Model):
+    """Quanto de um lançamento cabe a cada pessoa.
+
+    Guarda VALOR, não percentual: igual, por proporção e por valor são três
+    jeitos de informar a mesma coisa, e converter na entrada evita o arredonda-
+    mento acontecer toda vez que alguém abre um relatório — a soma das partes
+    tem que bater com o total ao centavo, sempre.
+
+    Um lançamento compartilhado tem rateios que somam o valor cheio. Um pessoal
+    não tem nenhum: ele é inteiro de quem lançou.
+    """
+
+    transacao = models.ForeignKey(Transacao, on_delete=models.CASCADE, related_name="rateios")
+    pessoa = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="rateios"
+    )
+    valor = models.DecimalField("valor", max_digits=12, decimal_places=2)
+
+    class Meta:
+        verbose_name = "rateio"
+        verbose_name_plural = "rateios"
+        constraints = [
+            models.UniqueConstraint(fields=["transacao", "pessoa"], name="rateio_unico_por_pessoa")
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.pessoa} · R$ {self.valor}"
+
+
+class RateioPadrao(models.Model):
+    """Como o espaço divide, quando ninguém disser o contrário.
+
+    Existe porque a divisão costuma ser a MESMA quase sempre — meio a meio, ou
+    60/40 porque as rendas são diferentes — e escolher de novo a cada mercado
+    seria trabalho repetido. Cada lançamento pode sair do padrão sem alterá-lo.
+
+    Sem nenhuma linha, o padrão é dividir igual entre quem está no espaço. É o
+    que vale enquanto ninguém configurou nada.
+    """
+
+    espaco = models.ForeignKey(
+        "accounts.Espaco", on_delete=models.CASCADE, related_name="rateio_padrao"
+    )
+    pessoa = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="rateios_padrao"
+    )
+    percentual = models.DecimalField("percentual", max_digits=5, decimal_places=2)
+
+    class Meta:
+        verbose_name = "divisão padrão"
+        verbose_name_plural = "divisão padrão"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["espaco", "pessoa"], name="rateio_padrao_unico_por_pessoa"
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.pessoa} · {self.percentual}%"
 
 
 class Recorrente(models.Model):

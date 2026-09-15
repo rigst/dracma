@@ -752,3 +752,26 @@ dialog::backdrop { background: rgba(23, 18, 14, .55); }
 }
 :root[data-theme="dark"] .pessoal,
 :root:not([data-theme="light"]) .pessoal { color: var(--positivo); border-color: var(--positivo); }
+
+/* Divisão do gasto ------------------------------------------------------- */
+
+.divisao { border-top: 1px solid var(--borda); padding-top: .9rem; }
+.partes { margin-top: .75rem; font-size: .9rem; }
+.partes th, .partes td { padding: .35rem .4rem; }
+.partes td:first-child { width: 40%; }
+/* Campo estreito: o valor de uma parte tem poucos dígitos, e um input que
+   ocupa a linha inteira faz o cabeçalho da coluna parecer solto. */
+.partes input { padding: .35rem .5rem; max-width: 9rem; text-align: right; }
+
+.parte {
+  display: block; font-family: var(--corpo); font-size: .72rem;
+  font-weight: 400; color: var(--texto-suave); margin-top: .1rem;
+}
+
+.acerto-frase {
+  font-family: var(--display); font-size: 1.25rem;
+  margin: 0 0 1rem;
+}
+.valor-acerto { color: var(--acento-forte); font-variant-numeric: tabular-nums; }
+
+.divisao-padrao { border-top: 1px solid var(--borda); margin-top: 1.5rem; padding-top: 1.25rem; }

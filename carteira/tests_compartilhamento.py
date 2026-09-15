@@ -65,9 +65,10 @@ class VisibilidadeTest(BaseCasalTest):
         inicio, fim = services.limites_do_mes()
         return services.resumo_periodo(self.espaco, inicio, fim, usuario=usuario)
 
-    def test_cada_um_ve_o_compartilhado_mais_o_proprio(self):
-        self.assertEqual(self._resumo(self.ana).despesas, Decimal("420.00"))
-        self.assertEqual(self._resumo(self.bia).despesas, Decimal("380.00"))
+    def test_cada_um_ve_a_propria_fatia_mais_o_proprio(self):
+        # O mercado da casa (R$ 300) é dividido: R$ 150 para cada.
+        self.assertEqual(self._resumo(self.ana).despesas, Decimal("270.00"))
+        self.assertEqual(self._resumo(self.bia).despesas, Decimal("230.00"))
 
     def test_sem_recorte_ve_tudo(self):
         # `usuario=None` é o que as rotinas de manutenção usam.
@@ -104,16 +105,17 @@ class LimiteTest(BaseCasalTest):
         self._lancar(self.ana, "200", "Mercado da casa", True, categoria="Mercado")
         self._lancar(self.ana, "300", "Mercado só meu", False, categoria="Mercado")
 
-    def test_quem_gastou_ve_o_proprio_gasto_no_limite(self):
+    def test_quem_gastou_ve_a_propria_fatia_mais_o_proprio(self):
+        # Metade dos R$ 200 da casa, mais os R$ 300 pessoais.
         consumo = services.consumo_do_limite(self.limite, usuario=self.ana)
-        self.assertEqual(consumo["gasto"], Decimal("500.00"))
-        self.assertEqual(consumo["percentual"], 100)
+        self.assertEqual(consumo["gasto"], Decimal("400.00"))
+        self.assertEqual(consumo["percentual"], 80)
 
-    def test_o_outro_ve_so_o_compartilhado(self):
+    def test_o_outro_ve_so_a_fatia_do_compartilhado(self):
         # Ver o número da Ana seria ver o gasto pessoal da Ana.
         consumo = services.consumo_do_limite(self.limite, usuario=self.bia)
-        self.assertEqual(consumo["gasto"], Decimal("200.00"))
-        self.assertEqual(consumo["percentual"], 40)
+        self.assertEqual(consumo["gasto"], Decimal("100.00"))
+        self.assertEqual(consumo["percentual"], 20)
 
     def test_quem_usa_sozinho_ve_tudo_no_limite(self):
         # É o caso que derruba a regra "limite conta só o compartilhado": com o
@@ -210,6 +212,7 @@ class PortalTest(BaseCasalTest):
                 "conta": "",
                 "pago": "on",
                 "compartilhada": "0",
+                "modo_rateio": "",
             },
         )
         transacao = Transacao.objects.get(descricao="Presente")
@@ -383,7 +386,8 @@ class AgenteTest(BaseCasalTest):
             },
             Contexto(espaco=self.espaco, usuario=self.bia),
         )
-        self.assertIn("R$ 300,00", saida)
+        # A fatia da Bia no mercado da casa é metade de R$ 300.
+        self.assertIn("R$ 150,00", saida)
         self.assertNotIn("120", saida)
 
     def test_o_agente_registra_como_so_meu_quando_pedido(self):
@@ -496,10 +500,11 @@ class AlertaProativoTest(BaseCasalTest):
         self.assertEqual(resumo_semanal(), 2)
 
         por_destino = {e["destino"]: e["texto"] for e in self.canal.enviadas}
-        self.assertIn("R$ 600,00", por_destino[self.numeros[self.ana].numero])
-        self.assertIn("R$ 100,00", por_destino[self.numeros[self.bia].numero])
+        # Ana: 500 pessoais + metade dos 100 da casa. Bia: só a metade dela.
+        self.assertIn("R$ 550,00", por_destino[self.numeros[self.ana].numero])
+        self.assertIn("R$ 50,00", por_destino[self.numeros[self.bia].numero])
         # O total da Bia não pode conter o gasto pessoal da Ana.
-        self.assertNotIn("R$ 600,00", por_destino[self.numeros[self.bia].numero])
+        self.assertNotIn("R$ 550,00", por_destino[self.numeros[self.bia].numero])
 
     def test_alerta_de_limite_vai_so_para_quem_gastou(self):
         # O percentual é o número de quem olha: mandá-lo a todos entregaria o

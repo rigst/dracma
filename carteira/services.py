@@ -15,7 +15,21 @@ from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
 
 from django.db import transaction as db_transaction
-from django.db.models import Q, Sum
+from django.db.models import (
+    Case,
+    DecimalField,
+    Exists,
+    F,
+    OuterRef,
+    Q,
+    Subquery,
+    Sum,
+    Value,
+    When,
+)
+from django.db.models.functions import Coalesce
+
+_DINHEIRO = DecimalField(max_digits=12, decimal_places=2)
 
 from .models import (
     Categoria,
@@ -137,6 +151,9 @@ def registrar_transacao(
     # Pessoal por padrão: compartilhar é a escolha ativa. Errar para o lado de
     # guardar não custa nada; errar para o lado de expor não tem desfazer.
     compartilhada: bool = False,
+    pago_por=None,
+    modo_rateio: str = "padrao",
+    partes: dict | None = None,
     observacao: str = "",
 ) -> Transacao:
     if tipo not in TipoTransacao.values:
@@ -146,9 +163,10 @@ def registrar_transacao(
     if not descricao:
         raise ErroDeDominio("A transação precisa de uma descrição.")
 
-    return Transacao.objects.create(
+    dono = dono_presumido(espaco, autor)
+    transacao = Transacao.objects.create(
         espaco=espaco,
-        autor=dono_presumido(espaco, autor),
+        autor=dono,
         tipo=tipo,
         valor=para_decimal(valor),
         descricao=descricao,
@@ -158,8 +176,15 @@ def registrar_transacao(
         pago=pago,
         origem=origem,
         compartilhada=compartilhada,
+        # Quem pagou, quando ninguém disse, é quem lançou.
+        pago_por=pago_por or dono,
         observacao=observacao or "",
     )
+
+    from . import rateios
+
+    rateios.aplicar(transacao, modo_rateio, partes)
+    return transacao
 
 
 def buscar_por_codigo(espaco, codigo: str, usuario=None) -> Transacao:
@@ -261,6 +286,37 @@ def dono_presumido(espaco, autor):
     return membros[0] if len(membros) == 1 else None
 
 
+def com_minha_parte(consulta, usuario):
+    """Anota `minha_parte`: quanto do lançamento cabe a ESTA pessoa.
+
+    Sem rateio, a parte é o valor cheio — é o caso do lançamento pessoal e do
+    compartilhado que ninguém dividiu. COM rateio, é a linha da pessoa, e zero
+    se ela não tem linha nenhuma (um gasto da casa que coube todo ao outro).
+
+    Existe porque "quanto isso me custou" e "quanto saiu da conta" deixaram de
+    ser o mesmo número: a conta de luz de R$ 310 paga pela Ana e dividida ao
+    meio tira R$ 310 da conta dela e custa R$ 155 a cada uma.
+    """
+    if usuario is None:
+        return consulta.annotate(minha_parte=F("valor"))
+
+    from .models import Rateio
+
+    minha = Rateio.objects.filter(transacao=OuterRef("pk"), pessoa=usuario).values("valor")[:1]
+    qualquer = Rateio.objects.filter(transacao=OuterRef("pk"))
+
+    return consulta.annotate(
+        minha_parte=Case(
+            When(
+                Exists(qualquer),
+                then=Coalesce(Subquery(minha, output_field=_DINHEIRO), Value(Decimal("0"))),
+            ),
+            default=F("valor"),
+            output_field=_DINHEIRO,
+        )
+    )
+
+
 def visiveis_para(consulta, usuario):
     """Filtra o que uma pessoa pode ver dentro do próprio espaço.
 
@@ -307,7 +363,7 @@ def _base(espaco, inicio: date, fim: date, incluir_previstas: bool, usuario=None
     consulta = Transacao.objects.filter(espaco=espaco, data__gte=inicio, data__lte=fim)
     if not incluir_previstas:
         consulta = consulta.filter(prevista=False)
-    return visiveis_para(consulta, usuario)
+    return com_minha_parte(visiveis_para(consulta, usuario), usuario)
 
 
 def total_gasto(
@@ -326,7 +382,7 @@ def total_gasto(
         consulta = consulta.filter(categoria=categoria)
     if conta is not None:
         consulta = consulta.filter(conta=conta)
-    return consulta.aggregate(total=Sum("valor"))["total"] or Decimal("0")
+    return consulta.aggregate(total=Sum("minha_parte"))["total"] or Decimal("0")
 
 
 def resumo_periodo(
@@ -334,17 +390,17 @@ def resumo_periodo(
 ) -> Resumo:
     consulta = _base(espaco, inicio, fim, incluir_previstas, usuario)
 
-    receitas = consulta.filter(tipo=TipoTransacao.RECEITA).aggregate(t=Sum("valor"))[
+    receitas = consulta.filter(tipo=TipoTransacao.RECEITA).aggregate(t=Sum("minha_parte"))[
         "t"
     ] or Decimal("0")
-    despesas = consulta.filter(tipo=TipoTransacao.DESPESA).aggregate(t=Sum("valor"))[
+    despesas = consulta.filter(tipo=TipoTransacao.DESPESA).aggregate(t=Sum("minha_parte"))[
         "t"
     ] or Decimal("0")
 
     agrupado = (
         consulta.filter(tipo=TipoTransacao.DESPESA)
         .values("categoria__nome", "categoria__emoji")
-        .annotate(total=Sum("valor"))
+        .annotate(total=Sum("minha_parte"))
         .order_by("-total")
     )
     por_categoria = [
@@ -356,7 +412,7 @@ def resumo_periodo(
     ]
 
     fixas = consulta.filter(tipo=TipoTransacao.DESPESA, categoria__fixa=True).aggregate(
-        t=Sum("valor")
+        t=Sum("minha_parte")
     )["t"] or Decimal("0")
 
     return Resumo(
@@ -397,6 +453,10 @@ def saldo_previsto(espaco, referencia: date | None = None, usuario=None) -> dict
 def saldo_da_conta(conta: Conta, usuario=None) -> Decimal:
     """Calculado, nunca desnormalizado: um campo `saldo` gravado dessincroniza
     na primeira edição de transação antiga.
+
+    Usa o valor CHEIO, e não a fatia de cada um: a conta de luz de R$ 310 paga
+    da conta conjunta tira R$ 310 dela, independentemente de como as pessoas
+    dividiram o custo entre si. Saldo é caixa; rateio é custo.
 
     Recortado pela visibilidade: numa conta conjunta, quem não enxerga o gasto
     pessoal do outro também não pode ver o efeito dele no saldo — senão a
@@ -570,3 +630,67 @@ def projetar_recorrentes(espaco, referencia: date | None = None, meses: int = 2)
             criadas += 1
 
     return criadas
+
+
+# ---------------------------------------------------------------------------
+# Acerto de contas
+# ---------------------------------------------------------------------------
+
+
+def acerto_do_periodo(espaco, inicio: date, fim: date) -> dict:
+    """Quem pagou quanto × quanto coube a cada um.
+
+    Sem isto, dividir não serve para nada: as pessoas repartem o custo e nunca
+    descobrem quem está devendo a quem.
+
+    Considera só o que é COMPARTILHADO. Gasto pessoal é de quem gastou por
+    definição, e entraria dos dois lados da conta sem mudar nada — além de
+    expor, pelo saldo, um lançamento que o outro não pode ver.
+    """
+    from .models import Rateio
+
+    membros = list(espaco.membros.order_by("pk"))
+    if len(membros) < 2:
+        return {"membros": [], "linhas": [], "sugestao": None}
+
+    despesas = Transacao.objects.filter(
+        espaco=espaco,
+        data__gte=inicio,
+        data__lte=fim,
+        tipo=TipoTransacao.DESPESA,
+        compartilhada=True,
+        prevista=False,
+    )
+
+    pagou = {
+        linha["pago_por"]: linha["total"]
+        for linha in despesas.values("pago_por").annotate(total=Sum("valor"))
+    }
+    coube = {
+        linha["pessoa"]: linha["total"]
+        for linha in Rateio.objects.filter(transacao__in=despesas)
+        .values("pessoa")
+        .annotate(total=Sum("valor"))
+    }
+
+    linhas = []
+    for pessoa in membros:
+        p = pagou.get(pessoa.pk) or Decimal("0")
+        c = coube.get(pessoa.pk) or Decimal("0")
+        linhas.append({"pessoa": pessoa, "pagou": p, "coube": c, "saldo": p - c})
+
+    # Com duas pessoas, o acerto é uma frase. Com mais, a lista já diz quem
+    # está no positivo e quem está no negativo, e fechar isso em transferências
+    # mínimas é outro problema — que não vale complicar antes de existir.
+    sugestao = None
+    if len(linhas) == 2:
+        credor = max(linhas, key=lambda linha: linha["saldo"])
+        devedor = min(linhas, key=lambda linha: linha["saldo"])
+        if credor["saldo"] > 0:
+            sugestao = {
+                "de": devedor["pessoa"],
+                "para": credor["pessoa"],
+                "valor": credor["saldo"],
+            }
+
+    return {"membros": membros, "linhas": linhas, "sugestao": sugestao}

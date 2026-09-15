@@ -18,5 +18,6 @@ urlpatterns = [
     path("conta/nova/", views.nova_conta, name="nova_conta"),
     path("compartilhar/", views.compartilhar, name="compartilhar"),
     path("compartilhar/sair/", views.sair_do_espaco, name="sair_do_espaco"),
+    path("compartilhar/divisao/", views.divisao_padrao, name="divisao_padrao"),
     path("exportar/", views.exportar, name="exportar"),
 ]

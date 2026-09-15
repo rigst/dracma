@@ -25,6 +25,36 @@
 </form>
 {% endif %}
 
+{% if compartilhado %}
+<div class="divisao-padrao">
+  <h3 style="margin-top:0">Como dividir, por padrão</h3>
+  <p class="nota" style="margin-top:0">
+    Vale para os lançamentos da casa. Cada gasto pode sair do padrão sem
+    alterá-lo.
+  </p>
+  <form hx-post="{% url 'carteira:divisao_padrao' %}" hx-target="#dialogo-corpo">
+    {% csrf_token %}
+    {% if form_divisao.non_field_errors %}
+    <p class="erro">{{ form_divisao.non_field_errors }}</p>
+    {% endif %}
+    <div class="campo quem-ve">{{ form_divisao.modo }}</div>
+    <table class="partes">
+      <tbody>
+        {% for membro, campo in form_divisao.campos_por_pessoa %}
+        <tr>
+          <td>{{ membro.get_short_name|default:membro.username }}</td>
+          <td class="num">{{ campo }} %</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div class="acoes-linha acoes-linha--fim" style="margin-top:.75rem">
+      <button type="submit" class="botao botao--fantasma">Salvar divisão</button>
+    </div>
+  </form>
+</div>
+{% endif %}
+
 <h3 style="margin-top:1.75rem">Convidar alguém</h3>
 <p class="nota" style="margin-top:0">
   Mande este código. Ele vale até {{ convite.expira_em|date:"d/m" }} e serve uma

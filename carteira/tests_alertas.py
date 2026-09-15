@@ -124,9 +124,10 @@ class LimiteAlertaTest(BaseAlertaTest):
         JanelaAtendimento.objects.create(numero=outro, ultimo_inbound_em=timezone.now())
 
         services.criar_limite(espaco=self.espaco, valor="300", categoria="Delivery")
+        # Dividido ao meio: R$ 250 para cada, de um limite de R$ 300.
         services.registrar_transacao(
             espaco=self.espaco,
-            valor="250",
+            valor="500",
             descricao="iFood da casa",
             categoria="Delivery",
             autor=self.usuario,

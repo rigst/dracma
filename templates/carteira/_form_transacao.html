@@ -52,6 +52,39 @@
   {{ form.compartilhada.as_hidden }}
   {% endif %}
 
+  {% if compartilhado %}
+  {% comment %}
+  Só faz sentido dividir o que é da casa: o JS mostra este bloco quando
+  "Todo mundo do espaço" está marcado.
+  ({# #} do Django é de UMA linha; multi-linha vaza como texto na tela.)
+  {% endcomment %}
+  <div class="campo divisao" data-divisao hidden>
+    <div class="campos-lado">
+      <div>
+        {{ form.modo_rateio.label_tag }}{{ form.modo_rateio }}
+      </div>
+      <div>
+        {{ form.pago_por.label_tag }}{{ form.pago_por }}
+      </div>
+    </div>
+
+    <table class="partes" data-partes hidden>
+      <thead>
+        <tr><th>Pessoa</th><th data-col="percentual">Porcentagem</th><th data-col="valor">Valor</th></tr>
+      </thead>
+      <tbody>
+        {% for membro, pct, val in form.campos_de_rateio %}
+        <tr>
+          <td>{{ membro.get_short_name|default:membro.username }}</td>
+          <td data-col="percentual">{{ pct }}{% for e in pct.errors %}<p class="erro">{{ e }}</p>{% endfor %}</td>
+          <td data-col="valor">{{ val }}{% for e in val.errors %}<p class="erro">{{ e }}</p>{% endfor %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
   <div class="acoes-linha acoes-linha--fim">
     <button type="button" class="botao botao--fantasma" data-fechar>Cancelar</button>
     <button type="submit" class="botao">Salvar</button>

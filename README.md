@@ -27,6 +27,12 @@ próprio WhatsApp. Mas dividir a conta da casa não é abrir o extrato inteiro �
 cada lançamento é **compartilhado** ou **só eu**, e o que é pessoal some da
 visão dos outros, do CSV, dos alertas e do que a assistente responde.
 
+**Rateio.** O que é da casa é dividido: igual, por porcentagem ou por valor.
+O espaço tem uma divisão padrão — meio a meio, ou 60/40 porque as rendas são
+diferentes — e cada gasto pode sair dela sem alterá-la. Nos totais de cada um
+entra a **fatia**, não o valor cheio, e o painel fecha o mês dizendo quem deve
+quanto a quem.
+
 **Portal.** Uma página só: saldo do mês, para onde o dinheiro foi, limites,
 recorrentes, lançamentos e a conversa com a assistente — tudo no mesmo painel,
 com as edições em diálogo ou na própria linha. Exportação em CSV.
@@ -78,7 +84,12 @@ erro aqui não é tela quebrada, é vazamento. Limites são a exceção delibera
 contam **só o que é do espaço**, porque o alerta vai para todo mundo e um
 percentual calculado com gasto pessoal entregaria esse gasto.
 
-**4. Existe um ponto único de escrita.** A resposta da Claude nunca escreve no
+**4. Caixa e custo são números diferentes.** A conta de luz de R$ 310 paga da
+conta conjunta tira R$ 310 dela e custa R$ 155 a cada uma. Saldo de conta usa o
+valor cheio; totais, limites e relatórios usam a fatia. Confundir os dois faria
+o extrato não bater com o banco ou o custo aparecer dobrado.
+
+**5. Existe um ponto único de escrita.** A resposta da Claude nunca escreve no
 banco: as tools validam argumentos e delegam para `carteira/services.py`, o
 mesmo módulo que as telas do portal usam. Sem isso, seriam duas regras de
 negócio divergindo em silêncio.

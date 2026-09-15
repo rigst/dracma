@@ -150,6 +150,50 @@ atualizar só a tabela deixaria o resto da tela mentindo.
   {% endfor %}
 </div>
 
+{% if acerto.sugestao or acerto.linhas %}
+<div class="titulo-secao">
+  <h2>Acerto do mês</h2>
+</div>
+
+<div class="painel">
+  {% if acerto.sugestao %}
+  <p class="acerto-frase">
+    <strong>{{ acerto.sugestao.de.get_short_name|default:acerto.sugestao.de.username }}</strong>
+    deve
+    <strong class="valor-acerto">R$ {{ acerto.sugestao.valor|floatformat:2 }}</strong>
+    a
+    <strong>{{ acerto.sugestao.para.get_short_name|default:acerto.sugestao.para.username }}</strong>.
+  </p>
+  {% else %}
+  <p class="acerto-frase">Ninguém está devendo nada neste mês.</p>
+  {% endif %}
+
+  <div class="rolagem">
+    <table>
+      <thead>
+        <tr><th>Pessoa</th><th class="num">Pagou</th><th class="num">Coube</th><th class="num">Saldo</th></tr>
+      </thead>
+      <tbody>
+        {% for linha in acerto.linhas %}
+        <tr>
+          <td>{{ linha.pessoa.get_short_name|default:linha.pessoa.username }}</td>
+          <td class="num">R$ {{ linha.pagou|floatformat:2 }}</td>
+          <td class="num">R$ {{ linha.coube|floatformat:2 }}</td>
+          <td class="num {% if linha.saldo < 0 %}saida{% elif linha.saldo > 0 %}entrada{% endif %}">
+            R$ {{ linha.saldo|floatformat:2 }}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="nota">
+    Só o que é da casa entra aqui. Gasto pessoal é de quem gastou, e entraria
+    dos dois lados sem mudar nada.
+  </p>
+</div>
+{% endif %}
+
 <div class="titulo-secao">
   <h2>Lançamentos</h2>
   <div class="acoes">

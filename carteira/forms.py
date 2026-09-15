@@ -9,11 +9,12 @@ valem igual nos dois lados.
 from __future__ import annotations
 
 from datetime import date
+from decimal import Decimal
 
 from django import forms
 from django.utils import timezone
 
-from . import services
+from . import rateios, services
 from .models import Categoria, Conta, TipoTransacao
 
 
@@ -77,7 +78,167 @@ class _ComEspaco(forms.Form):
             ).order_by("nome")
 
 
-class TransacaoForm(_ComEspaco):
+class RateioMixin:
+    """Campos de divisão montados a partir dos membros do espaço.
+
+    Os campos por pessoa nascem em `__init__` porque dependem de quem está no
+    espaço — e campos declarativos são coletados na definição da classe, antes
+    de existir espaço algum.
+    """
+
+    def _montar_campos_de_rateio(self, espaco, usuario=None):
+        self.membros = list(espaco.membros.order_by("pk")) if espaco else []
+        if len(self.membros) < 2:
+            return
+
+        padrao = rateios.padrao_do_espaco(espaco)
+        rotulo_padrao = "Como sempre" if padrao else "Igual entre todos"
+        self.fields["modo_rateio"] = forms.ChoiceField(
+            label="Como dividir",
+            choices=[
+                ("padrao", rotulo_padrao),
+                ("igual", "Igual entre todos"),
+                ("percentual", "Por porcentagem"),
+                ("valor", "Por valor"),
+            ],
+            initial="padrao",
+            # Irrelevante num lançamento pessoal, e o formulário não pode
+            # travar por causa de um campo que a tela nem mostrou.
+            required=False,
+        )
+        self.fields["pago_por"] = forms.ModelChoiceField(
+            label="Quem pagou",
+            queryset=type(self.membros[0]).objects.filter(espaco=espaco).order_by("pk"),
+            required=False,
+            initial=usuario,
+            empty_label=None,
+        )
+        for membro in self.membros:
+            self.fields[f"pct_{membro.pk}"] = forms.DecimalField(
+                label=f"% de {membro.get_short_name() or membro.username}",
+                required=False,
+                max_digits=5,
+                decimal_places=2,
+                widget=forms.NumberInput(attrs={"step": "0.01", "inputmode": "decimal"}),
+            )
+            self.fields[f"val_{membro.pk}"] = ValorField(
+                label=f"Valor de {membro.get_short_name() or membro.username}",
+                required=False,
+                widget=forms.TextInput(attrs={"inputmode": "decimal", "placeholder": "0,00"}),
+            )
+
+    @property
+    def campos_de_rateio(self):
+        """Para o template desenhar os campos por pessoa lado a lado."""
+        for membro in getattr(self, "membros", []):
+            yield membro, self[f"pct_{membro.pk}"], self[f"val_{membro.pk}"]
+
+    def partes_do_rateio(self):
+        """{pessoa: valor} conforme o modo escolhido. None quando não se aplica."""
+        return getattr(self, "_partes", None)
+
+    def _validar_rateio(self, dados):
+        """Valida a divisão AQUI, e não no serviço.
+
+        O serviço também recusa uma divisão que não fecha — é a última linha de
+        defesa, e protege o caminho do agente. Mas de lá o erro sobe como
+        exceção e vira 500; validado no formulário, ele volta para dentro do
+        diálogo, ao lado do campo errado.
+        """
+        self._partes = None
+        if not getattr(self, "membros", None) or len(self.membros) < 2:
+            return
+        if not dados.get("compartilhada"):
+            return
+
+        modo = dados.get("modo_rateio") or "padrao"
+        if modo not in ("percentual", "valor"):
+            return
+
+        prefixo = "pct_" if modo == "percentual" else "val_"
+        partes = {}
+        for membro in self.membros:
+            valor = dados.get(f"{prefixo}{membro.pk}")
+            if valor:
+                partes[membro] = valor
+
+        primeiro = f"{prefixo}{self.membros[0].pk}"
+        if not partes:
+            self.add_error(
+                primeiro,
+                "Informe a porcentagem de cada pessoa."
+                if modo == "percentual"
+                else "Informe quanto cabe a cada pessoa.",
+            )
+            return
+
+        total = sum(partes.values())
+        if modo == "percentual" and abs(total - Decimal(100)) > Decimal("0.01"):
+            self.add_error(primeiro, f"As porcentagens somam {total}%, e precisam somar 100%.")
+            return
+        if modo == "valor":
+            esperado = dados.get("valor")
+            if esperado is not None and total != esperado:
+                self.add_error(
+                    primeiro,
+                    f"As partes somam R$ {total:.2f} e o lançamento é de R$ {esperado:.2f}.",
+                )
+                return
+
+        self._partes = partes
+
+
+class DivisaoPadraoForm(forms.Form):
+    """Como o espaço divide, quando ninguém disser o contrário."""
+
+    modo = forms.ChoiceField(
+        label="Divisão padrão",
+        choices=[("igual", "Igual entre todos"), ("percentual", "Por porcentagem")],
+        initial="igual",
+        widget=forms.RadioSelect,
+    )
+
+    def __init__(self, *args, espaco=None, **kwargs):
+        kwargs.setdefault("label_suffix", "")
+        super().__init__(*args, **kwargs)
+        self.espaco = espaco
+        self.membros = list(espaco.membros.order_by("pk")) if espaco else []
+
+        atual = rateios.padrao_do_espaco(espaco) if espaco else None
+        if atual and not self.is_bound:
+            self.fields["modo"].initial = "percentual"
+
+        for membro in self.membros:
+            self.fields[f"pct_{membro.pk}"] = forms.DecimalField(
+                label=membro.get_short_name() or membro.username,
+                required=False,
+                max_digits=5,
+                decimal_places=2,
+                initial=(atual or {}).get(membro),
+                widget=forms.NumberInput(attrs={"step": "0.01", "inputmode": "decimal"}),
+            )
+
+    @property
+    def campos_por_pessoa(self):
+        for membro in self.membros:
+            yield membro, self[f"pct_{membro.pk}"]
+
+    def clean(self):
+        dados = super().clean()
+        if dados.get("modo") != "percentual":
+            return dados
+
+        percentuais = {}
+        for membro in self.membros:
+            percentuais[membro] = dados.get(f"pct_{membro.pk}") or 0
+        total = sum(percentuais.values())
+        if abs(total - 100) > Decimal("0.01"):
+            raise forms.ValidationError(f"As porcentagens somam {total}%, e precisam somar 100%.")
+        dados["percentuais"] = percentuais
+        return dados
+
+
+class TransacaoForm(RateioMixin, _ComEspaco):
     tipo = forms.ChoiceField(
         label="Tipo",
         choices=[
@@ -122,8 +283,17 @@ class TransacaoForm(_ComEspaco):
         widget=forms.RadioSelect,
     )
 
+    def __init__(self, *args, usuario=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._montar_campos_de_rateio(self.espaco, usuario)
+
     def clean_compartilhada(self):
         return self.cleaned_data["compartilhada"] == "1"
+
+    def clean(self):
+        dados = super().clean()
+        self._validar_rateio(dados)
+        return dados
 
     def clean_data(self):
         valor = self.cleaned_data["data"]

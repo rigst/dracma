@@ -23,6 +23,11 @@
         <td>{{ t.conta.nome|default:"—" }}</td>
         <td class="num {% if t.tipo == 'receita' %}entrada{% else %}saida{% endif %}">
           {% if t.tipo == 'receita' %}+{% else %}−{% endif %}R$ {{ t.valor|floatformat:2 }}
+          {% if t.minha_parte != t.valor %}
+          <span class="parte" title="Sua parte deste lançamento">
+            sua parte R$ {{ t.minha_parte|floatformat:2 }}
+          </span>
+          {% endif %}
         </td>
         <td class="acoes-celula">
           {% if not t.pago %}
