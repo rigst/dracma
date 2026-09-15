@@ -10,7 +10,7 @@ from django.utils import timezone
 
 from accounts.models import Espaco, Usuario
 from carteira import rateios, services
-from carteira.models import RateioPadrao, TipoTransacao, Transacao
+from carteira.models import Acerto, RateioPadrao, TipoTransacao, Transacao
 from carteira.seeds import semear_categorias
 
 
@@ -498,3 +498,117 @@ class DivisaoPadraoNaTelaTest(BaseRateioTest):
         resposta = self.client.get(reverse("carteira:compartilhar"))
         self.assertContains(resposta, "Como dividir, por padrão")
         self.assertContains(resposta, 'value="60.00"')
+
+
+class MarcarComoPagoTest(BaseRateioTest):
+    """Sem isto o painel mostraria a dívida para sempre: o mês vira, o número
+    some da tela e ninguém sabe se foi pago."""
+
+    def setUp(self):
+        super().setUp()
+        self.client.force_login(self.ana)
+        self.inicio, self.fim = services.limites_do_mes()
+        self.referencia = services.referencia_do_periodo(self.inicio)
+        self._gasto("310", categoria="Contas de casa", pago_por=self.ana)
+
+    def _acerto(self):
+        return services.acerto_do_periodo(self.espaco, self.inicio, self.fim)
+
+    def _pagar(self, valor):
+        return self.client.post(
+            reverse("carteira:registrar_acerto"),
+            {
+                "valor": valor,
+                "quem_pagou": self.bia.pk,
+                "quem_recebeu": self.ana.pk,
+                "referencia": self.referencia,
+            },
+        )
+
+    def test_pagar_tudo_zera_o_mes(self):
+        self.assertEqual(self._acerto()["sugestao"]["valor"], Decimal("155.00"))
+        self._pagar("155,00")
+
+        acerto = self._acerto()
+        self.assertIsNone(acerto["sugestao"])
+        self.assertEqual({linha["saldo"] for linha in acerto["linhas"]}, {Decimal("0")})
+
+    def test_pagar_parte_deixa_o_resto_aparecendo(self):
+        self._pagar("100,00")
+        sugestao = self._acerto()["sugestao"]
+        self.assertEqual(sugestao["valor"], Decimal("55.00"))
+        self.assertEqual(sugestao["de"], self.bia)
+
+    def test_o_pagamento_fica_listado(self):
+        self._pagar("155,00")
+        acerto = self._acerto()
+        self.assertEqual(len(acerto["quitacoes"]), 1)
+        self.assertEqual(acerto["quitado"], Decimal("155.00"))
+
+    def test_desfazer_traz_a_divida_de_volta(self):
+        self._pagar("155,00")
+        quitacao = Acerto.objects.get()
+        self.client.post(reverse("carteira:desfazer_acerto", args=[quitacao.pk]))
+        self.assertEqual(self._acerto()["sugestao"]["valor"], Decimal("155.00"))
+
+    def test_acerto_de_outro_mes_nao_abate_este(self):
+        # A referência amarra o pagamento ao período certo: o acerto de setembro
+        # feito em outubro precisa abater setembro, e não o mês em curso.
+        Acerto.objects.create(
+            espaco=self.espaco,
+            quem_pagou=self.bia,
+            quem_recebeu=self.ana,
+            valor=Decimal("155.00"),
+            referencia="2020-01",
+        )
+        self.assertEqual(self._acerto()["sugestao"]["valor"], Decimal("155.00"))
+
+    def test_acerto_com_quem_nao_e_do_espaco_e_recusado(self):
+        # Um id forjado registraria um acerto com alguém de fora, e o saldo do
+        # mês nunca fecharia.
+        fora = Usuario.objects.create_user(username="fora", email="fora@exemplo.com", password="x")
+        self.client.post(
+            reverse("carteira:registrar_acerto"),
+            {
+                "valor": "155,00",
+                "quem_pagou": fora.pk,
+                "quem_recebeu": self.ana.pk,
+                "referencia": self.referencia,
+            },
+        )
+        self.assertFalse(Acerto.objects.exists())
+
+    def test_acerto_consigo_mesmo_e_recusado(self):
+        self.client.post(
+            reverse("carteira:registrar_acerto"),
+            {
+                "valor": "155,00",
+                "quem_pagou": self.ana.pk,
+                "quem_recebeu": self.ana.pk,
+                "referencia": self.referencia,
+            },
+        )
+        self.assertFalse(Acerto.objects.exists())
+
+    def test_nao_desfaz_acerto_de_outro_espaco(self):
+        outro = Espaco.objects.create(nome="Vizinho")
+        alheio = Acerto.objects.create(
+            espaco=outro,
+            quem_pagou=self.ana,
+            quem_recebeu=self.bia,
+            valor=Decimal("10"),
+            referencia=self.referencia,
+        )
+        resposta = self.client.post(reverse("carteira:desfazer_acerto", args=[alheio.pk]))
+        self.assertEqual(resposta.status_code, 404)
+        self.assertTrue(Acerto.objects.filter(pk=alheio.pk).exists())
+
+    def test_o_botao_aparece_no_painel(self):
+        resposta = self.client.get(reverse("carteira:painel"))
+        self.assertContains(resposta, "Marcar como pago")
+
+    def test_o_botao_some_quando_esta_quitado(self):
+        self._pagar("155,00")
+        resposta = self.client.get(reverse("carteira:painel"))
+        self.assertNotContains(resposta, "Marcar como pago")
+        self.assertContains(resposta, "Ninguém está devendo")

@@ -26,6 +26,7 @@ from zap.console import historico
 
 from . import graficos, rateios, services
 from .forms import (
+    AcertoForm,
     ContaForm,
     DivisaoPadraoForm,
     EntrarNoEspacoForm,
@@ -33,7 +34,7 @@ from .forms import (
     RecorrenteForm,
     TransacaoForm,
 )
-from .models import Conta, Limite, Origem, Recorrente, TipoTransacao, Transacao
+from .models import Acerto, Conta, Limite, Origem, Recorrente, TipoTransacao, Transacao
 
 
 def _espaco(request):
@@ -617,6 +618,42 @@ def compartilhar(request):
             "compartilhado": espaco.membros.count() > 1,
         },
     )
+
+
+@login_required
+@require_POST
+def registrar_acerto(request):
+    """Marca a dívida do mês como paga.
+
+    O valor vem do formulário, e não do saldo calculado na hora: quem acerta
+    pode pagar parte, e recalcular aqui ignoraria isso. O saldo do mês passa a
+    descontar o que já foi quitado.
+    """
+    espaco = _espaco(request)
+    form = AcertoForm(request.POST, espaco=espaco)
+    if form.is_valid():
+        dados = form.cleaned_data
+        Acerto.objects.create(
+            espaco=espaco,
+            quem_pagou=dados["pagou"],
+            quem_recebeu=dados["recebeu"],
+            valor=dados["valor"],
+            referencia=dados["referencia"],
+            registrado_por=request.user,
+        )
+        messages.success(request, "Acerto registrado.")
+    else:
+        messages.error(request, form.errors.as_text()[:200] or "Não consegui registrar o acerto.")
+    return _fragmento_apos_escrita(request, espaco)
+
+
+@login_required
+@require_POST
+def desfazer_acerto(request, pk):
+    espaco = _espaco(request)
+    get_object_or_404(Acerto, espaco=espaco, pk=pk).delete()
+    messages.info(request, "Acerto desfeito.")
+    return _fragmento_apos_escrita(request, espaco)
 
 
 @login_required

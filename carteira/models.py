@@ -332,6 +332,48 @@ class Limite(models.Model):
         return self.fim is not None
 
 
+class Acerto(models.Model):
+    """Um pagamento feito para zerar a dívida de um período.
+
+    Sem isto o painel mostraria "Marina deve R$ 771,92" para sempre: o mês
+    vira, o número some da tela e ninguém sabe se foi pago. O acerto é o
+    registro de que o Pix aconteceu.
+
+    Guarda a REFERÊNCIA do período acertado, e não só a data do pagamento: o
+    acerto de setembro feito em outubro precisa abater o saldo de setembro.
+    """
+
+    espaco = models.ForeignKey("accounts.Espaco", on_delete=models.CASCADE, related_name="acertos")
+    quem_pagou = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="acertos_pagos"
+    )
+    quem_recebeu = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="acertos_recebidos"
+    )
+    valor = models.DecimalField(
+        "valor", max_digits=12, decimal_places=2, validators=[MinValueValidator(Decimal("0.01"))]
+    )
+    # Período acertado, no formato AAAA-MM.
+    referencia = models.CharField("referência", max_length=7)
+    registrado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="acertos_registrados",
+    )
+    criado_em = models.DateTimeField("criado em", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "acerto"
+        verbose_name_plural = "acertos"
+        ordering = ["-criado_em"]
+        indexes = [models.Index(fields=["espaco", "referencia"])]
+
+    def __str__(self) -> str:
+        return f"{self.quem_pagou} → {self.quem_recebeu}: R$ {self.valor} ({self.referencia})"
+
+
 class Alerta(models.Model):
     """Registro do que já foi avisado.
 

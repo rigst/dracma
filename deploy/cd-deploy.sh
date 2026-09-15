@@ -91,6 +91,22 @@ main() {
   "$VENV/bin/python" manage.py migrate --check || "$VENV/bin/python" manage.py migrate
   "$VENV/bin/python" manage.py collectstatic --noinput
 
+  # Os documentos legais são versionados em legal/documentos/ e é por aqui que
+  # chegam ao ar. Sem esta linha o PRIMEIRO deploy sobe com /termos/ e
+  # /privacidade/ em 404, e o middleware de aceite não tem o que exigir.
+  #
+  # É idempotente: publica só as versões que ainda não existem no banco. O
+  # efeito colateral é intencional — uma versão nova marcada `material: true`
+  # passa a exigir re-aceite de todo mundo assim que o deploy roda, que é
+  # exatamente para isso que o versionamento existe.
+  #
+  # E ele SAI COM ERRO, derrubando o deploy, se o markdown de uma versão já
+  # publicada mudou. Isso é de propósito: significa que o repositório e o texto
+  # que as pessoas aceitaram discordam, e num app cujo ponto é a trilha de
+  # aceite isso não pode passar batido. O conserto não é editar o banco — é
+  # criar uma versão nova em legal/documentos/ e deixar a antiga como está.
+  "$VENV/bin/python" manage.py importar_documentos_legais --publicar
+
   # SIGHUP recicla os workers mas não reexecuta o mestre: um gunicorn novo fica
   # no venv sem entrar em vigor. Duas perguntas à realidade do servidor, e não
   # ao diff do git — ver rigst/ci RUNBOOK.md seção 7.1.2.

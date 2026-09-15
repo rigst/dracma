@@ -775,3 +775,20 @@ dialog::backdrop { background: rgba(23, 18, 14, .55); }
 .valor-acerto { color: var(--acento-forte); font-variant-numeric: tabular-nums; }
 
 .divisao-padrao { border-top: 1px solid var(--borda); margin-top: 1.5rem; padding-top: 1.25rem; }
+
+/* Acerto de contas ------------------------------------------------------- */
+
+.acerto-topo {
+  display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap;
+  margin-bottom: .5rem;
+}
+.acerto-topo .acerto-frase { margin: 0; }
+.acerto-forma { display: flex; gap: .5rem; align-items: center; margin-left: auto; }
+.acerto-forma input { max-width: 8rem; text-align: right; }
+
+.quitacoes { list-style: none; padding: 0; margin: .75rem 0 0; font-size: .9rem; }
+.quitacoes li {
+  display: flex; align-items: center; gap: .75rem;
+  padding: .4rem 0; border-top: 1px solid var(--borda);
+}
+.quitacoes li button { margin-left: auto; }

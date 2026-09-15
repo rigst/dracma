@@ -637,8 +637,13 @@ def projetar_recorrentes(espaco, referencia: date | None = None, meses: int = 2)
 # ---------------------------------------------------------------------------
 
 
+def referencia_do_periodo(inicio: date) -> str:
+    """Rótulo AAAA-MM do período, usado para amarrar o acerto ao mês certo."""
+    return f"{inicio:%Y-%m}"
+
+
 def acerto_do_periodo(espaco, inicio: date, fim: date) -> dict:
-    """Quem pagou quanto × quanto coube a cada um.
+    """Quem pagou quanto × quanto coube a cada um, já descontado o que foi pago.
 
     Sem isto, dividir não serve para nada: as pessoas repartem o custo e nunca
     descobrem quem está devendo a quem.
@@ -647,7 +652,7 @@ def acerto_do_periodo(espaco, inicio: date, fim: date) -> dict:
     definição, e entraria dos dois lados da conta sem mudar nada — além de
     expor, pelo saldo, um lançamento que o outro não pode ver.
     """
-    from .models import Rateio
+    from .models import Acerto, Rateio
 
     membros = list(espaco.membros.order_by("pk"))
     if len(membros) < 2:
@@ -673,11 +678,35 @@ def acerto_do_periodo(espaco, inicio: date, fim: date) -> dict:
         .annotate(total=Sum("valor"))
     }
 
+    # O que já foi quitado: quem pagou a dívida melhora o próprio saldo, e
+    # quem recebeu deixa de ser credor naquele valor.
+    referencia = referencia_do_periodo(inicio)
+    quitacoes = list(
+        Acerto.objects.filter(espaco=espaco, referencia=referencia).select_related(
+            "quem_pagou", "quem_recebeu"
+        )
+    )
+    quitado = dict.fromkeys((m.pk for m in membros), Decimal("0"))
+    for acerto in quitacoes:
+        quitado[acerto.quem_pagou_id] = (
+            quitado.get(acerto.quem_pagou_id, Decimal("0")) + acerto.valor
+        )
+        quitado[acerto.quem_recebeu_id] = (
+            quitado.get(acerto.quem_recebeu_id, Decimal("0")) - acerto.valor
+        )
+
     linhas = []
     for pessoa in membros:
         p = pagou.get(pessoa.pk) or Decimal("0")
         c = coube.get(pessoa.pk) or Decimal("0")
-        linhas.append({"pessoa": pessoa, "pagou": p, "coube": c, "saldo": p - c})
+        linhas.append(
+            {
+                "pessoa": pessoa,
+                "pagou": p,
+                "coube": c,
+                "saldo": p - c + quitado.get(pessoa.pk, Decimal("0")),
+            }
+        )
 
     # Com duas pessoas, o acerto é uma frase. Com mais, a lista já diz quem
     # está no positivo e quem está no negativo, e fechar isso em transferências
@@ -686,11 +715,19 @@ def acerto_do_periodo(espaco, inicio: date, fim: date) -> dict:
     if len(linhas) == 2:
         credor = max(linhas, key=lambda linha: linha["saldo"])
         devedor = min(linhas, key=lambda linha: linha["saldo"])
-        if credor["saldo"] > 0:
+        # Um centavo de resíduo não é dívida; abaixo disso o mês está fechado.
+        if credor["saldo"] >= Decimal("0.01"):
             sugestao = {
                 "de": devedor["pessoa"],
                 "para": credor["pessoa"],
                 "valor": credor["saldo"],
             }
 
-    return {"membros": membros, "linhas": linhas, "sugestao": sugestao}
+    return {
+        "membros": membros,
+        "linhas": linhas,
+        "sugestao": sugestao,
+        "referencia": referencia,
+        "quitacoes": quitacoes,
+        "quitado": sum((a.valor for a in quitacoes), Decimal("0")),
+    }

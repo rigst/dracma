@@ -27,11 +27,12 @@ próprio WhatsApp. Mas dividir a conta da casa não é abrir o extrato inteiro �
 cada lançamento é **compartilhado** ou **só eu**, e o que é pessoal some da
 visão dos outros, do CSV, dos alertas e do que a assistente responde.
 
-**Rateio.** O que é da casa é dividido: igual, por porcentagem ou por valor.
-O espaço tem uma divisão padrão — meio a meio, ou 60/40 porque as rendas são
-diferentes — e cada gasto pode sair dela sem alterá-la. Nos totais de cada um
-entra a **fatia**, não o valor cheio, e o painel fecha o mês dizendo quem deve
-quanto a quem.
+**Rateio e acerto.** O que é da casa é dividido: igual, por porcentagem ou por
+valor. O espaço tem uma divisão padrão — meio a meio, ou 60/40 porque as rendas
+são diferentes — e cada gasto pode sair dela sem alterá-la. Nos totais de cada
+um entra a **fatia**, não o valor cheio. O painel fecha o mês dizendo quem deve
+quanto a quem, e o pagamento é registrado com um botão: pagou tudo, o mês zera;
+pagou parte, o que sobra continua aparecendo.
 
 **Portal.** Uma página só: saldo do mês, para onde o dinheiro foi, limites,
 recorrentes, lançamentos e a conversa com a assistente — tudo no mesmo painel,
@@ -62,7 +63,7 @@ A view do webhook **nunca** chama a IA. A Meta re-tenta quando a resposta
 demora e, com falhas repetidas, desabilita a subscrição — então ela valida,
 persiste o payload cru e entrega o resto ao Celery.
 
-### As três decisões que mais moldaram o código
+### As decisões que mais moldaram o código
 
 **1. A janela de 24 horas é uma regra de domínio.** A Meta só permite resposta
 em formato livre dentro de 24h desde a última mensagem *do usuário*; fora disso,
@@ -129,7 +130,7 @@ vazios.
 
 | App | Responsabilidade |
 |---|---|
-| `carteira` | domínio financeiro e o painel. Não conhece WhatsApp nem IA. |
+| `carteira` | domínio financeiro, rateio e o painel. Não conhece WhatsApp nem IA. |
 | `zap` | transporte: webhook, canais, mídia, janela de atendimento, onboarding |
 | `ai` | cliente Claude, tools, loop do agente, transcrição |
 | `accounts` | usuário, espaço, modo visitante, quota de IA |
@@ -166,8 +167,18 @@ baixado na primeira transcrição, para `WHISPER_CACHE_DIR` — que fica **fora*
 ./venv/bin/python -m pytest
 ```
 
-256 testes, sem chamar a API da Anthropic nem a da Meta: `ai/fakes.py` tem um
-cliente Claude falso e `zap/canais/fake.py` um canal que acumula em memória.
+Sem chamar a API da Anthropic nem a da Meta: `ai/fakes.py` tem um cliente
+Claude falso e `zap/canais/fake.py` um canal que acumula em memória.
+
+Os módulos que mais valem a leitura, porque um erro neles não dá tela quebrada
+e sim vazamento ou dinheiro errado:
+
+| Arquivo | O que trava |
+|---|---|
+| `carteira/tests_compartilhamento.py` | quem vê o quê, em cada caminho que consulta dinheiro |
+| `carteira/tests_rateio.py` | a divisão fecha ao centavo, e o acerto abate o mês certo |
+| `zap/tests_webhook.py` | assinatura, idempotência e o 200 rápido |
+| `zap/tests_janela.py` | a regra de 24 horas da Meta |
 
 ---
 
@@ -218,6 +229,86 @@ Cada chamada grava `usage` em `ConsumoIA`, com o custo em dólar calculado
 separando cache de escrita (~1,25x) de cache de leitura (~0,1x).
 
 ---
+
+## Provisionamento
+
+O que **já está pronto** no repositório: unidades systemd, config do nginx,
+`cd-deploy.sh`, workflows de CI e CD, `requirements.lock` com hashes,
+`.env.example` e as migrações. `check --deploy` passa limpo e não há migração
+pendente.
+
+O que **precisa ser feito no servidor**, uma vez:
+
+```bash
+# 1. Diretórios (o /var/www é do root; o venv e o modelo do whisper ficam fora
+#    da árvore do git para o deploy não rebaixar 500 MB a cada vez)
+sudo mkdir -p /var/www/dracma /var/lib/dracma/whisper
+sudo chown rod:www-data /var/www/dracma /var/lib/dracma/whisper
+
+# 2. Banco
+sudo -u postgres createuser dracma --pwprompt
+sudo -u postgres createdb dracma --owner=dracma
+
+# 3. Código e venv
+git clone https://github.com/rigst/dracma.git /var/www/dracma
+cd /var/www/dracma
+python3.12 -m venv venv
+./venv/bin/pip install -r requirements.txt
+cp .env.example .env && chmod 600 .env   # e preencha (ver abaixo)
+
+# 4. Primeira carga
+./venv/bin/python manage.py migrate
+./venv/bin/python manage.py importar_documentos_legais --publicar
+./venv/bin/python manage.py createsuperuser
+./venv/bin/python manage.py collectstatic --noinput
+
+# 5. Serviços
+sudo cp deploy/systemd/*.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now dracma dracma_celery dracma_celery_midia
+
+# 6. nginx e certificado
+sudo cp deploy/nginx/dracma /etc/nginx/sites-available/dracma
+sudo ln -s /etc/nginx/sites-available/dracma /etc/nginx/sites-enabled/
+sudo certbot --nginx -d dracma.stolben.com
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+E no GitHub: criar `rigst/dracma`, adicionar os secrets `CODECOV_TOKEN`,
+`SONAR_TOKEN` e `CD_SSH_KEY`, e a chave do usuário `deploy` no servidor com
+`command=` forçado apontando para `deploy/cd-deploy.sh` (RUNBOOK §7 do
+`rigst/ci`).
+
+### Recursos alocados
+
+| Recurso | Valor | Conferido |
+|---|---|---|
+| Porta do gunicorn | **8015** | livre (8000–8014 ocupadas) |
+| Redis | **DB 4** cache, **5** sessões, **6** broker | livres (0–3, 9, 10 em uso) |
+| Sistema | `ffmpeg` e `ffprobe` | presentes |
+
+### Três armadilhas deste deploy
+
+**E-mail cai no console por padrão.** `EMAIL_BACKEND` não configurado escreve a
+mensagem no log e não entrega nada — instruções de conexão e recuperação de
+senha sumiriam em silêncio. O `.env.example` já vem com o backend SMTP; falta
+preencher host, usuário e senha.
+
+**O deploy publica os documentos legais, e falha se eles divergirem.** Sem a
+publicação, o primeiro deploy sobe com `/termos/` e `/privacidade/` em 404. E
+se o markdown de uma versão já publicada mudar, o `cd-deploy.sh` para: o
+repositório e o texto que as pessoas aceitaram estariam discordando. O conserto
+é criar uma versão nova em `legal/documentos/`, não editar a antiga.
+
+**O CI sobe com `soft-fail`.** `ci.yml` começa tolerando falha em
+`mypy,bandit,pip-audit`, na ordem do RUNBOOK §4. Zerar isso é a última etapa,
+depois que o resto estiver verde.
+
+### Antes de ligar o WhatsApp
+
+O app funciona sem ele: com `WHATSAPP_ENABLED=False` o webhook responde 404 e a
+assistente atende pelo console do painel. Ligar depois é preencher as
+credenciais e apontar o webhook — nada no domínio muda.
 
 ## Licença
 

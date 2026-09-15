@@ -381,6 +381,40 @@ class RecorrenteForm(_ComEspaco):
         return self.cleaned_data["compartilhada"] == "1"
 
 
+class AcertoForm(forms.Form):
+    """Registrar o pagamento que zera a dívida do mês."""
+
+    valor = ValorField(
+        label="Quanto foi pago",
+        widget=forms.TextInput(attrs={"inputmode": "decimal", "placeholder": "0,00"}),
+    )
+    quem_pagou = forms.IntegerField(widget=forms.HiddenInput)
+    quem_recebeu = forms.IntegerField(widget=forms.HiddenInput)
+    referencia = forms.CharField(max_length=7, widget=forms.HiddenInput)
+
+    def __init__(self, *args, espaco=None, **kwargs):
+        kwargs.setdefault("label_suffix", "")
+        super().__init__(*args, **kwargs)
+        self.espaco = espaco
+
+    def clean(self):
+        dados = super().clean()
+        if self.espaco is None:
+            return dados
+
+        membros = {m.pk: m for m in self.espaco.membros.all()}
+        pagou = membros.get(dados.get("quem_pagou"))
+        recebeu = membros.get(dados.get("quem_recebeu"))
+        # Só entre quem está no espaço: sem isto, um id forjado registraria um
+        # acerto com alguém de fora e o saldo do mês nunca fecharia.
+        if pagou is None or recebeu is None or pagou == recebeu:
+            raise forms.ValidationError("Esse acerto não é entre pessoas deste espaço.")
+
+        dados["pagou"] = pagou
+        dados["recebeu"] = recebeu
+        return dados
+
+
 class EntrarNoEspacoForm(forms.Form):
     """Código de convite de outro espaço."""
 

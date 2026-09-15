@@ -157,15 +157,50 @@ atualizar só a tabela deixaria o resto da tela mentindo.
 
 <div class="painel">
   {% if acerto.sugestao %}
-  <p class="acerto-frase">
-    <strong>{{ acerto.sugestao.de.get_short_name|default:acerto.sugestao.de.username }}</strong>
-    deve
-    <strong class="valor-acerto">R$ {{ acerto.sugestao.valor|floatformat:2 }}</strong>
-    a
-    <strong>{{ acerto.sugestao.para.get_short_name|default:acerto.sugestao.para.username }}</strong>.
+  <div class="acerto-topo">
+    <p class="acerto-frase">
+      <strong>{{ acerto.sugestao.de.get_short_name|default:acerto.sugestao.de.username }}</strong>
+      deve
+      <strong class="valor-acerto">R$ {{ acerto.sugestao.valor|floatformat:2 }}</strong>
+      a
+      <strong>{{ acerto.sugestao.para.get_short_name|default:acerto.sugestao.para.username }}</strong>.
+    </p>
+    <form class="acerto-forma" hx-post="{% url 'carteira:registrar_acerto' %}"
+          hx-target="#painel-corpo">
+      {% csrf_token %}
+      <input type="hidden" name="quem_pagou" value="{{ acerto.sugestao.de.pk }}">
+      <input type="hidden" name="quem_recebeu" value="{{ acerto.sugestao.para.pk }}">
+      <input type="hidden" name="referencia" value="{{ acerto.referencia }}">
+      <label for="acerto-valor" class="visualmente-oculto">Quanto foi pago</label>
+      <input type="text" id="acerto-valor" name="valor" inputmode="decimal"
+             value="{{ acerto.sugestao.valor|floatformat:2 }}">
+      <button type="submit" class="botao">Marcar como pago</button>
+    </form>
+  </div>
+  <p class="nota" style="margin-top:0">
+    Pagou menos? Ajuste o valor — o que sobrar continua aparecendo aqui.
   </p>
   {% else %}
   <p class="acerto-frase">Ninguém está devendo nada neste mês.</p>
+  {% endif %}
+
+  {% if acerto.quitacoes %}
+  <ul class="quitacoes">
+    {% for q in acerto.quitacoes %}
+    <li>
+      <span>
+        {{ q.quem_pagou.get_short_name|default:q.quem_pagou.username }} pagou
+        <strong>R$ {{ q.valor|floatformat:2 }}</strong> a
+        {{ q.quem_recebeu.get_short_name|default:q.quem_recebeu.username }}
+        <span class="nota" style="margin:0">· {{ q.criado_em|date:"d/m" }}</span>
+      </span>
+      <button class="ligacao ligacao--perigo"
+              hx-post="{% url 'carteira:desfazer_acerto' q.pk %}"
+              hx-target="#painel-corpo"
+              hx-confirm="Desfazer este acerto?">desfazer</button>
+    </li>
+    {% endfor %}
+  </ul>
   {% endif %}
 
   <div class="rolagem">
