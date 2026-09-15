@@ -1,3 +1,4 @@
+<div class="rosca">
 <svg class="grafico" viewBox="-100 -100 200 200" role="img"
      aria-label="Distribuição das despesas por categoria">
   <g>
@@ -9,10 +10,9 @@
   </g>
 </svg>
 {% comment %}
-A legenda mostra só o percentual. O valor em reais cabia no cartão largo do
-relatório, mas no cartão estreito do painel empurrava o rótulo para truncar em
-"M..." — e saber que é Moradia importa mais do que repetir o número, que já
-está na dica do gráfico e nas barras por categoria.
+A legenda mostra só o percentual. O valor em reais cabia no cartão largo, mas no
+estreito empurrava o rótulo para truncar — e saber que é Moradia importa mais do
+que repetir o número, que já está na dica do gráfico.
 {% endcomment %}
 <ul class="legenda">
   {% for f in rosca %}
@@ -23,3 +23,4 @@ está na dica do gráfico e nas barras por categoria.
   </li>
   {% endfor %}
 </ul>
+</div>

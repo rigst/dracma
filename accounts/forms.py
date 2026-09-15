@@ -24,6 +24,10 @@ class CadastroForm(AceiteLegalMixin, UserCreationForm):
         model = User
         fields = ("username", "email")
 
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault("label_suffix", "")
+        super().__init__(*args, **kwargs)
+
     def clean_email(self):
         email = (self.cleaned_data.get("email") or "").strip().lower()
         if email and User.objects.filter(email__iexact=email).exists():

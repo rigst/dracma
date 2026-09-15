@@ -27,7 +27,7 @@ from accounts.limites import excedeu_limite
 from legal.utils import ip_do_request
 
 from . import onboarding
-from .console import conversar, historico
+from .console import conversar
 from .models import Mensagem, NumeroWhatsApp
 from .webhook import assinatura_valida, extrair_mensagens, verificar_handshake
 
@@ -119,14 +119,8 @@ def console(request):
         pergunta, resposta = conversar(request.user, texto)
         return render(request, "zap/_falas.html", {"falas": [pergunta, resposta]})
 
-    return render(
-        request,
-        "zap/console.html",
-        {
-            "falas": historico(request.user, limite=60),
-            "max_chars": settings.AI_MAX_CHARS_MENSAGEM,
-        },
-    )
+    # A conversa mora no painel; não há tela separada para ela.
+    return redirect("carteira:painel")
 
 
 # ---------------------------------------------------------------------------
@@ -166,7 +160,7 @@ def conectar(request):
             }
         )
 
-    return render(request, "zap/conectar.html", contexto)
+    return render(request, "zap/_conectar.html", contexto)
 
 
 @login_required
@@ -179,13 +173,13 @@ def enviar_instrucoes(request):
     """
     if not request.user.email:
         messages.error(request, "Sua conta não tem e-mail cadastrado.")
-        return redirect("zap:conectar")
+        return redirect("carteira:painel")
 
     # O envio é gratuito para quem dispara e custa reputação de domínio se
     # virar rajada.
     if excedeu_limite(f"instrucoes:{ip_do_request(request)}", limite=5, janela_s=3600):
         messages.error(request, "Muitos envios deste endereço. Tente daqui a pouco.")
-        return redirect("zap:conectar")
+        return redirect("carteira:painel")
 
     codigo = onboarding.gerar_codigo(request.user)
     corpo = render_to_string(
@@ -211,7 +205,7 @@ def enviar_instrucoes(request):
         messages.success(request, f"Instruções enviadas para {request.user.email}.")
     else:
         messages.error(request, "Não consegui enviar o e-mail agora. Tente de novo.")
-    return redirect("zap:conectar")
+    return redirect("carteira:painel")
 
 
 @login_required
@@ -227,4 +221,4 @@ def desconectar(request):
     )
     if atualizados:
         messages.info(request, "WhatsApp desconectado.")
-    return redirect("zap:conectar")
+    return redirect("carteira:painel")

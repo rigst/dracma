@@ -87,7 +87,7 @@ class TelaConectarTest(BaseOnboardingTest):
         resposta = self.client.get(self.url)
         self.assertContains(resposta, "não está configurado")
         self.assertNotContains(resposta, 'class="qr"')
-        self.assertContains(resposta, reverse("zap:console"))
+        self.assertContains(resposta, "pelo painel")
 
 
 @override_settings(WHATSAPP_NUMERO=NUMERO_BOT, WHATSAPP_ENABLED=True)

@@ -1,5 +1,5 @@
 {% load static %}<!doctype html>
-<html lang="pt-br" data-theme="{{ request.COOKIES.tema|default:'' }}">
+<html lang="pt-br">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -9,7 +9,7 @@
 <link rel="stylesheet" href="{% static 'css/app.css' %}">
 {% comment %}
 Pré-pintura: lê o tema salvo ANTES do primeiro paint. Sem isto, quem usa o tema
-escuro vê um lampejo branco em toda navegação.
+escuro vê um lampejo de mármore em toda navegação.
 {% endcomment %}
 <script>
 (function(){try{var t=localStorage.getItem('tema');if(t)document.documentElement.dataset.theme=t;}catch(e){}})();
@@ -18,57 +18,63 @@ escuro vê um lampejo branco em toda navegação.
 <body>
 <a class="pular" href="#conteudo">Pular para o conteúdo</a>
 
-<header class="topo">
-  <a class="marca" href="{% url 'carteira:painel' %}">
-    <span class="marca-icone" aria-hidden="true">◍</span> Dracma
-  </a>
+{% block friso %}
+<header class="friso">
+  <div class="friso-barra">
+    <a class="marca" href="{% url 'carteira:painel' %}">
+      {% include "partials/moeda.html" %} Dracma
+    </a>
 
-  {% if user.is_authenticated %}
-  <nav class="menu" aria-label="Principal">
-    <a href="{% url 'carteira:painel' %}">Painel</a>
-    <a href="{% url 'carteira:transacoes' %}">Transações</a>
-    <a href="{% url 'carteira:limites' %}">Limites</a>
-    <a href="{% url 'carteira:relatorios' %}">Relatórios</a>
-    <a href="{% url 'zap:console' %}">Conversar</a>
-    <a href="{% url 'zap:conectar' %}">WhatsApp</a>
-  </nav>
-  {% endif %}
-
-  <div class="topo-acoes">
-    <button type="button" class="botao-icone" id="alternar-tema"
-            aria-label="Alternar tema claro e escuro">◐</button>
     {% if user.is_authenticated %}
-      <form method="post" action="{% url 'logout' %}">{% csrf_token %}
-        <button type="submit" class="botao-texto">Sair</button>
-      </form>
-    {% else %}
-      <a class="botao-texto" href="{% url 'login' %}">Entrar</a>
+    <nav class="friso-menu" aria-label="Principal">
+      <a href="{% url 'carteira:painel' %}" aria-current="page">Painel</a>
+      <a href="{% url 'carteira:painel' %}?conectar=1">WhatsApp</a>
+      <a href="{% url 'carteira:exportar' %}">Exportar</a>
+    </nav>
     {% endif %}
-  </div>
-</header>
 
-{% if messages %}
-<ul class="avisos" role="status">
+    <div class="friso-acoes">
+      <button type="button" class="friso-botao" id="alternar-tema"
+              aria-label="Alternar entre mármore e cerâmica">Tema</button>
+      {% if user.is_authenticated %}
+        <form method="post" action="{% url 'logout' %}">{% csrf_token %}
+          <button type="submit" class="friso-botao">Sair</button>
+        </form>
+      {% else %}
+        <a class="friso-botao" href="{% url 'login' %}">Entrar</a>
+      {% endif %}
+    </div>
+  </div>
+  {% include "partials/meandro.html" %}
+</header>
+{% endblock %}
+
+<ul class="avisos" id="avisos" role="status" aria-live="polite">
   {% for m in messages %}<li class="aviso aviso--{{ m.tags|default:'info' }}">{{ m }}</li>{% endfor %}
 </ul>
-{% endif %}
 
 <main id="conteudo" class="conteudo">
   {% block content %}{% endblock %}
 </main>
 
+{% block rodape %}
 <footer class="rodape">
-  <p>
-    <a href="{% url 'termos' %}">Termos</a> ·
-    <a href="{% url 'privacidade' %}">Privacidade</a>
-  </p>
-  <p class="rodape-nota">
-    A Dracma organiza e orienta, mas <strong>não é consultoria financeira</strong>.
-    As respostas são geradas por IA e podem conter erros — confira seus lançamentos.
-  </p>
+  <div class="rodape-barra">
+    <p>
+      <a href="{% url 'termos' %}">Termos</a> ·
+      <a href="{% url 'privacidade' %}">Privacidade</a>
+    </p>
+    <p class="rodape-nota">
+      A Dracma organiza e orienta, mas <strong>não é consultoria financeira</strong>.
+      As respostas são geradas por IA e podem conter erros — confira seus lançamentos.
+    </p>
+  </div>
 </footer>
+{% endblock %}
 
-<script src="{% static 'js/htmx.min.js' %}" defer></script>
+<dialog id="dialogo"><div id="dialogo-corpo" class="dialogo-corpo"></div></dialog>
+
+<script src="{% static 'js/htmx.min.js' %}"></script>
 <script src="{% static 'js/app.js' %}" defer></script>
 </body>
 </html>

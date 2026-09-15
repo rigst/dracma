@@ -1,0 +1,76 @@
+<h2>Conectar o WhatsApp</h2>
+
+{% if conectado %}
+  <p class="nota" style="margin-top:0">
+    Este número já está conectado:
+    <strong class="numero-bot">{{ conectado.numero }}</strong>,
+    desde {{ conectado.verificado_em|date:"d/m/Y" }}.
+  </p>
+  <div class="acoes-linha acoes-linha--fim">
+    <form method="post" action="{% url 'zap:desconectar' %}">
+      {% csrf_token %}
+      <button type="submit" class="botao botao--fantasma">Desconectar</button>
+    </form>
+    <button type="button" class="botao" data-fechar>Fechar</button>
+  </div>
+
+{% elif not numero_bot %}
+  <p class="nota nota--larga" style="margin-top:0">
+    O número de WhatsApp da Dracma não está configurado nesta instalação. Você
+    pode usar a assistente aqui pelo painel — é o mesmo assistente, com as
+    mesmas ferramentas.
+  </p>
+  <div class="acoes-linha acoes-linha--fim">
+    <button type="button" class="botao" data-fechar>Entendi</button>
+  </div>
+
+{% else %}
+  <p class="nota nota--larga" style="margin-top:0">
+    Leva menos de um minuto. Depois disso é só conversar, como com qualquer pessoa.
+  </p>
+
+  <div class="passos">
+    <div class="passo">
+      <span class="passo-numero" aria-hidden="true">Α</span>
+      <div>
+        <h3>Abra a conversa</h3>
+        {% if qr %}
+        <p>Aponte a câmera do celular para o código:</p>
+        <div class="qr-caixa">{{ qr|safe }}</div>
+        {% endif %}
+        <p>
+          Já está no celular? <a href="{{ link }}">Toque para abrir o WhatsApp</a>.
+          Ou salve o número <strong class="numero-bot">+{{ numero_bot }}</strong>.
+        </p>
+      </div>
+    </div>
+
+    <div class="passo">
+      <span class="passo-numero" aria-hidden="true">Β</span>
+      <div>
+        <h3>Mande este código</h3>
+        <p class="codigo-grande">{{ codigo }}</p>
+        <p>
+          Abrindo pelo QR ou pelo link, ele já vem escrito — é só enviar.
+          Vale até {{ expira_em|date:"H:i" }}.
+        </p>
+      </div>
+    </div>
+
+    <div class="passo">
+      <span class="passo-numero" aria-hidden="true">Γ</span>
+      <div>
+        <h3>Pronto</h3>
+        <p>A Dracma confirma e já explica o que você pode mandar.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="acoes-linha acoes-linha--fim" style="margin-top:1.5rem">
+    <button type="button" class="botao botao--fantasma" data-fechar>Depois</button>
+    <form method="post" action="{% url 'zap:enviar_instrucoes' %}">
+      {% csrf_token %}
+      <button type="submit" class="botao">Enviar por e-mail</button>
+    </form>
+  </div>
+{% endif %}

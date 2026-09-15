@@ -1,17 +1,13 @@
-{% extends "base.html" %}
+{% extends "base_portico.html" %}
 {% block title %}Confirme seu e-mail · Dracma{% endblock %}
 
 {% block content %}
-<div class="auth-wrap">
-  <div class="auth-card card">
-    <div class="pad">
-      <div class="auth-head">
-        <div class="logo-lg" aria-hidden="true"><svg><use href="#logo-trilhas"/></svg></div>
-        <h1>Quase lá!</h1>
-        <p>Enviamos um link de confirmação para o seu e-mail. Abra-o para ativar a conta. Não esqueça de conferir a caixa de spam.</p>
-      </div>
-      <a class="btn btn-ghost btn-block" href="{% url 'login' %}">Voltar ao login</a>
-    </div>
-  </div>
-</div>
+<h2>Confirme seu e-mail</h2>
+<p class="nota" style="margin-top:0">
+  Mandamos um link de confirmação. Abra-o para ativar a conta — o link vale por
+  três dias.
+</p>
+<p class="nota">
+  Não chegou? Veja no spam, ou <a href="{% url 'accounts:cadastro' %}">tente de novo</a>.
+</p>
 {% endblock %}

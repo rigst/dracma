@@ -1,0 +1,189 @@
+{% comment %}
+O corpo do painel, trocado inteiro depois de cada escrita: um lançamento novo
+mexe no saldo, na rosca, nos limites e nas próximas contas ao mesmo tempo, e
+atualizar só a tabela deixaria o resto da tela mentindo.
+{% endcomment %}
+
+{% if whatsapp_habilitado and not whatsapp_conectado %}
+<div class="painel convite">
+  <div>
+    <h3>Conecte seu WhatsApp</h3>
+    <p class="nota nota--larga" style="margin-top:.2rem">
+      É onde a Dracma trabalha melhor: você conta o gasto por áudio ou foto do
+      comprovante na hora, e ela avisa antes de um limite estourar.
+    </p>
+  </div>
+  <button class="botao" hx-get="{% url 'zap:conectar' %}" hx-target="#dialogo-corpo">
+    Conectar
+  </button>
+</div>
+{% endif %}
+
+<div class="grade--hero">
+  <div class="pedestal">
+    <p class="epigrafe">Saldo de hoje</p>
+    <p class="valor {% if previsao.saldo_realizado < 0 %}valor--perigo{% else %}valor--ouro{% endif %}">
+      R$ {{ previsao.saldo_realizado|floatformat:2 }}
+    </p>
+    <p class="nota">
+      Previsto no fim do mês:
+      <strong>R$ {{ previsao.saldo_previsto|floatformat:2 }}</strong>
+    </p>
+  </div>
+
+  <div class="grade">
+    <div class="painel">
+      <p class="epigrafe">Entrou</p>
+      <p class="valor-pequeno entrada">R$ {{ resumo.receitas|floatformat:2 }}</p>
+      {% if previsao.a_receber %}
+      <p class="nota">Ainda a receber R$ {{ previsao.a_receber|floatformat:2 }}</p>
+      {% endif %}
+    </div>
+    <div class="painel">
+      <p class="epigrafe">Saiu</p>
+      <p class="valor-pequeno saida">R$ {{ resumo.despesas|floatformat:2 }}</p>
+      <p class="nota">
+        Fixos R$ {{ resumo.fixas|floatformat:2 }} · variáveis R$ {{ resumo.variaveis|floatformat:2 }}
+      </p>
+    </div>
+    <div class="painel">
+      <p class="epigrafe">Ainda a pagar</p>
+      <p class="valor-pequeno">R$ {{ previsao.a_pagar|floatformat:2 }}</p>
+      {% for t in proximas|slice:":2" %}
+      <p class="nota">{{ t.data|date:"d/m" }} — {{ t.descricao }}</p>
+      {% empty %}
+      <p class="nota">Nada a pagar por enquanto.</p>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<div class="titulo-secao">
+  <h2>Para onde foi</h2>
+</div>
+
+<div class="grade grade--dupla">
+  <div class="painel">
+    {% if rosca %}
+      {% include "carteira/_rosca.html" %}
+    {% else %}
+      {% include "carteira/_vazio.html" with texto="Nenhuma despesa neste mês ainda." %}
+    {% endif %}
+  </div>
+
+  <div class="painel">
+    <ul class="insights">
+      {% for i in insights %}<li>{{ i }}</li>{% endfor %}
+    </ul>
+    <h3 style="margin-top:1.5rem">Onde está o dinheiro</h3>
+    {% for conta, saldo in contas %}
+    <p class="linha-conta">
+      <span>{{ conta.nome }}</span>
+      <strong>R$ {{ saldo|floatformat:2 }}</strong>
+    </p>
+    {% empty %}
+    <p class="nota">Nenhuma conta cadastrada.</p>
+    {% endfor %}
+    <p style="margin-top:.9rem">
+      <button class="botao botao--fantasma" hx-get="{% url 'carteira:nova_conta' %}"
+              hx-target="#dialogo-corpo">Nova conta</button>
+    </p>
+  </div>
+</div>
+
+<div class="titulo-secao">
+  <h2>Limites</h2>
+  <div class="acoes">
+    <button class="botao botao--fantasma" hx-get="{% url 'carteira:novo_limite' %}"
+            hx-target="#dialogo-corpo">Novo limite</button>
+  </div>
+</div>
+
+<div class="painel">
+  {% for c in consumos %}
+  <div class="limite">
+    <p class="limite-topo">
+      <strong>{% if c.limite.categoria %}{{ c.limite.categoria }}{% else %}{{ c.limite.rotulo|default:"Teto do mês" }}{% endif %}</strong>
+      <span class="num">{{ c.percentual }}%</span>
+    </p>
+    <div class="barra {% if c.estourado %}barra--perigo{% elif c.percentual >= 80 %}barra--atencao{% endif %}">
+      <span style="width:{% if c.percentual > 100 %}100{% else %}{{ c.percentual }}{% endif %}%"></span>
+    </div>
+    <p class="nota">
+      R$ {{ c.gasto|floatformat:2 }} de R$ {{ c.limite.valor|floatformat:2 }}
+      {% if c.estourado %}· estourou{% else %}· restam R$ {{ c.restante|floatformat:2 }}{% endif %}
+      {% if c.limite.temporario %}· até {{ c.fim|date:"d/m" }}{% endif %}
+      <button class="ligacao" hx-post="{% url 'carteira:excluir_limite' c.limite.pk %}"
+              hx-target="#painel-corpo" hx-confirm="Remover este limite?">remover</button>
+    </p>
+  </div>
+  {% empty %}
+    {% include "carteira/_vazio.html" with texto="Nenhum limite ainda. Defina um e a Dracma avisa antes de estourar." %}
+  {% endfor %}
+</div>
+
+<div class="titulo-secao">
+  <h2>Todo mês</h2>
+  <div class="acoes">
+    <button class="botao botao--fantasma" hx-get="{% url 'carteira:novo_recorrente' %}"
+            hx-target="#dialogo-corpo">Novo recorrente</button>
+  </div>
+</div>
+
+<div class="painel">
+  {% for r in recorrentes %}
+  <p class="linha-conta">
+    <span>
+      <strong>{{ r.descricao }}</strong>
+      <span class="nota" style="margin:0">· dia {{ r.dia_do_mes }}{% if r.categoria %} · {{ r.categoria }}{% endif %}</span>
+    </span>
+    <span>
+      <strong class="{% if r.tipo == 'receita' %}entrada{% else %}saida{% endif %}">
+        R$ {{ r.valor|floatformat:2 }}
+      </strong>
+      <button class="ligacao" hx-post="{% url 'carteira:excluir_recorrente' r.pk %}"
+              hx-target="#painel-corpo" hx-confirm="Remover este recorrente?">remover</button>
+    </span>
+  </p>
+  {% empty %}
+    {% include "carteira/_vazio.html" with texto="Cadastre salário, aluguel e assinaturas para ver o mês antes de ele acontecer." %}
+  {% endfor %}
+</div>
+
+<div class="titulo-secao">
+  <h2>Lançamentos</h2>
+  <div class="acoes">
+    <a class="botao botao--fantasma" href="{% url 'carteira:exportar' %}">Exportar CSV</a>
+  </div>
+</div>
+
+<form class="filtros" hx-get="{% url 'carteira:transacoes' %}"
+      hx-target="#tabela" hx-trigger="change">
+  <div class="campo">
+    <label for="f-periodo">Período</label>
+    <select name="periodo" id="f-periodo">
+      <option value="mes">Este mês</option>
+      <option value="3m">3 meses</option>
+      <option value="6m">6 meses</option>
+    </select>
+  </div>
+  <div class="campo">
+    <label for="f-categoria">Categoria</label>
+    <select name="categoria" id="f-categoria">
+      <option value="">Todas</option>
+      {% for c in categorias %}<option value="{{ c.nome }}">{{ c }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="campo">
+    <label for="f-tipo">Tipo</label>
+    <select name="tipo" id="f-tipo">
+      <option value="">Tudo</option>
+      <option value="despesa">Só o que saiu</option>
+      <option value="receita">Só o que entrou</option>
+    </select>
+  </div>
+</form>
+
+<div class="painel" id="tabela">
+  {% include "carteira/_transacoes.html" %}
+</div>

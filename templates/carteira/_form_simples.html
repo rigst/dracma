@@ -1,0 +1,17 @@
+<h2>{{ titulo }}</h2>
+{% if ajuda %}<p class="nota nota--larga" style="margin-top:0">{{ ajuda }}</p>{% endif %}
+<form hx-post="{% url acao %}" hx-target="#dialogo-corpo">
+  {% csrf_token %}
+  {% if form.non_field_errors %}<p class="erro">{{ form.non_field_errors }}</p>{% endif %}
+  {% for campo in form %}
+  <div class="campo">
+    {{ campo.label_tag }}{{ campo }}
+    {% if campo.help_text %}<p class="ajuda">{{ campo.help_text }}</p>{% endif %}
+    {% for e in campo.errors %}<p class="erro">{{ e }}</p>{% endfor %}
+  </div>
+  {% endfor %}
+  <div class="acoes-linha acoes-linha--fim">
+    <button type="button" class="botao botao--fantasma" data-fechar>Cancelar</button>
+    <button type="submit" class="botao">Salvar</button>
+  </div>
+</form>

@@ -1,47 +1,44 @@
-{% extends "base.html" %}
+{% extends "base_portico.html" %}
 {% block title %}Entrar · Dracma{% endblock %}
 
 {% block content %}
-<div class="auth-wrap">
-  <div class="auth-card card">
-    <div class="pad">
-      <div class="auth-head">
-        <div class="logo-lg" aria-hidden="true"><svg><use href="#logo-trilhas"/></svg></div>
-        <h1>Dracma</h1>
-        <p>Diga o que quer aprender e a IA monta um plano completo: do básico ao avançado, com avaliações e títulos a cada nível.</p>
-      </div>
+<h2>Entrar</h2>
 
-      <form method="post" action="{% url 'login' %}">
-        {% csrf_token %}
-        {% if form.non_field_errors %}<div class="form-errors">{{ form.non_field_errors }}</div>{% endif %}
-        <div class="field">
-          <label for="{{ form.username.id_for_label }}">Usuário</label>
-          {{ form.username }}
-          {{ form.username.errors }}
-        </div>
-        <div class="field">
-          <label for="{{ form.password.id_for_label }}">Senha</label>
-          {{ form.password }}
-          {{ form.password.errors }}
-        </div>
-        <input type="hidden" name="next" value="{{ next }}">
-        <button type="submit" class="btn btn-primary btn-block">Entrar</button>
-        <p class="auth-note"><a href="{% url 'password_reset' %}">Esqueceu a senha?</a></p>
-      </form>
+{% if form.errors %}
+<p class="erro">Usuário ou senha não conferem. Tente de novo.</p>
+{% endif %}
 
-      <div class="auth-sep">ou</div>
-
-      {# O aceite acontece na própria página de aceite, não aqui. #}
-      {# O texto que a pessoa precisa ler não cabe ao lado de um botão. #}
-      <a class="btn btn-ghost btn-block" href="{% url 'legal:aceite_visitante' %}">Entrar como visitante</a>
-      <p class="auth-note">Acesso temporário para experimentar. Suas trilhas expiram por inatividade.</p>
-
-      {% if signup_enabled %}
-      <p class="auth-note" style="text-align:center;margin-top:1rem">
-        Ainda não tem conta? <a href="{% url 'accounts:cadastro' %}">Criar conta</a>
-      </p>
-      {% endif %}
-    </div>
+<form method="post">
+  {% csrf_token %}
+  <div class="campo">
+    <label for="{{ form.username.id_for_label }}">Usuário</label>
+    {{ form.username }}
   </div>
-</div>
+  <div class="campo">
+    <label for="{{ form.password.id_for_label }}">Senha</label>
+    {{ form.password }}
+  </div>
+  <button type="submit" class="botao botao--largo">Entrar</button>
+  {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+</form>
+
+<p class="nota"><a href="{% url 'password_reset' %}">Esqueci minha senha</a></p>
+
+{% if signup_enabled %}
+<p class="nota">
+  Ainda não tem conta? <a href="{% url 'accounts:cadastro' %}">Criar uma</a>.
+</p>
+{% endif %}
+
+<form method="post" action="{% url 'accounts:entrar_visitante' %}" style="margin-top:1.5rem">
+  {% csrf_token %}
+  {% include "legal/_checkbox_aceite.html" with field=form_aceite.aceite_legal %}
+  <button type="submit" class="botao botao--fantasma botao--largo">
+    Entrar como visitante
+  </button>
+  <p class="ajuda">
+    Conta temporária para experimentar. Os dados somem depois de 48 horas
+    sem uso.
+  </p>
+</form>
 {% endblock %}

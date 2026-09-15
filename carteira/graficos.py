@@ -12,17 +12,22 @@ import math
 from dataclasses import dataclass
 from decimal import Decimal
 
-# Paleta categórica: matizes distintos e com luminosidade parecida, para
-# nenhuma fatia sumir no tema escuro nem gritar no claro.
+# Paleta categórica tirada dos pigmentos da cerâmica e da arquitetura gregas:
+# a argila alaranjada, o ocre, o verde da oliveira, o "added purple" da
+# cerâmica, o azul-egeu da policromia dos templos, o barro claro, o grafite
+# quente do verniz e a telha rosada.
+#
+# Nenhum tom quase-preto nem quase-branco: a mesma fatia precisa aparecer sobre
+# o mármore e sobre o vaso, e os extremos somem em um dos dois.
 CORES = [
-    "#8b5cf6",
-    "#0ea5e9",
-    "#10b981",
-    "#f59e0b",
-    "#ec4899",
-    "#14b8a6",
-    "#f43f5e",
-    "#a3a3a3",
+    "#c1592b",  # terracota
+    "#d99a2e",  # ocre
+    "#6b7f3a",  # oliva
+    "#8e2f20",  # púrpura
+    "#3f6b70",  # azul-egeu
+    "#a8794f",  # barro claro
+    "#5d5245",  # grafite quente
+    "#b6624f",  # telha
 ]
 
 

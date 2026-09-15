@@ -6,6 +6,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import get_user_model, login
 from django.contrib.auth.tokens import default_token_generator
+from django.contrib.auth.views import LoginView
 from django.core.mail import send_mail
 from django.http import Http404
 from django.shortcuts import redirect, render
@@ -166,3 +167,17 @@ def _preparar_espaco(usuario):
         usuario.espaco = Espaco.objects.create(nome="Meu espaço")
         usuario.save(update_fields=["espaco"])
     semear_categorias(usuario.espaco)
+
+
+class Entrar(LoginView):
+    """Login com o formulário de aceite do visitante junto.
+
+    O botão "entrar como visitante" vive na mesma tela, e a criação da conta
+    exige aceite dos termos — então o checkbox precisa estar renderizado aqui,
+    não numa tela intermediária que só existiria para pedir uma confirmação.
+    """
+
+    def get_context_data(self, **kwargs):
+        contexto = super().get_context_data(**kwargs)
+        contexto["form_aceite"] = AceiteForm()
+        return contexto

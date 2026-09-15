@@ -2,123 +2,25 @@
 {% block title %}Painel · Dracma{% endblock %}
 
 {% block content %}
-<h1>Seu mês</h1>
-
-{% if whatsapp_habilitado and not whatsapp_conectado %}
-<div class="cartao faixa-onboarding">
+<div class="titulo-secao">
   <div>
-    <h2>Conecte seu WhatsApp</h2>
-    <p class="nota">
-      É onde a Dracma trabalha melhor: você conta o gasto por áudio ou foto do
-      comprovante na hora, e ela avisa antes de um limite estourar.
-    </p>
+    <p class="epigrafe">{{ hoje|date:"F \d\e Y" }}</p>
+    <h1>Seu mês</h1>
   </div>
-  <a class="botao" href="{% url 'zap:conectar' %}">Conectar</a>
+  <div class="acoes">
+    <button class="botao" hx-get="{% url 'carteira:nova_transacao' %}"
+            hx-target="#dialogo-corpo">Novo lançamento</button>
+  </div>
 </div>
+
+<div id="painel-corpo">
+  {% include "carteira/_painel_corpo.html" %}
+</div>
+
+{% include "carteira/_conversa.html" %}
+
+{% if abrir_conectar %}
+{# Chegou por link de e-mail ou pelo convite do WhatsApp: abre o diálogo. #}
+<div hx-get="{% url 'zap:conectar' %}" hx-target="#dialogo-corpo" hx-trigger="load"></div>
 {% endif %}
-
-<div class="grade">
-  <div class="cartao">
-    <p class="rotulo">Saldo hoje</p>
-    <p class="numerao {% if previsao.saldo_realizado < 0 %}numerao--perigo{% else %}numerao--ok{% endif %}">
-      R$ {{ previsao.saldo_realizado|floatformat:2 }}
-    </p>
-    <p class="nota">{{ previsao.inicio|date:"d/m" }} a {{ previsao.fim|date:"d/m" }}</p>
-  </div>
-
-  <div class="cartao">
-    <p class="rotulo">Previsto no fim do mês</p>
-    <p class="numerao {% if previsao.saldo_previsto < 0 %}numerao--perigo{% endif %}">
-      R$ {{ previsao.saldo_previsto|floatformat:2 }}
-    </p>
-    <p class="nota">
-      Ainda a pagar R$ {{ previsao.a_pagar|floatformat:2 }}
-      {% if previsao.a_receber %}· a receber R$ {{ previsao.a_receber|floatformat:2 }}{% endif %}
-    </p>
-  </div>
-
-  <div class="cartao">
-    <p class="rotulo">Entrou</p>
-    <p class="numerao numerao--ok">R$ {{ resumo.receitas|floatformat:2 }}</p>
-  </div>
-
-  <div class="cartao">
-    <p class="rotulo">Saiu</p>
-    <p class="numerao">R$ {{ resumo.despesas|floatformat:2 }}</p>
-    <p class="nota">
-      Fixos R$ {{ resumo.fixas|floatformat:2 }} ·
-      variáveis R$ {{ resumo.variaveis|floatformat:2 }}
-    </p>
-  </div>
-</div>
-
-<div class="grade" style="margin-top:1rem">
-  <div class="cartao">
-    <h2>Para onde foi</h2>
-    {% if rosca %}
-      {% include "carteira/_rosca.html" %}
-    {% else %}
-      <p class="nota">Nenhuma despesa neste mês ainda.</p>
-    {% endif %}
-  </div>
-
-  <div class="cartao">
-    <h2>Limites</h2>
-    {% for c in consumos %}
-      {% include "carteira/_limite.html" %}
-    {% empty %}
-      <p class="nota">
-        Nenhum limite ainda. Peça um na <a href="{% url 'zap:console' %}">conversa</a>:
-        <em>“cria um limite de R$ 400 pra delivery”</em>.
-      </p>
-    {% endfor %}
-  </div>
-
-  <div class="cartao">
-    <h2>Próximas contas</h2>
-    {% for t in proximas %}
-      <p class="nota">
-        <strong>{{ t.data|date:"d/m" }}</strong> — {{ t.descricao }}
-        <span class="num">R$ {{ t.valor|floatformat:2 }}</span>
-      </p>
-    {% empty %}
-      <p class="nota">Nada a pagar por enquanto 🎉</p>
-    {% endfor %}
-  </div>
-
-  <div class="cartao">
-    <h2>Contas</h2>
-    {% for conta, saldo in contas %}
-      <p class="nota">{{ conta.nome }} — <strong>R$ {{ saldo|floatformat:2 }}</strong></p>
-    {% empty %}
-      <p class="nota">Nenhuma conta cadastrada.</p>
-    {% endfor %}
-  </div>
-</div>
-
-<div class="cartao" style="margin-top:1rem">
-  <h2>Últimos lançamentos</h2>
-  <div class="rolagem">
-    <table>
-      <thead>
-        <tr><th>Data</th><th>Descrição</th><th>Categoria</th><th class="num">Valor</th><th>Código</th></tr>
-      </thead>
-      <tbody>
-        {% for t in recentes %}
-        <tr>
-          <td>{{ t.data|date:"d/m" }}</td>
-          <td>{{ t.descricao }}</td>
-          <td>{{ t.categoria|default:"—" }}</td>
-          <td class="num">{% if t.tipo == 'receita' %}+{% else %}−{% endif %}R$ {{ t.valor|floatformat:2 }}</td>
-          <td class="codigo">{{ t.codigo }}</td>
-        </tr>
-        {% empty %}
-        <tr><td colspan="5" class="nota">
-          Nada ainda. Comece pela <a href="{% url 'zap:console' %}">conversa</a>.
-        </td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-</div>
 {% endblock %}

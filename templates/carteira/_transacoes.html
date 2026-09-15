@@ -1,0 +1,46 @@
+<div class="rolagem">
+  <table>
+    <thead>
+      <tr>
+        <th>Data</th><th>Descrição</th><th>Categoria</th><th>Conta</th>
+        <th class="num">Valor</th><th><span class="visualmente-oculto">Ações</span></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for t in transacoes %}
+      <tr>
+        <td>{{ t.data|date:"d/m" }}</td>
+        <td>
+          {{ t.descricao }}
+          {% if not t.pago %}<span class="etiqueta">a pagar</span>{% endif %}
+          <span class="codigo">{{ t.codigo }}</span>
+        </td>
+        <td>{{ t.categoria|default:"—" }}</td>
+        <td>{{ t.conta.nome|default:"—" }}</td>
+        <td class="num {% if t.tipo == 'receita' %}entrada{% else %}saida{% endif %}">
+          {% if t.tipo == 'receita' %}+{% else %}−{% endif %}R$ {{ t.valor|floatformat:2 }}
+        </td>
+        <td class="acoes-celula">
+          {% if not t.pago %}
+          <button class="ligacao" hx-post="{% url 'carteira:alternar_pago' t.codigo %}"
+                  hx-target="#painel-corpo" title="Dar baixa">pago</button>
+          {% endif %}
+          <button class="ligacao" hx-get="{% url 'carteira:editar_transacao' t.codigo %}"
+                  hx-target="#dialogo-corpo">editar</button>
+          <button class="ligacao ligacao--perigo"
+                  hx-post="{% url 'carteira:excluir_transacao' t.codigo %}"
+                  hx-target="#painel-corpo"
+                  hx-confirm="Apagar “{{ t.descricao }}”?">apagar</button>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6">
+        {% include "carteira/_vazio.html" with texto="Nenhum lançamento no período." %}
+      </td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<p class="nota">
+  {{ total }} lançamento{{ total|pluralize }} entre {{ inicio|date:"d/m" }} e {{ fim|date:"d/m/Y" }}.
+</p>

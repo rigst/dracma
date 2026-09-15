@@ -1,0 +1,36 @@
+{% load static %}<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}Dracma{% endblock %}</title>
+<meta name="description" content="Assistente financeira com IA no WhatsApp.">
+<link rel="icon" href="{% static 'img/favicon.svg' %}" type="image/svg+xml">
+<link rel="stylesheet" href="{% static 'css/app.css' %}">
+<script>
+(function(){try{var t=localStorage.getItem('tema');if(t)document.documentElement.dataset.theme=t;}catch(e){}})();
+</script>
+</head>
+<body>
+<a class="pular" href="#conteudo">Pular para o conteúdo</a>
+
+<div class="portico">
+  {% include "registration/_portico.html" %}
+
+  <main class="portico-forma" id="conteudo">
+    <div class="portico-caixa">
+      {% if messages %}
+      <ul class="avisos" style="padding:0;margin:0 0 1rem">
+        {% for m in messages %}<li class="aviso aviso--{{ m.tags|default:'info' }}">{{ m }}</li>{% endfor %}
+      </ul>
+      {% endif %}
+      {% block content %}{% endblock %}
+      <p class="nota" style="margin-top:2rem">
+        <a href="{% url 'termos' %}">Termos</a> ·
+        <a href="{% url 'privacidade' %}">Privacidade</a>
+      </p>
+    </div>
+  </main>
+</div>
+</body>
+</html>

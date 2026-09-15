@@ -34,10 +34,13 @@ class BaseConsoleTest(TestCase):
 
 
 class ConsoleTest(BaseConsoleTest):
-    def test_get_mostra_a_tela(self):
+    def test_get_manda_para_o_painel(self):
+        # A conversa mora no painel; não há tela separada para ela.
         resposta = self.client.get(self.url)
-        self.assertEqual(resposta.status_code, 200)
-        self.assertContains(resposta, "Conversar com a Dracma")
+        self.assertRedirects(resposta, reverse("carteira:painel"))
+
+    def test_o_painel_mostra_a_conversa(self):
+        self.assertContains(self.client.get(reverse("carteira:painel")), "Conversar com a Dracma")
 
     def test_post_registra_e_devolve_as_duas_falas(self):
         cliente = (
@@ -117,7 +120,7 @@ class ConsoleTest(BaseConsoleTest):
             texto="veio do zap",
             wamid="w1",
         )
-        resposta = self.client.get(self.url)
+        resposta = self.client.get(reverse("carteira:painel"))
         self.assertNotContains(resposta, "veio do zap")
 
     def test_conversa_tem_memoria_curta(self):

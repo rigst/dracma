@@ -4,11 +4,12 @@ from django.contrib import admin
 from django.contrib.auth import views as auth_views
 from django.urls import include, path
 
+from accounts import views as accounts_views
 from legal import views as legal_views
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path("login/", auth_views.LoginView.as_view(), name="login"),
+    path("login/", accounts_views.Entrar.as_view(), name="login"),
     path("logout/", auth_views.LogoutView.as_view(), name="logout"),
     # Recuperação de senha, nas views prontas do Django com os templates do
     # projeto em templates/registration/.

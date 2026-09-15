@@ -1,0 +1,32 @@
+<div class="titulo-secao">
+  <h2>Conversar com a Dracma</h2>
+</div>
+
+<div class="painel">
+  <p class="nota nota--larga" style="margin-top:0">
+    É o mesmo assistente que atende no WhatsApp. Conte um gasto
+    (“almocei 32 reais no cartão”), pergunte quanto sobra no mês ou peça um limite.
+  </p>
+
+  <div class="conversa" id="conversa">
+    {% include "zap/_falas.html" %}
+    {% if not falas %}
+    <div class="fala fala--dela">
+      <p>Oi! Eu sou a Dracma.</p>
+      <p>Me conta um gasto que eu registro — ou pergunte como está o seu mês.</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <form class="linha-envio"
+        hx-post="{% url 'zap:console' %}"
+        hx-target="#conversa"
+        hx-swap="beforeend"
+        hx-on::after-request="this.reset(); this.mensagem.focus()">
+    {% csrf_token %}
+    <label for="mensagem" class="visualmente-oculto">Sua mensagem</label>
+    <input type="text" id="mensagem" name="mensagem" autocomplete="off"
+           maxlength="2000" placeholder="Conte um gasto ou faça uma pergunta…" required>
+    <button type="submit" class="botao">Enviar</button>
+  </form>
+</div>

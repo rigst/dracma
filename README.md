@@ -24,9 +24,9 @@ de fechamento do mês, o que ainda entra e o que ainda sai.
 **Colaboração.** Toda transação pertence a um *espaço*, não a uma pessoa. Casal,
 família ou time acompanham o mesmo mês, cada um lançando do próprio WhatsApp.
 
-**Portal.** Painel, transações com filtro, relatórios com gráficos, exportação
-em CSV — e um **console** onde dá para conversar com a mesma assistente pelo
-navegador.
+**Portal.** Uma página só: saldo do mês, para onde o dinheiro foi, limites,
+recorrentes, lançamentos e a conversa com a assistente — tudo no mesmo painel,
+com as edições em diálogo ou na própria linha. Exportação em CSV.
 
 **Onboarding.** A tela *Conectar WhatsApp* resolve os três pontos de partida:
 QR para quem está no desktop e precisa levar o link ao celular, deep link
@@ -80,14 +80,35 @@ negócio divergindo em silêncio.
 Django 6 · PostgreSQL · Celery + Redis · Gunicorn · nginx · Claude (Anthropic) ·
 faster-whisper · HTMX
 
-Sem bundler, sem Docker, sem framework de frontend. Os gráficos são SVG gerado
-no servidor — funcionam com o JavaScript desligado e herdam os tokens de tema.
+Sem bundler, sem Docker, sem framework de frontend. Os gráficos, o meandro e a
+moeda são SVG — gerados no servidor ou inline — e herdam os tokens de tema.
+
+### O visual
+
+O nome vem da dracma ateniense, e o sistema visual vem da cerâmica ática de
+figuras negras: o desenho é a silhueta escura sobre a argila alaranjada, e os
+detalhes são **incisos**, riscados até aparecer o barro por baixo.
+
+Daí a decisão que organiza tudo: **a moldura é cerâmica, o conteúdo é mármore**.
+O cabeçalho é um friso de vaso — fundo negro, letra em terracota, meandro — e os
+dados moram em painéis de mármore. O tema escuro inverte para a vasilha inteira,
+que é como a peça realmente é; o claro mantém o mármore. É o que faz o botão de
+tema significar alguma coisa em vez de ser enfeite.
+
+A paleta sai dos pigmentos: terracota, ocre, oliva, o *added purple* da
+cerâmica, o azul-egeu da policromia dos templos. A tipografia de exibição é a
+**Cormorant Garamond**, auto-hospedada (SIL OFL), em versalete com entreletra
+larga nos rótulos — a letra gravada, não a de interface.
+
+A assinatura é a moeda: coruja de Atena, ramo de oliveira e a lua crescente, os
+três elementos do tetradracma. Ela é o logo, o favicon e o ícone dos estados
+vazios.
 
 ### Apps
 
 | App | Responsabilidade |
 |---|---|
-| `carteira` | domínio financeiro e telas do portal. Não conhece WhatsApp nem IA. |
+| `carteira` | domínio financeiro e o painel. Não conhece WhatsApp nem IA. |
 | `zap` | transporte: webhook, canais, mídia, janela de atendimento, onboarding |
 | `ai` | cliente Claude, tools, loop do agente, transcrição |
 | `accounts` | usuário, espaço, modo visitante, quota de IA |

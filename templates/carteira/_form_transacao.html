@@ -1,0 +1,46 @@
+<h2>{{ titulo }}</h2>
+<form {% if codigo %}hx-post="{% url acao codigo %}"{% else %}hx-post="{% url acao %}"{% endif %}
+      hx-target="#dialogo-corpo">
+  {% csrf_token %}
+  {% if form.non_field_errors %}<p class="erro">{{ form.non_field_errors }}</p>{% endif %}
+
+  <div class="campos-lado">
+    <div class="campo">
+      {{ form.tipo.label_tag }}{{ form.tipo }}
+      {% for e in form.tipo.errors %}<p class="erro">{{ e }}</p>{% endfor %}
+    </div>
+    <div class="campo">
+      {{ form.valor.label_tag }}{{ form.valor }}
+      {% for e in form.valor.errors %}<p class="erro">{{ e }}</p>{% endfor %}
+    </div>
+  </div>
+
+  <div class="campo">
+    {{ form.descricao.label_tag }}{{ form.descricao }}
+    {% for e in form.descricao.errors %}<p class="erro">{{ e }}</p>{% endfor %}
+  </div>
+
+  <div class="campos-lado">
+    <div class="campo">
+      {{ form.categoria.label_tag }}{{ form.categoria }}
+    </div>
+    <div class="campo">
+      {{ form.conta.label_tag }}{{ form.conta }}
+    </div>
+  </div>
+
+  <div class="campos-lado">
+    <div class="campo">
+      {{ form.data.label_tag }}{{ form.data }}
+      {% for e in form.data.errors %}<p class="erro">{{ e }}</p>{% endfor %}
+    </div>
+    <div class="campo campo--caixa">
+      <label for="{{ form.pago.id_for_label }}">{{ form.pago }} Já foi pago</label>
+    </div>
+  </div>
+
+  <div class="acoes-linha acoes-linha--fim">
+    <button type="button" class="botao botao--fantasma" data-fechar>Cancelar</button>
+    <button type="submit" class="botao">Salvar</button>
+  </div>
+</form>

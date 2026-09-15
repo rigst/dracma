@@ -58,9 +58,11 @@ class AcessoTest(TestCase):
         for rota in (
             "carteira:painel",
             "carteira:transacoes",
-            "carteira:limites",
-            "carteira:relatorios",
             "carteira:exportar",
+            "carteira:nova_transacao",
+            "carteira:novo_limite",
+            "carteira:novo_recorrente",
+            "carteira:nova_conta",
             "zap:console",
         ):
             with self.subTest(rota=rota):
@@ -102,7 +104,7 @@ class PainelTest(BasePortalTest):
 
 class TransacoesTest(BasePortalTest):
     def test_lista_tudo_do_mes(self):
-        resposta = self.client.get(reverse("carteira:transacoes"))
+        resposta = self.client.get(reverse("carteira:transacoes"), HTTP_HX_REQUEST="true")
         self.assertContains(resposta, "Mercado")
         self.assertContains(resposta, "Aluguel")
 
@@ -127,23 +129,28 @@ class TransacoesTest(BasePortalTest):
         self.assertNotContains(resposta, "<html")
         self.assertContains(resposta, "Mercado")
 
+    def test_painel_lista_os_lancamentos(self):
+        self.assertContains(self.client.get(reverse("carteira:painel")), "Mercado")
+
     def test_nao_enxerga_transacao_de_outro_espaco(self):
         vizinho = Espaco.objects.create(nome="Vizinho")
         semear_categorias(vizinho)
         services.registrar_transacao(
             espaco=vizinho, valor="99", descricao="Segredo do vizinho", categoria="Lazer"
         )
-        resposta = self.client.get(reverse("carteira:transacoes"))
+        resposta = self.client.get(reverse("carteira:transacoes"), HTTP_HX_REQUEST="true")
         self.assertNotContains(resposta, "Segredo do vizinho")
 
 
-class RelatoriosTest(BasePortalTest):
-    def test_insight_aponta_a_categoria_dominante(self):
-        resposta = self.client.get(reverse("carteira:relatorios"))
+class InsightsNoPainelTest(BasePortalTest):
+    """Os insights moram no painel: não há tela de relatórios separada."""
+
+    def test_aponta_a_categoria_dominante(self):
+        resposta = self.client.get(reverse("carteira:painel"))
         self.assertContains(resposta, "Moradia")
         self.assertContains(resposta, "% das despesas")
 
-    def test_periodo_de_tres_meses(self):
+    def test_filtro_de_tres_meses_alcanca_lancamento_antigo(self):
         antiga = timezone.localdate() - timedelta(days=45)
         services.registrar_transacao(
             espaco=self.espaco,
@@ -152,9 +159,10 @@ class RelatoriosTest(BasePortalTest):
             categoria="Lazer",
             data_lancamento=antiga,
         )
-        self.assertContains(
-            self.client.get(reverse("carteira:relatorios"), {"periodo": "3m"}), "Lazer"
+        resposta = self.client.get(
+            reverse("carteira:transacoes"), {"periodo": "3m"}, HTTP_HX_REQUEST="true"
         )
+        self.assertContains(resposta, "Gasto antigo")
 
     def test_periodo_sem_despesa_tem_insight_proprio(self):
         vazio = Espaco.objects.create(nome="Novo")
@@ -162,7 +170,7 @@ class RelatoriosTest(BasePortalTest):
             username="cris", email="cris@exemplo.com", password="x", espaco=vazio
         )
         self.client.force_login(novo)
-        resposta = self.client.get(reverse("carteira:relatorios"))
+        resposta = self.client.get(reverse("carteira:painel"))
         self.assertContains(resposta, "Nenhuma despesa registrada")
 
 
@@ -225,12 +233,15 @@ class PeriodoTest(BasePortalTest):
         resposta = self.client.get(
             reverse("carteira:transacoes"),
             {"periodo": "custom", "inicio": "2020-01-01", "fim": "2020-01-31"},
+            HTTP_HX_REQUEST="true",
         )
         self.assertContains(resposta, "Nenhum lançamento")
 
     def test_data_invalida_cai_no_padrao(self):
         resposta = self.client.get(
-            reverse("carteira:transacoes"), {"periodo": "custom", "inicio": "ontem"}
+            reverse("carteira:transacoes"),
+            {"periodo": "custom", "inicio": "ontem"},
+            HTTP_HX_REQUEST="true",
         )
         self.assertEqual(resposta.status_code, 200)
         self.assertContains(resposta, "Mercado")

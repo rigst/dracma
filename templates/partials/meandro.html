@@ -1,0 +1,19 @@
+{% comment %}
+O meandro — a grega. Faixa que separa os registros de um vaso; aqui separa o
+friso do conteúdo.
+
+SVG inline com <pattern>, e não máscara CSS: máscara carregada de arquivo é
+tratada como origem opaca em alguns contextos e simplesmente some. Inline, o
+traço usa currentColor e acompanha o tema sem duplicar nada.
+
+Sem viewBox de propósito: as unidades do pattern passam a ser pixels do CSS, e
+o desenho não distorce quando a faixa estica.
+{% endcomment %}
+<svg class="meandro" aria-hidden="true" focusable="false">
+  <defs>
+    <pattern id="meandro-unidade" width="26" height="18" patternUnits="userSpaceOnUse">
+      <path d="M2 17V2h20v11H9V7h8" fill="none" stroke="currentColor" stroke-width="2.4"/>
+    </pattern>
+  </defs>
+  <rect width="100%" height="100%" fill="url(#meandro-unidade)"/>
+</svg>
