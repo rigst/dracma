@@ -6,6 +6,8 @@ db.sqlite3
 media/
 staticfiles/
 logs/*.log
+# Estado do Celery Beat, criado no WorkingDirectory do serviço.
+celerybeat-schedule
 .coverage
 coverage.xml
 htmlcov/
