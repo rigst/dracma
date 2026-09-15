@@ -21,8 +21,11 @@ limites temporários avulsos ("R$ 200 pra presente essa semana"). Ao chegar em
 **Planejamento.** Ganhos e despesas recorrentes viram projeção: saldo previsto
 de fechamento do mês, o que ainda entra e o que ainda sai.
 
-**Colaboração.** Toda transação pertence a um *espaço*, não a uma pessoa. Casal,
-família ou time acompanham o mesmo mês, cada um lançando do próprio WhatsApp.
+**Colaboração, com privacidade.** Toda transação pertence a um *espaço*, não a
+uma pessoa: casal, família ou time acompanham o mesmo mês, cada um lançando do
+próprio WhatsApp. Mas dividir a conta da casa não é abrir o extrato inteiro —
+cada lançamento é **compartilhado** ou **só eu**, e o que é pessoal some da
+visão dos outros, do CSV, dos alertas e do que a assistente responde.
 
 **Portal.** Uma página só: saldo do mês, para onde o dinheiro foi, limites,
 recorrentes, lançamentos e a conversa com a assistente — tudo no mesmo painel,
@@ -68,7 +71,14 @@ memória para os testes. É isso que permite construir e demonstrar o agente
 inteiro sem tocar na Meta — e o que sustenta a demo pública, já que o número de
 teste dela só atende 5 destinatários allowlistados.
 
-**3. Existe um ponto único de escrita.** A resposta da Claude nunca escreve no
+**3. A visibilidade é uma regra só.** `services.visiveis_para` responde
+"o que esta pessoa pode ver": ou o lançamento é compartilhado, ou é dela. Está
+num lugar só porque espalhada o primeiro relatório novo esqueceria dela — e o
+erro aqui não é tela quebrada, é vazamento. Limites são a exceção deliberada:
+contam **só o que é do espaço**, porque o alerta vai para todo mundo e um
+percentual calculado com gasto pessoal entregaria esse gasto.
+
+**4. Existe um ponto único de escrita.** A resposta da Claude nunca escreve no
 banco: as tools validam argumentos e delegam para `carteira/services.py`, o
 mesmo módulo que as telas do portal usam. Sem isso, seriam duas regras de
 negócio divergindo em silêncio.

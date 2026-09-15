@@ -4,11 +4,15 @@
   {% csrf_token %}
   {% if form.non_field_errors %}<p class="erro">{{ form.non_field_errors }}</p>{% endif %}
   {% for campo in form %}
-  <div class="campo">
+  {% if campo.name == "compartilhada" and not compartilhado %}
+    {{ campo.as_hidden }}
+  {% else %}
+  <div class="campo{% if campo.name == 'compartilhada' %} quem-ve{% endif %}">
     {{ campo.label_tag }}{{ campo }}
     {% if campo.help_text %}<p class="ajuda">{{ campo.help_text }}</p>{% endif %}
     {% for e in campo.errors %}<p class="erro">{{ e }}</p>{% endfor %}
   </div>
+  {% endif %}
   {% endfor %}
   <div class="acoes-linha acoes-linha--fim">
     <button type="button" class="botao botao--fantasma" data-fechar>Cancelar</button>

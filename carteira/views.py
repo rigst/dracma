@@ -21,10 +21,11 @@ from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
+from accounts import espacos
 from zap.console import historico
 
 from . import graficos, services
-from .forms import ContaForm, LimiteForm, RecorrenteForm, TransacaoForm
+from .forms import ContaForm, EntrarNoEspacoForm, LimiteForm, RecorrenteForm, TransacaoForm
 from .models import Conta, Limite, Origem, Recorrente, TipoTransacao, Transacao
 
 
@@ -74,14 +75,14 @@ def _periodo(request) -> tuple[date, date]:
 # ---------------------------------------------------------------------------
 
 
-def _contexto_do_mes(espaco, hoje=None) -> dict:
-    """Os números do mês. Usado pelo painel e pelo fragmento de totais."""
+def _contexto_do_mes(espaco, usuario, hoje=None) -> dict:
+    """Os números do mês, recortados pelo que ESTA pessoa pode ver."""
     hoje = hoje or timezone.localdate()
     services.projetar_recorrentes(espaco, hoje)
 
     inicio, fim = services.limites_do_mes(hoje)
-    resumo = services.resumo_periodo(espaco, inicio, fim)
-    previsao = services.saldo_previsto(espaco, hoje)
+    resumo = services.resumo_periodo(espaco, inicio, fim, usuario=usuario)
+    previsao = services.saldo_previsto(espaco, hoje, usuario=usuario)
 
     return {
         "hoje": hoje,
@@ -107,7 +108,7 @@ def painel(request):
     hoje = timezone.localdate()
     inicio, fim = services.limites_do_mes(hoje)
 
-    contexto = _contexto_do_mes(espaco, hoje)
+    contexto = _contexto_do_mes(espaco, request.user, hoje)
     contexto.update(
         {
             "consumos": _consumos(espaco, hoje),
@@ -117,17 +118,20 @@ def painel(request):
             "fim": fim,
             "categorias": espaco.categorias.filter(ativa=True).order_by("nome"),
             "contas": [
-                (conta, services.saldo_da_conta(conta))
+                (conta, services.saldo_da_conta(conta, usuario=request.user))
                 for conta in Conta.objects.filter(espaco=espaco, ativa=True)
             ],
-            "recorrentes": Recorrente.objects.filter(espaco=espaco, ativo=True).select_related(
-                "categoria"
-            ),
-            "proximas": (
-                Transacao.objects.filter(espaco=espaco, pago=False, data__gte=hoje)
-                .select_related("categoria", "conta")
-                .order_by("data")[:5]
-            ),
+            "recorrentes": services.visiveis_para(
+                Recorrente.objects.filter(espaco=espaco, ativo=True), request.user
+            ).select_related("categoria"),
+            "proximas": services.visiveis_para(
+                Transacao.objects.filter(espaco=espaco, pago=False, data__gte=hoje),
+                request.user,
+            )
+            .select_related("categoria", "conta")
+            .order_by("data")[:5],
+            "membros": espaco.membros.order_by("username"),
+            "compartilhado": espaco.membros.count() > 1,
             # A conversa mora no próprio painel: perguntar "quanto sobra?" e
             # ver o número na mesma tela é o ponto.
             "falas": historico(request.user, limite=40),
@@ -179,7 +183,10 @@ def _insights(resumo) -> list[str]:
 def _consulta_transacoes(request, espaco):
     inicio, fim = _periodo(request)
     consulta = (
-        Transacao.objects.filter(espaco=espaco, data__gte=inicio, data__lte=fim)
+        services.visiveis_para(
+            Transacao.objects.filter(espaco=espaco, data__gte=inicio, data__lte=fim),
+            request.user,
+        )
         .select_related("categoria", "conta", "autor")
         .order_by("-data", "-criada_em")
     )
@@ -217,7 +224,7 @@ def _fragmento_apos_escrita(request, espaco):
     saldo, na rosca, nos limites e nas próximas contas ao mesmo tempo — trocar
     um pedaço só deixaria o resto da tela mentindo.
     """
-    contexto = _contexto_do_mes(espaco)
+    contexto = _contexto_do_mes(espaco, request.user)
     contexto.update(
         {
             "consumos": _consumos(espaco),
@@ -272,6 +279,7 @@ def nova_transacao(request):
                 pago=dados["pago"],
                 origem=Origem.PORTAL,
                 autor=request.user,
+                compartilhada=dados["compartilhada"],
             )
             messages.success(request, "Lançamento registrado.")
             return _fragmento_apos_escrita(request, espaco)
@@ -281,14 +289,22 @@ def nova_transacao(request):
     return render(
         request,
         "carteira/_form_transacao.html",
-        {"form": form, "titulo": "Novo lançamento", "acao": "carteira:nova_transacao"},
+        {
+            "form": form,
+            "titulo": "Novo lançamento",
+            "acao": "carteira:nova_transacao",
+            "compartilhado": espaco.membros.count() > 1,
+        },
     )
 
 
 @login_required
 def editar_transacao(request, codigo):
     espaco = _espaco(request)
-    alvo = get_object_or_404(Transacao, espaco=espaco, codigo=codigo.upper())
+    alvo = get_object_or_404(
+        services.visiveis_para(Transacao.objects.filter(espaco=espaco), request.user),
+        codigo=codigo.upper(),
+    )
 
     if request.method == "POST":
         form = TransacaoForm(request.POST, espaco=espaco)
@@ -301,6 +317,7 @@ def editar_transacao(request, codigo):
             alvo.categoria = dados["categoria"]
             alvo.conta = dados["conta"]
             alvo.pago = dados["pago"]
+            alvo.compartilhada = dados["compartilhada"]
             alvo.save()
             messages.success(request, f"Lançamento {alvo.codigo} atualizado.")
             return _fragmento_apos_escrita(request, espaco)
@@ -315,6 +332,7 @@ def editar_transacao(request, codigo):
                 "categoria": alvo.categoria_id,
                 "conta": alvo.conta_id,
                 "pago": alvo.pago,
+                "compartilhada": "1" if alvo.compartilhada else "0",
             },
         )
 
@@ -326,6 +344,7 @@ def editar_transacao(request, codigo):
             "titulo": f"Lançamento {alvo.codigo}",
             "acao": "carteira:editar_transacao",
             "codigo": alvo.codigo,
+            "compartilhado": espaco.membros.count() > 1,
         },
     )
 
@@ -334,8 +353,16 @@ def editar_transacao(request, codigo):
 @require_POST
 def excluir_transacao(request, codigo):
     espaco = _espaco(request)
-    resumo = services.excluir_transacao(espaco=espaco, codigo=codigo)
-    messages.info(request, f"“{resumo['descricao']}” foi apagado.")
+    # 404 e não erro de domínio: pedir para apagar o lançamento pessoal de
+    # outra pessoa tem que responder como se ele não existisse — que, do ponto
+    # de vista de quem pediu, é a verdade.
+    alvo = get_object_or_404(
+        services.visiveis_para(Transacao.objects.filter(espaco=espaco), request.user),
+        codigo=codigo.upper(),
+    )
+    descricao = alvo.descricao
+    alvo.delete()
+    messages.info(request, f"“{descricao}” foi apagado.")
     return _fragmento_apos_escrita(request, espaco)
 
 
@@ -344,7 +371,10 @@ def excluir_transacao(request, codigo):
 def alternar_pago(request, codigo):
     """Dá baixa numa conta direto na linha, sem abrir diálogo."""
     espaco = _espaco(request)
-    alvo = get_object_or_404(Transacao, espaco=espaco, codigo=codigo.upper())
+    alvo = get_object_or_404(
+        services.visiveis_para(Transacao.objects.filter(espaco=espaco), request.user),
+        codigo=codigo.upper(),
+    )
     alvo.pago = not alvo.pago
     alvo.prevista = False if alvo.pago else alvo.prevista
     alvo.save(update_fields=["pago", "prevista", "atualizada_em"])
@@ -410,6 +440,8 @@ def novo_recorrente(request):
                 tipo=dados["tipo"],
                 categoria=dados["categoria"].nome if dados["categoria"] else None,
                 conta=dados["conta"].nome if dados["conta"] else None,
+                autor=request.user,
+                compartilhada=dados["compartilhada"],
             )
             messages.success(request, "Recorrente cadastrado.")
             return _fragmento_apos_escrita(request, espaco)
@@ -423,6 +455,7 @@ def novo_recorrente(request):
             "titulo": "Novo recorrente",
             "acao": "carteira:novo_recorrente",
             "ajuda": "Ganhos e contas fixas entram sozinhos na projeção de todo mês.",
+            "compartilhado": espaco.membros.count() > 1,
         },
     )
 
@@ -482,10 +515,24 @@ def exportar(request):
 
     escritor = csv.writer(resposta, delimiter=";")
     escritor.writerow(
-        ["codigo", "data", "tipo", "valor", "descricao", "categoria", "conta", "pago", "origem"]
+        [
+            "codigo",
+            "data",
+            "tipo",
+            "valor",
+            "descricao",
+            "categoria",
+            "conta",
+            "pago",
+            "quem_ve",
+            "origem",
+        ]
     )
     for t in (
-        Transacao.objects.filter(espaco=espaco, data__gte=inicio, data__lte=fim)
+        services.visiveis_para(
+            Transacao.objects.filter(espaco=espaco, data__gte=inicio, data__lte=fim),
+            request.user,
+        )
         .select_related("categoria", "conta")
         .order_by("data")
     ):
@@ -499,7 +546,58 @@ def exportar(request):
                 t.categoria.nome if t.categoria else "",
                 t.conta.nome if t.conta else "",
                 "sim" if t.pago else "não",
+                "espaço" if t.compartilhada else "só eu",
                 t.get_origem_display(),
             ]
         )
     return resposta
+
+
+# ---------------------------------------------------------------------------
+# Compartilhar o espaço
+# ---------------------------------------------------------------------------
+
+
+@login_required
+def compartilhar(request):
+    """Convidar alguém, ou entrar no espaço de quem convidou."""
+    espaco = _espaco(request)
+    form = EntrarNoEspacoForm()
+
+    if request.method == "POST":
+        form = EntrarNoEspacoForm(request.POST)
+        if form.is_valid():
+            try:
+                destino = espacos.entrar_com_codigo(request.user, form.cleaned_data["codigo"])
+            except espacos.ErroDeEspaco as exc:
+                form.add_error("codigo", str(exc))
+            else:
+                messages.success(request, f"Você entrou em “{destino.nome}”.")
+                return _fragmento_apos_escrita(request, destino)
+
+    convite = espacos.convite_vigente(espaco, request.user)
+    return render(
+        request,
+        "carteira/_compartilhar.html",
+        {
+            "espaco": espaco,
+            "convite": convite,
+            "membros": espaco.membros.order_by("username"),
+            "form": form,
+        },
+    )
+
+
+@login_required
+@require_POST
+def sair_do_espaco(request):
+    try:
+        espacos.sair_do_espaco(request.user)
+    except espacos.ErroDeEspaco as exc:
+        messages.error(request, str(exc))
+    else:
+        messages.info(
+            request,
+            "Você saiu do espaço. O que era compartilhado ficou lá; o que era seu veio junto.",
+        )
+    return _fragmento_apos_escrita(request, _espaco(request))

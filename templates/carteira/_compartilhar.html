@@ -1,0 +1,50 @@
+<h2>Compartilhar o espaço</h2>
+<p class="nota nota--larga" style="margin-top:0">
+  Quem entra no espaço acompanha o mesmo mês: vê os lançamentos
+  <strong>compartilhados</strong>, os limites e a previsão. O que você marcar
+  como <strong>só eu</strong> continua sendo só seu.
+</p>
+
+<h3 style="margin-top:1.5rem">Quem está aqui</h3>
+<ul class="membros">
+  {% for m in membros %}
+  <li>
+    <span>{{ m.get_full_name|default:m.username }}</span>
+    {% if m == user %}<span class="etiqueta">você</span>{% endif %}
+  </li>
+  {% endfor %}
+</ul>
+
+{% if membros|length > 1 %}
+<form method="post" action="{% url 'carteira:sair_do_espaco' %}"
+      hx-post="{% url 'carteira:sair_do_espaco' %}" hx-target="#painel-corpo"
+      hx-confirm="Sair deste espaço? O que é compartilhado fica com quem continua lá."
+      style="margin-top:.75rem">
+  {% csrf_token %}
+  <button type="submit" class="ligacao ligacao--perigo">Sair deste espaço</button>
+</form>
+{% endif %}
+
+<h3 style="margin-top:1.75rem">Convidar alguém</h3>
+<p class="nota" style="margin-top:0">
+  Mande este código. Ele vale até {{ convite.expira_em|date:"d/m" }} e serve uma
+  vez só.
+</p>
+<p class="codigo-grande">{{ convite.codigo }}</p>
+
+<h3 style="margin-top:1.75rem">Entrar num espaço</h3>
+<p class="nota" style="margin-top:0">
+  Recebeu um convite? Ao entrar, <strong>seus lançamentos vão junto, marcados
+  como “só eu”</strong> — nada do seu histórico aparece para quem convidou.
+</p>
+<form hx-post="{% url 'carteira:compartilhar' %}" hx-target="#dialogo-corpo">
+  {% csrf_token %}
+  <div class="campo">
+    {{ form.codigo.label_tag }}{{ form.codigo }}
+    {% for e in form.codigo.errors %}<p class="erro">{{ e }}</p>{% endfor %}
+  </div>
+  <div class="acoes-linha acoes-linha--fim">
+    <button type="button" class="botao botao--fantasma" data-fechar>Fechar</button>
+    <button type="submit" class="botao">Entrar</button>
+  </div>
+</form>

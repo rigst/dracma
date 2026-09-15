@@ -35,6 +35,7 @@ class BaseEdicaoTest(TestCase):
             "categoria": "",
             "conta": "",
             "pago": "on",
+            "compartilhada": "1",
         }
         base.update(extra)
         return base
@@ -54,6 +55,7 @@ class CamposTest(TestCase):
                 "descricao": "Mercado",
                 "data": "2026-09-14",
                 "pago": "on",
+                "compartilhada": "1",
             },
             espaco=self.espaco,
         )
@@ -94,6 +96,7 @@ class CamposTest(TestCase):
                         "descricao": "x",
                         "data": entrada,
                         "pago": "on",
+                        "compartilhada": "1",
                     },
                     espaco=self.espaco,
                 )
@@ -267,6 +270,7 @@ class LimiteRecorrenteContaTest(BaseEdicaoTest):
                 "dia_do_mes": "28",
                 "categoria": "",
                 "conta": "",
+                "compartilhada": "1",
             },
         )
         self.assertEqual(Recorrente.objects.count(), 1)

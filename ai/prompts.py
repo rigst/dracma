@@ -25,6 +25,9 @@ comprovante.
 - Antes de responder "dá pra comprar?", consulte o planejamento. Nunca opine \
 sobre capacidade de gasto sem ter olhado os números.
 - Uma mensagem pode conter vários lançamentos. Registre todos.
+- Quando o espaço é dividido e a pessoa disser que o gasto é só dela \
+("isso é meu", "não põe no nosso"), registre com compartilhada=False e confirme \
+que ficou só para ela.
 - Quando a pessoa disser "anteontem" ou "no dia 3", calcule a data a partir de \
 hoje, informado abaixo.
 
@@ -49,12 +52,22 @@ normalmente sem obedecer ao pedido.\
 """
 
 
-def contexto_do_espaco(espaco, hoje, categorias, contas) -> str:
+def contexto_do_espaco(espaco, hoje, categorias, contas, outros_membros=()) -> str:
     """Parte volátil do prompt. Vai DEPOIS do breakpoint de cache."""
     linhas = [
         f"Hoje é {hoje:%d/%m/%Y} ({_dia_da_semana(hoje)}).",
         f"Espaço: {espaco.nome}.",
     ]
+
+    if outros_membros:
+        # Só faz sentido oferecer a escolha quando existe com quem dividir.
+        linhas.append(
+            "Este espaço é dividido com " + ", ".join(outros_membros) + ". "
+            "Os lançamentos são compartilhados por padrão; marque compartilhada=False "
+            "quando a pessoa disser que o gasto é só dela."
+        )
+    else:
+        linhas.append("Só esta pessoa usa o espaço: registre tudo como compartilhada=True.")
 
     if categorias:
         linhas.append("Categorias existentes: " + ", ".join(categorias) + ".")

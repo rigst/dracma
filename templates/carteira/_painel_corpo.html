@@ -153,9 +153,21 @@ atualizar só a tabela deixaria o resto da tela mentindo.
 <div class="titulo-secao">
   <h2>Lançamentos</h2>
   <div class="acoes">
+    <button class="botao botao--fantasma" hx-get="{% url 'carteira:compartilhar' %}"
+            hx-target="#dialogo-corpo">
+      {% if compartilhado %}Quem divide{% else %}Compartilhar{% endif %}
+    </button>
     <a class="botao botao--fantasma" href="{% url 'carteira:exportar' %}">Exportar CSV</a>
   </div>
 </div>
+
+{% if compartilhado %}
+<p class="nota" style="margin-top:-.4rem;margin-bottom:.9rem">
+  Dividindo com
+  {% for m in membros %}{% if m != user %}{{ m.get_short_name|default:m.username }}{% if not forloop.last %}, {% endif %}{% endif %}{% endfor %}.
+  Os limites contam só o que é do espaço.
+</p>
+{% endif %}
 
 <form class="filtros" hx-get="{% url 'carteira:transacoes' %}"
       hx-target="#tabela" hx-trigger="change">

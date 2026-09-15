@@ -13,6 +13,10 @@
         <td>
           {{ t.descricao }}
           {% if not t.pago %}<span class="etiqueta">a pagar</span>{% endif %}
+          {% if compartilhado and not t.compartilhada %}<span class="pessoal">só eu</span>{% endif %}
+          {% if compartilhado and t.compartilhada and t.autor and t.autor != user %}
+          <span class="etiqueta">{{ t.autor.get_short_name|default:t.autor.username }}</span>
+          {% endif %}
           <span class="codigo">{{ t.codigo }}</span>
         </td>
         <td>{{ t.categoria|default:"—" }}</td>

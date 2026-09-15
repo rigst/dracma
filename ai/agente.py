@@ -143,6 +143,13 @@ def _montar_sistema(contexto: Contexto) -> list[dict]:
         Conta.objects.filter(espaco=contexto.espaco, ativa=True).values_list("nome", flat=True)
     )
 
+    outros = []
+    if contexto.usuario is not None:
+        outros = [
+            m.get_short_name() or m.username
+            for m in contexto.espaco.membros.exclude(pk=contexto.usuario.pk)
+        ]
+
     return [
         {
             "type": "text",
@@ -151,7 +158,7 @@ def _montar_sistema(contexto: Contexto) -> list[dict]:
         },
         {
             "type": "text",
-            "text": contexto_do_espaco(contexto.espaco, contexto.hoje, categorias, contas),
+            "text": contexto_do_espaco(contexto.espaco, contexto.hoje, categorias, contas, outros),
         },
     ]
 

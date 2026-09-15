@@ -32,17 +32,35 @@ def _dinheiro(valor) -> str:
     return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
-def _numeros_do(espaco):
-    """Números verificados do espaço. Todo mundo do espaço é avisado: num
-    casal, quem estourou o limite de delivery pode não ser quem o criou."""
+def _numeros_do(espaco, destinatario=None):
+    """Números verificados a quem o aviso se destina.
+
+    Sem `destinatario`, todo mundo do espaço: num casal, quem estourou o limite
+    de delivery pode não ser quem o criou.
+
+    COM `destinatario`, só ele — e é isso que impede um lembrete de conta
+    pessoal ("Presente de aniversário vence amanhã, R$ 200") de ser transmitido
+    justamente para quem não devia ver aquele lançamento.
+    """
     from zap.models import NumeroWhatsApp
 
-    return NumeroWhatsApp.objects.filter(
+    consulta = NumeroWhatsApp.objects.filter(
         usuario__espaco=espaco, verificado_em__isnull=False
     ).select_related("usuario")
+    if destinatario is not None:
+        consulta = consulta.filter(usuario=destinatario)
+    return consulta
 
 
-def _avisar(espaco, tipo: str, chave: str, referencia: str, texto: str, parametros=None) -> bool:
+def _avisar(
+    espaco,
+    tipo: str,
+    chave: str,
+    referencia: str,
+    texto: str,
+    parametros=None,
+    destinatario=None,
+) -> bool:
     """Envia uma vez só. Devolve True se de fato saiu para alguém.
 
     O `Alerta` é criado ANTES do envio: se duas rodadas do beat correrem juntas,
@@ -65,7 +83,7 @@ def _avisar(espaco, tipo: str, chave: str, referencia: str, texto: str, parametr
     enviou = False
     adiou = False
 
-    for numero in _numeros_do(espaco):
+    for numero in _numeros_do(espaco, destinatario):
         decisao, _ = janela.notificar(
             numero, texto, template=template, parametros=parametros or [texto]
         )
@@ -158,7 +176,7 @@ def lembrar_vencimentos() -> int:
             pago=False,
             tipo=TipoTransacao.DESPESA,
         )
-        .select_related("espaco", "categoria")
+        .select_related("espaco", "categoria", "autor")
         .order_by("espaco_id", "data")
     )
 
@@ -177,6 +195,8 @@ def lembrar_vencimentos() -> int:
             f"{transacao.data:%Y-%m-%d}",
             texto,
             [transacao.descricao, _dinheiro(transacao.valor), quando],
+            # Conta pessoal só é lembrada a quem a lançou.
+            destinatario=None if transacao.compartilhada else transacao.autor,
         ):
             enviados += 1
 
@@ -195,30 +215,34 @@ def resumo_semanal() -> int:
     inicio = hoje - timedelta(days=7)
     enviados = 0
 
+    # Um resumo POR PESSOA, e não um por espaço: o total do espaço somaria o
+    # gasto pessoal de cada um e entregaria esse gasto aos outros pelo número.
     for espaco in Espaco.objects.all():
-        resumo = services.resumo_periodo(espaco, inicio, hoje)
-        if not resumo.despesas and not resumo.receitas:
-            continue
+        for membro in espaco.membros.all():
+            resumo = services.resumo_periodo(espaco, inicio, hoje, usuario=membro)
+            if not resumo.despesas and not resumo.receitas:
+                continue
 
-        linhas = [
-            f"📊 Seus últimos 7 dias ({inicio:%d/%m} a {hoje:%d/%m}):",
-            "",
-            f"Entrou: {_dinheiro(resumo.receitas)}",
-            f"Saiu: {_dinheiro(resumo.despesas)}",
-        ]
-        maior = resumo.maior_categoria
-        if maior:
-            nome, valor, percentual = maior
-            linhas.append("")
-            linhas.append(f"Maior gasto: {nome} — {_dinheiro(valor)} ({percentual}%).")
+            linhas = [
+                f"📊 Seus últimos 7 dias ({inicio:%d/%m} a {hoje:%d/%m}):",
+                "",
+                f"Entrou: {_dinheiro(resumo.receitas)}",
+                f"Saiu: {_dinheiro(resumo.despesas)}",
+            ]
+            maior = resumo.maior_categoria
+            if maior:
+                nome, valor, percentual = maior
+                linhas.append("")
+                linhas.append(f"Maior gasto: {nome} — {_dinheiro(valor)} ({percentual}%).")
 
-        if _avisar(
-            espaco,
-            Alerta.Tipo.RESUMO,
-            "semanal",
-            f"{hoje:%Y-%m-%d}",
-            "\n".join(linhas),
-        ):
-            enviados += 1
+            if _avisar(
+                espaco,
+                Alerta.Tipo.RESUMO,
+                f"semanal:{membro.pk}",
+                f"{hoje:%Y-%m-%d}",
+                "\n".join(linhas),
+                destinatario=membro,
+            ):
+                enviados += 1
 
     return enviados

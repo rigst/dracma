@@ -39,6 +39,19 @@
     </div>
   </div>
 
+  {% if compartilhado %}
+  <div class="campo quem-ve" role="group" aria-labelledby="rotulo-quem-ve">
+    <span class="rotulo-grupo" id="rotulo-quem-ve">Quem vê</span>
+    {{ form.compartilhada }}
+    <p class="ajuda">
+      “Só eu” some da visão de quem divide o espaço com você — e não entra nos
+      limites, que são o orçamento da casa.
+    </p>
+  </div>
+  {% else %}
+  {{ form.compartilhada.as_hidden }}
+  {% endif %}
+
   <div class="acoes-linha acoes-linha--fim">
     <button type="button" class="botao botao--fantasma" data-fechar>Cancelar</button>
     <button type="submit" class="botao">Salvar</button>

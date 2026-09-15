@@ -140,6 +140,16 @@ class Transacao(models.Model):
         related_name="transferencias_recebidas",
     )
     pago = models.BooleanField("pago", default=True)
+    # Compartilhada = todo mundo do espaço vê. Pessoal = só quem lançou.
+    #
+    # Num espaço de uma pessoa só a distinção não muda nada, e o padrão é
+    # compartilhada. Ela passa a importar quando entra alguém: dividir a conta
+    # da casa não significa abrir o extrato inteiro para o outro.
+    #
+    # A regra de visibilidade mora em `services.visiveis_para` e é UMA só —
+    # espalhada, o primeiro relatório novo esqueceria dela e vazaria gasto
+    # pessoal num total do casal.
+    compartilhada = models.BooleanField("compartilhada", default=True)
     origem = models.CharField("origem", max_length=20, choices=Origem, default=Origem.PORTAL)
     # Previstas nascem do recorrente e ainda não aconteceram; entram na
     # projeção do mês, mas não no "já saiu".
@@ -155,6 +165,7 @@ class Transacao(models.Model):
         indexes = [
             models.Index(fields=["espaco", "data"]),
             models.Index(fields=["espaco", "categoria", "data"]),
+            models.Index(fields=["espaco", "compartilhada", "autor"]),
         ]
 
     def __str__(self) -> str:
@@ -189,6 +200,16 @@ class Recorrente(models.Model):
     )
     conta = models.ForeignKey(
         Conta, on_delete=models.PROTECT, null=True, blank=True, related_name="recorrentes"
+    )
+    # O salário de uma pessoa pode ser dela; o aluguel costuma ser da casa.
+    # A previsão que cada um vê usa a mesma regra dos lançamentos.
+    compartilhada = models.BooleanField("compartilhada", default=True)
+    autor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="recorrentes",
     )
     ativo = models.BooleanField("ativo", default=True)
     inicio = models.DateField("início", default=timezone.localdate)

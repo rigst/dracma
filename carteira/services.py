@@ -134,6 +134,7 @@ def registrar_transacao(
     pago: bool = True,
     origem: str = Origem.PORTAL,
     autor=None,
+    compartilhada: bool = True,
     observacao: str = "",
 ) -> Transacao:
     if tipo not in TipoTransacao.values:
@@ -154,21 +155,28 @@ def registrar_transacao(
         conta=achar_conta(espaco, conta),
         pago=pago,
         origem=origem,
+        compartilhada=compartilhada,
         observacao=observacao or "",
     )
 
 
-def buscar_por_codigo(espaco, codigo: str) -> Transacao:
+def buscar_por_codigo(espaco, codigo: str, usuario=None) -> Transacao:
+    """Acha pelo código, dentro do que a pessoa PODE ver.
+
+    Sem o recorte, saber o código de cinco caracteres bastaria para editar ou
+    apagar o lançamento pessoal de quem divide o espaço — e o erro apareceria
+    como "não achei", que é justamente o que deve acontecer.
+    """
     codigo = (codigo or "").strip().upper()
     try:
-        return Transacao.objects.get(espaco=espaco, codigo=codigo)
+        return visiveis_para(Transacao.objects.filter(espaco=espaco), usuario).get(codigo=codigo)
     except Transacao.DoesNotExist as exc:
         raise ErroDeDominio(f"Não achei nenhum lançamento com o código {codigo}.") from exc
 
 
 @db_transaction.atomic
-def editar_transacao(*, espaco, codigo: str, **campos) -> Transacao:
-    alvo = buscar_por_codigo(espaco, codigo)
+def editar_transacao(*, espaco, codigo: str, usuario=None, **campos) -> Transacao:
+    alvo = buscar_por_codigo(espaco, codigo, usuario)
     mudou = []
 
     if campos.get("valor") is not None:
@@ -201,8 +209,8 @@ def editar_transacao(*, espaco, codigo: str, **campos) -> Transacao:
 
 
 @db_transaction.atomic
-def excluir_transacao(*, espaco, codigo: str) -> dict:
-    alvo = buscar_por_codigo(espaco, codigo)
+def excluir_transacao(*, espaco, codigo: str, usuario=None) -> dict:
+    alvo = buscar_por_codigo(espaco, codigo, usuario)
     resumo = {"codigo": alvo.codigo, "descricao": alvo.descricao, "valor": alvo.valor}
     alvo.delete()
     return resumo
@@ -227,6 +235,37 @@ def dia_valido(ano: int, mes: int, dia: int) -> date:
     """
     ultimo = calendar.monthrange(ano, mes)[1]
     return date(ano, mes, min(dia, ultimo))
+
+
+# ---------------------------------------------------------------------------
+# Visibilidade
+# ---------------------------------------------------------------------------
+
+
+def visiveis_para(consulta, usuario):
+    """Filtra o que uma pessoa pode ver dentro do próprio espaço.
+
+    A regra é uma só: **ou o lançamento é compartilhado, ou é seu**. Nada de
+    "quase" — se ficasse espalhada, o primeiro relatório novo esqueceria dela e
+    um gasto pessoal apareceria no total do casal.
+
+    `usuario=None` significa "sem recorte", e é o que as rotinas de manutenção
+    usam. Toda consulta de TELA passa o usuário.
+    """
+    if usuario is None:
+        return consulta
+    return consulta.filter(Q(compartilhada=True) | Q(autor=usuario))
+
+
+def apenas_compartilhadas(consulta):
+    """Só o que é do espaço.
+
+    Usado pelos limites: o alerta vai para todo mundo do espaço, e calcular o
+    consumo com gasto pessoal de alguém vazaria esse gasto para os outros pelo
+    percentual. Limite é orçamento da casa; o que é pessoal fica de fora, e a
+    tela diz isso.
+    """
+    return consulta.filter(compartilhada=True)
 
 
 # ---------------------------------------------------------------------------
@@ -256,11 +295,11 @@ class Resumo:
         return nome, total, int(total / self.despesas * 100)
 
 
-def _base(espaco, inicio: date, fim: date, incluir_previstas: bool):
+def _base(espaco, inicio: date, fim: date, incluir_previstas: bool, usuario=None):
     consulta = Transacao.objects.filter(espaco=espaco, data__gte=inicio, data__lte=fim)
     if not incluir_previstas:
         consulta = consulta.filter(prevista=False)
-    return consulta
+    return visiveis_para(consulta, usuario)
 
 
 def total_gasto(
@@ -270,8 +309,14 @@ def total_gasto(
     categoria=None,
     conta=None,
     incluir_previstas: bool = False,
+    usuario=None,
+    so_compartilhadas: bool = False,
 ) -> Decimal:
-    consulta = _base(espaco, inicio, fim, incluir_previstas).filter(tipo=TipoTransacao.DESPESA)
+    consulta = _base(espaco, inicio, fim, incluir_previstas, usuario).filter(
+        tipo=TipoTransacao.DESPESA
+    )
+    if so_compartilhadas:
+        consulta = apenas_compartilhadas(consulta)
     if categoria is not None:
         consulta = consulta.filter(categoria=categoria)
     if conta is not None:
@@ -279,8 +324,10 @@ def total_gasto(
     return consulta.aggregate(total=Sum("valor"))["total"] or Decimal("0")
 
 
-def resumo_periodo(espaco, inicio: date, fim: date, incluir_previstas: bool = False) -> Resumo:
-    consulta = _base(espaco, inicio, fim, incluir_previstas)
+def resumo_periodo(
+    espaco, inicio: date, fim: date, incluir_previstas: bool = False, usuario=None
+) -> Resumo:
+    consulta = _base(espaco, inicio, fim, incluir_previstas, usuario)
 
     receitas = consulta.filter(tipo=TipoTransacao.RECEITA).aggregate(t=Sum("valor"))[
         "t"
@@ -318,15 +365,15 @@ def resumo_periodo(espaco, inicio: date, fim: date, incluir_previstas: bool = Fa
     )
 
 
-def saldo_previsto(espaco, referencia: date | None = None) -> dict:
+def saldo_previsto(espaco, referencia: date | None = None, usuario=None) -> dict:
     """O que ainda vem no mês.
 
     É o número central do planejamento: junta o que já aconteceu com o que
     está projetado, para a pessoa ver o aperto no dia 5 em vez de no dia 25.
     """
     inicio, fim = limites_do_mes(referencia)
-    realizado = resumo_periodo(espaco, inicio, fim, incluir_previstas=False)
-    completo = resumo_periodo(espaco, inicio, fim, incluir_previstas=True)
+    realizado = resumo_periodo(espaco, inicio, fim, incluir_previstas=False, usuario=usuario)
+    completo = resumo_periodo(espaco, inicio, fim, incluir_previstas=True, usuario=usuario)
 
     return {
         "inicio": inicio,
@@ -342,15 +389,25 @@ def saldo_previsto(espaco, referencia: date | None = None) -> dict:
     }
 
 
-def saldo_da_conta(conta: Conta) -> Decimal:
+def saldo_da_conta(conta: Conta, usuario=None) -> Decimal:
     """Calculado, nunca desnormalizado: um campo `saldo` gravado dessincroniza
-    na primeira edição de transação antiga."""
-    movimento = Transacao.objects.filter(conta=conta, prevista=False, pago=True).aggregate(
+    na primeira edição de transação antiga.
+
+    Recortado pela visibilidade: numa conta conjunta, quem não enxerga o gasto
+    pessoal do outro também não pode ver o efeito dele no saldo — senão a
+    diferença entre dois números entregaria o lançamento escondido.
+    """
+    movimento = visiveis_para(
+        Transacao.objects.filter(conta=conta, prevista=False, pago=True), usuario
+    ).aggregate(
         receitas=Sum("valor", filter=Q(tipo=TipoTransacao.RECEITA)),
         despesas=Sum("valor", filter=Q(tipo=TipoTransacao.DESPESA)),
     )
-    recebido = Transacao.objects.filter(
-        conta_destino=conta, prevista=False, pago=True, tipo=TipoTransacao.TRANSFERENCIA
+    recebido = visiveis_para(
+        Transacao.objects.filter(
+            conta_destino=conta, prevista=False, pago=True, tipo=TipoTransacao.TRANSFERENCIA
+        ),
+        usuario,
     ).aggregate(t=Sum("valor"))["t"] or Decimal("0")
 
     return (
@@ -395,7 +452,10 @@ def consumo_do_limite(limite: Limite, referencia: date | None = None) -> dict:
     else:
         inicio, fim = limites_do_mes(referencia)
 
-    gasto = total_gasto(limite.espaco, inicio, fim, categoria=limite.categoria)
+    # Só o que é do espaço: ver a justificativa em `apenas_compartilhadas`.
+    gasto = total_gasto(
+        limite.espaco, inicio, fim, categoria=limite.categoria, so_compartilhadas=True
+    )
     percentual = int(gasto / limite.valor * 100) if limite.valor else 0
 
     return {
@@ -423,6 +483,8 @@ def criar_recorrente(
     tipo: str = TipoTransacao.DESPESA,
     categoria: str | None = None,
     conta: str | None = None,
+    autor=None,
+    compartilhada: bool = True,
 ) -> Recorrente:
     if not 1 <= int(dia_do_mes) <= 31:
         raise ErroDeDominio("O dia do mês precisa estar entre 1 e 31.")
@@ -435,6 +497,8 @@ def criar_recorrente(
         tipo=tipo,
         categoria=achar_categoria(espaco, categoria, tipo),
         conta=achar_conta(espaco, conta),
+        autor=autor,
+        compartilhada=compartilhada,
     )
 
 
@@ -487,6 +551,8 @@ def projetar_recorrentes(espaco, referencia: date | None = None, meses: int = 2)
                 pago=False,
                 prevista=True,
                 origem=Origem.RECORRENTE,
+                autor=regra.autor,
+                compartilhada=regra.compartilhada,
                 observacao=marcador,
             )
             criadas += 1

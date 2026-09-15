@@ -58,8 +58,24 @@ TOOLS = [
                 },
                 "data": {"type": "string", "description": "AAAA-MM-DD."},
                 "pago": {"type": "boolean", "description": "False se ainda vai pagar."},
+                "compartilhada": {
+                    "type": "boolean",
+                    "description": (
+                        "True (padrão) para todo mundo do espaço ver. False quando a pessoa "
+                        "disser que o gasto é só dela — 'isso é meu', 'não põe no nosso'."
+                    ),
+                },
             },
-            "required": ["valor", "descricao", "tipo", "categoria", "conta", "data", "pago"],
+            "required": [
+                "valor",
+                "descricao",
+                "tipo",
+                "categoria",
+                "conta",
+                "data",
+                "pago",
+                "compartilhada",
+            ],
             "additionalProperties": False,
         },
     },
@@ -249,13 +265,16 @@ def _registrar(args, contexto, espaco):
         pago=args.get("pago", True),
         origem=contexto.origem,
         autor=contexto.usuario,
+        compartilhada=args.get("compartilhada", True),
     )
     categoria = transacao.categoria.nome if transacao.categoria else "sem categoria"
     conta = transacao.conta.nome if transacao.conta else "sem conta"
+    quem_ve = "todo o espaço" if transacao.compartilhada else "só quem lançou"
     return (
         f"Registrado. código={transacao.codigo} valor={_dinheiro(transacao.valor)} "
         f"descricao={transacao.descricao} categoria={categoria} conta={conta} "
-        f"data={transacao.data:%d/%m/%Y} tipo={transacao.get_tipo_display()}"
+        f"data={transacao.data:%d/%m/%Y} tipo={transacao.get_tipo_display()} "
+        f"quem_ve={quem_ve}"
     )
 
 
@@ -265,6 +284,7 @@ def _editar(args, contexto, espaco):
     transacao = services.editar_transacao(
         espaco=espaco,
         codigo=args["codigo"],
+        usuario=contexto.usuario,
         valor=args.get("valor") or None,
         descricao=args.get("descricao") or None,
         categoria=args.get("categoria") or None,
@@ -278,7 +298,9 @@ def _editar(args, contexto, espaco):
 
 
 def _excluir(args, contexto, espaco):
-    resumo = services.excluir_transacao(espaco=espaco, codigo=args["codigo"])
+    resumo = services.excluir_transacao(
+        espaco=espaco, codigo=args["codigo"], usuario=contexto.usuario
+    )
     return f"Excluído. código={resumo['codigo']} descricao={resumo['descricao']}"
 
 
@@ -289,10 +311,12 @@ def _consultar_periodo(args, contexto, espaco):
 
     if nome_categoria:
         categoria = services.achar_categoria(espaco, nome_categoria)
-        total = services.total_gasto(espaco, inicio, fim, categoria=categoria)
+        total = services.total_gasto(
+            espaco, inicio, fim, categoria=categoria, usuario=contexto.usuario
+        )
         return f"De {inicio:%d/%m} a {fim:%d/%m}, gasto em {categoria.nome}: {_dinheiro(total)}."
 
-    resumo = services.resumo_periodo(espaco, inicio, fim)
+    resumo = services.resumo_periodo(espaco, inicio, fim, usuario=contexto.usuario)
     linhas = [
         f"Período {inicio:%d/%m/%Y} a {fim:%d/%m/%Y}",
         f"entradas={_dinheiro(resumo.receitas)} saidas={_dinheiro(resumo.despesas)} "
@@ -311,7 +335,7 @@ def _consultar_planejamento(args, contexto, espaco):
     # Materializa antes de somar: sem isto, quem cadastrou um recorrente agora
     # veria a projeção sem ele.
     services.projetar_recorrentes(espaco, contexto.hoje)
-    s = services.saldo_previsto(espaco, contexto.hoje)
+    s = services.saldo_previsto(espaco, contexto.hoje, usuario=contexto.usuario)
     return (
         f"Mês de {s['inicio']:%m/%Y}. "
         f"já entrou={_dinheiro(s['receitas_realizadas'])} "
@@ -364,6 +388,7 @@ def _criar_recorrente(args, contexto, espaco):
         tipo=args.get("tipo") or TipoTransacao.DESPESA,
         categoria=args.get("categoria") or None,
         conta=args.get("conta") or None,
+        autor=contexto.usuario,
     )
     services.projetar_recorrentes(espaco, contexto.hoje)
     return (

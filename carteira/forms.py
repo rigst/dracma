@@ -115,6 +115,15 @@ class TransacaoForm(_ComEspaco):
         empty_label="Sem conta",
     )
     pago = forms.BooleanField(label="Já foi pago", required=False, initial=True)
+    compartilhada = forms.ChoiceField(
+        label="Quem vê",
+        choices=[("1", "Todo mundo do espaço"), ("0", "Só eu")],
+        initial="1",
+        widget=forms.RadioSelect,
+    )
+
+    def clean_compartilhada(self):
+        return self.cleaned_data["compartilhada"] == "1"
 
     def clean_data(self):
         valor = self.cleaned_data["data"]
@@ -191,6 +200,31 @@ class RecorrenteForm(_ComEspaco):
         required=False,
         empty_label="Sem conta",
     )
+    compartilhada = forms.ChoiceField(
+        label="Quem vê",
+        choices=[("1", "Todo mundo do espaço"), ("0", "Só eu")],
+        initial="1",
+        widget=forms.RadioSelect,
+    )
+
+    def clean_compartilhada(self):
+        return self.cleaned_data["compartilhada"] == "1"
+
+
+class EntrarNoEspacoForm(forms.Form):
+    """Código de convite de outro espaço."""
+
+    codigo = forms.CharField(
+        label="Código do convite",
+        max_length=12,
+        widget=forms.TextInput(
+            attrs={"placeholder": "ABC123", "autocapitalize": "characters", "autocomplete": "off"}
+        ),
+    )
+
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault("label_suffix", "")
+        super().__init__(*args, **kwargs)
 
 
 class ContaForm(_ComEspaco):
