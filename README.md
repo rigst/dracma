@@ -239,6 +239,9 @@ pendente.
 
 O que **precisa ser feito no servidor**, uma vez:
 
+O que precisa de root está em **`deploy/provisionar.sh`** — serviços, nginx e
+certificado, idempotente. O resto vem antes:
+
 ```bash
 # 1. Diretórios (o /var/www é do root; o venv e o modelo do whisper ficam fora
 #    da árvore do git para o deploy não rebaixar 500 MB a cada vez)
@@ -262,17 +265,18 @@ cp .env.example .env && chmod 600 .env   # e preencha (ver abaixo)
 ./venv/bin/python manage.py createsuperuser
 ./venv/bin/python manage.py collectstatic --noinput
 
-# 5. Serviços
-sudo cp deploy/systemd/*.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable --now dracma dracma_celery dracma_celery_midia
+# 5. Serviços, nginx e certificado, de uma vez
+sudo /var/www/dracma/deploy/provisionar.sh
 
-# 6. nginx e certificado
-sudo cp deploy/nginx/dracma /etc/nginx/sites-available/dracma
-sudo ln -s /etc/nginx/sites-available/dracma /etc/nginx/sites-enabled/
-sudo certbot --nginx -d dracma.stolben.com
-sudo nginx -t && sudo systemctl reload nginx
+# 6. Seu usuário (interativo)
+DJANGO_SETTINGS_MODULE=config.settings.production \
+  ./venv/bin/python manage.py createsuperuser
 ```
+
+O `provisionar.sh` sobe o nginx **só com HTTP** antes de pedir o certificado:
+a config definitiva referencia o `fullchain.pem`, e instalada antes de ele
+existir o `nginx -t` falha e o nginx nem recarrega. Emitido o certificado, ele
+troca pela definitiva e testa o domínio de ponta a ponta.
 
 E no GitHub: criar `rigst/dracma`, adicionar os secrets `CODECOV_TOKEN`,
 `SONAR_TOKEN` e `CD_SSH_KEY`, e a chave do usuário `deploy` no servidor com
