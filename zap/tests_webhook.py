@@ -254,3 +254,67 @@ class WebhookViewTest(TestCase):
     @override_settings(WHATSAPP_ENABLED=False)
     def test_desligado_responde_404(self):
         self.assertEqual(self.cliente.get(self.url).status_code, 404)
+
+    def test_status_failed_marca_a_saida_como_erro(self):
+        numero = NumeroWhatsApp.objects.create(numero="5551999998888")
+        enviada = Mensagem.objects.create(
+            numero=numero,
+            canal="cloud_api",
+            direcao=Mensagem.Direcao.SAIDA,
+            wamid="wamid.SAIU",
+            texto="oi",
+            status=Mensagem.Status.RESPONDIDA,
+        )
+
+        resposta = self._postar(
+            {
+                "entry": [
+                    {
+                        "changes": [
+                            {
+                                "value": {
+                                    "statuses": [
+                                        {
+                                            "id": "wamid.SAIU",
+                                            "status": "failed",
+                                            "errors": [{"code": 131030, "title": "fora da lista"}],
+                                        }
+                                    ]
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }
+        )
+
+        self.assertEqual(resposta.status_code, 200)
+        enviada.refresh_from_db()
+        self.assertEqual(enviada.status, Mensagem.Status.ERRO)
+        self.assertIn("131030", enviada.erro)
+
+    def test_status_delivered_nao_mexe_na_mensagem(self):
+        numero = NumeroWhatsApp.objects.create(numero="5551999998888")
+        enviada = Mensagem.objects.create(
+            numero=numero,
+            canal="cloud_api",
+            direcao=Mensagem.Direcao.SAIDA,
+            wamid="wamid.OK",
+            texto="oi",
+            status=Mensagem.Status.RESPONDIDA,
+        )
+
+        self._postar(
+            {
+                "entry": [
+                    {
+                        "changes": [
+                            {"value": {"statuses": [{"id": "wamid.OK", "status": "delivered"}]}}
+                        ]
+                    }
+                ]
+            }
+        )
+
+        enviada.refresh_from_db()
+        self.assertEqual(enviada.status, Mensagem.Status.RESPONDIDA)

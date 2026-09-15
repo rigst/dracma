@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import json
 import logging
 
 from django.conf import settings
@@ -68,8 +69,9 @@ def extrair_mensagens(payload: dict) -> list[dict]:
     um POST pode trazer várias mensagens de vários números. Tratar só a
     primeira perde lançamento quando a pessoa manda três áudios seguidos.
 
-    Eventos de status de entrega (`statuses`) são ignorados aqui: não são
-    mensagens do usuário e não abrem a janela de 24h.
+    Eventos de status de entrega (`statuses`) não entram aqui: não são
+    mensagens do usuário e não abrem a janela de 24h. Quem os lê é
+    `extrair_falhas`.
     """
     encontradas: list[dict] = []
 
@@ -82,6 +84,36 @@ def extrair_mensagens(payload: dict) -> list[dict]:
                     encontradas.append(item)
 
     return encontradas
+
+
+def extrair_falhas(payload: dict) -> list[dict]:
+    """Achata os eventos de status que reportam falha de entrega.
+
+    A Meta aceita o envio (200 + wamid) e só depois, por webhook, avisa que
+    não entregou. Sem ler isto, uma mensagem que nunca chegou fica gravada
+    como `respondida` e a falha é invisível — foi o que aconteceu com o
+    número fora da allowlist do número de teste.
+
+    Só `failed` interessa: `sent`, `delivered` e `read` não mudam nada que o
+    sistema precise saber, e gravar cada um deles seria três escritas por
+    mensagem enviada.
+    """
+    falhas: list[dict] = []
+
+    for entrada in payload.get("entry", []) or []:
+        for mudanca in entrada.get("changes", []) or []:
+            valor = mudanca.get("value") or {}
+            for estado in valor.get("statuses", []) or []:
+                if estado.get("status") != "failed":
+                    continue
+                falhas.append(
+                    {
+                        "wamid": estado.get("id", ""),
+                        "erro": json.dumps(estado.get("errors") or [], ensure_ascii=False),
+                    }
+                )
+
+    return falhas
 
 
 def _normalizar(bruta: dict) -> dict | None:

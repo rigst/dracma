@@ -29,7 +29,12 @@ from legal.utils import ip_do_request
 from . import onboarding
 from .console import conversar
 from .models import Mensagem, NumeroWhatsApp
-from .webhook import assinatura_valida, extrair_mensagens, verificar_handshake
+from .webhook import (
+    assinatura_valida,
+    extrair_falhas,
+    extrair_mensagens,
+    verificar_handshake,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +70,20 @@ def webhook(request):
     for item in extrair_mensagens(payload):
         _enfileirar(item, payload)
 
+    for falha in extrair_falhas(payload):
+        _registrar_falha(falha)
+
     return JsonResponse({"status": "ok"})
+
+
+def _registrar_falha(falha: dict) -> None:
+    """Marca como erro a mensagem que a Meta aceitou mas não entregou."""
+    atingidas = Mensagem.objects.filter(
+        wamid=falha["wamid"], direcao=Mensagem.Direcao.SAIDA
+    ).update(status=Mensagem.Status.ERRO, erro=falha["erro"][:2000])
+
+    if atingidas:
+        logger.warning("Meta não entregou %s: %s", falha["wamid"], falha["erro"][:300])
 
 
 def _enfileirar(item: dict, payload: dict) -> None:
