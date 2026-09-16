@@ -13,6 +13,35 @@ server {
     add_header Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()" always;
     add_header X-Content-Type-Options "nosniff" always;
 
+    # O admin precisa de 'unsafe-eval', e só ele.
+    #
+    # O Unfold roda sobre Alpine.js, e o build que ele distribui monta funções
+    # em tempo de execução (`Object.getPrototypeOf(async function(){})
+    # .constructor`). Sem 'unsafe-eval' o navegador barra TODA expressão do
+    # Alpine: o `x-cloak` é removido na inicialização mas o `x-show` nunca
+    # avalia, então o painel "Available shortcuts" abre e não fecha mais,
+    # cobrindo a tela. Menus, tema, filtros e sidebar param junto.
+    #
+    # Fica preso a /admin/, que é área de staff, em vez de afrouxar o CSP do
+    # portal inteiro, que é onde estão os dados financeiros e o webhook.
+    #
+    # Os quatro headers são repetidos de propósito: `add_header` dentro de um
+    # location DESCARTA todos os herdados do server. Omitir um aqui não deixa
+    # o valor do server valer; deixa a resposta do admin sem ele.
+    location /admin/ {
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://images.pexels.com; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'" always;
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+        add_header Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()" always;
+        add_header X-Content-Type-Options "nosniff" always;
+
+        proxy_pass http://127.0.0.1:8015;
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_redirect off;
+        proxy_read_timeout 300s;
+    }
+
     location /static/ {
         alias /var/www/dracma/staticfiles/;
         expires 30d;
