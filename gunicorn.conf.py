@@ -4,7 +4,7 @@
 #
 # Existe por um motivo só. O gunicorn 26 abre um socket de controle, para o
 # `gunicornc`, cujo caminho padrão é `$XDG_RUNTIME_DIR/gunicorn.ctl` e, sem
-# essa variável — o caso sob systemd —, cai em `~/.gunicorn/gunicorn.ctl`.
+# essa variável (o caso sob systemd), cai em `~/.gunicorn/gunicorn.ctl`.
 #
 # Os serviços deste servidor rodam como `rod` e resolviam todos para o MESMO
 # arquivo. Socket unix tem um dono só: quem sobe por último fica com ele, e a

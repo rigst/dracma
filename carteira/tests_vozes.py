@@ -1,7 +1,7 @@
 """As pitadas de mitologia nos avisos automáticos.
 
 O que importa aqui não é qual frase sai, é que ela seja estável entre
-processos e que não se repita em períodos seguidos — os dois jeitos de a
+processos e que não se repita em períodos seguidos: os dois jeitos de a
 personalidade virar defeito.
 """
 
@@ -15,7 +15,7 @@ class EscolhaTest(SimpleTestCase):
     def test_mesma_chave_e_periodo_dao_sempre_a_mesma_frase(self):
         """Estável entre processos: `hash()` de string é salgado por processo,
         então cada worker do Celery mandaria uma frase diferente para o mesmo
-        alerta — e o teste passaria aqui e falharia no CI."""
+        alerta, e o teste passaria aqui e falharia no CI."""
         primeira = vozes.escolher(vozes.ESTOUROU, "limite:7:2", 9)
         for _ in range(50):
             self.assertEqual(vozes.escolher(vozes.ESTOUROU, "limite:7:2", 9), primeira)

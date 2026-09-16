@@ -2,12 +2,12 @@
 
 Por que não é um rename de tabela: o que aquelas tabelas guardavam não tem
 equivalente aqui. A identidade em `zap_numerowhatsapp` era um telefone em
-E.164, e a deste app é o `chat.id` do Telegram — um inteiro que o Telegram
+E.164, e a deste app é o `chat.id` do Telegram, um inteiro que o Telegram
 atribui e que não se deriva de número nenhum. Renomear a tabela produziria
 linhas com um `chat_id` inventado, para as quais todo envio falharia.
 
 Então o vínculo foi refeito pelo portal, o que no Telegram é um toque. O
-histórico de mensagens do WhatsApp sai junto — é log de transporte de um canal
+histórico de mensagens do WhatsApp sai junto: é log de transporte de um canal
 que deixou de existir, e os lançamentos que ele gerou estão em `carteira`,
 intactos.
 

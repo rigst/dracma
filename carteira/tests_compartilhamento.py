@@ -506,7 +506,7 @@ class AlertaProativoTest(BaseCasalTest):
 
     def test_alerta_de_limite_vai_so_para_quem_gastou(self):
         # O percentual é o número de quem olha: mandá-lo a todos entregaria o
-        # gasto pessoal — "você usou 80% de R$ 400" deixa deduzir os R$ 320.
+        # gasto pessoal: "você usou 80% de R$ 400" deixa deduzir os R$ 320.
         from carteira.tasks import verificar_limites
 
         services.criar_limite(espaco=self.espaco, valor="100", categoria="Presentes")
@@ -654,7 +654,7 @@ class HistoricoAoEntrarTest(TestCase):
 
 
 class DonoPresumidoTest(TestCase):
-    """Um lançamento pessoal sem dono não é de ninguém e some para todos — a
+    """Um lançamento pessoal sem dono não é de ninguém e some para todos: a
     armadilha do padrão pessoal. Fechada na criação."""
 
     def setUp(self):

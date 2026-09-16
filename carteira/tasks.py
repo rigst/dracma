@@ -1,7 +1,7 @@
 """Tasks proativas: é aqui que o produto deixa de ser um CRUD.
 
 Toda mensagem daqui é INICIADA por nós, e não é resposta a nada. No Telegram
-isso é simplesmente permitido — some a janela de 24h da Meta, que obrigava
+isso é simplesmente permitido, some a janela de 24h da Meta, que obrigava
 cada envio proativo a escolher entre texto livre, template aprovado e adiar.
 
 Resta uma guarda, e é a que de fato importa: o registro em `Alerta`, com
@@ -38,7 +38,7 @@ def _contas_do(espaco, destinatario=None):
     Sem `destinatario`, todo mundo do espaço: num casal, quem estourou o limite
     de delivery pode não ser quem o criou.
 
-    COM `destinatario`, só ele — e é isso que impede um lembrete de conta
+    COM `destinatario`, só ele, e é isso que impede um lembrete de conta
     pessoal ("Presente de aniversário vence amanhã, R$ 200") de ser transmitido
     justamente para quem não devia ver aquele lançamento.
 
@@ -73,7 +73,7 @@ def _avisar(
     try:
         # `atomic` próprio: sem o savepoint, o IntegrityError capturado deixa a
         # transação externa marcada para rollback e a próxima consulta estoura
-        # com TransactionManagementError — no Postgres e no SQLite igualmente.
+        # com TransactionManagementError, no Postgres e no SQLite igualmente.
         with transaction.atomic():
             alerta = Alerta.objects.create(
                 espaco=espaco, tipo=tipo, chave=chave, referencia=referencia
@@ -88,7 +88,7 @@ def _avisar(
         enviou = enviou or alcancou
 
     if not enviou:
-        # Sem ninguém alcançado, o alerta fica marcado como adiado — ele conta
+        # Sem ninguém alcançado, o alerta fica marcado como adiado, ele conta
         # como "já decidido neste período" e não repete a cada hora, mas o
         # registro diz que a pessoa não foi avisada.
         Alerta.objects.filter(pk=alerta.pk).update(adiado=True)
@@ -102,7 +102,7 @@ def verificar_limites() -> int:
     """Avisa ao se aproximar e ao estourar cada limite.
 
     Um aviso POR PESSOA, com o número dela. O limite é do espaço, mas o consumo
-    é recortado pela visibilidade de quem olha — e mandar a todos o percentual
+    é recortado pela visibilidade de quem olha, e mandar a todos o percentual
     calculado com o gasto pessoal de alguém entregaria esse gasto: "você usou
     80% de R$ 400" deixa deduzir que saíram R$ 320.
 
@@ -200,7 +200,7 @@ def lembrar_vencimentos() -> int:
         texto = (
             f"🔔 {transacao.descricao} vence {quando} "
             f"({transacao.data:%d/%m}): {_dinheiro(transacao.valor)}.\n\n"
-            f"Se já pagou, me avisa que eu dou baixa — é só dizer "
+            f"Se já pagou, me avisa que eu dou baixa, é só dizer "
             f"“paguei o {transacao.descricao.lower()}”."
         )
         if _avisar(
@@ -247,7 +247,7 @@ def resumo_semanal() -> int:
             if maior:
                 nome, valor, percentual = maior
                 linhas.append("")
-                linhas.append(f"Maior gasto: {nome} — {_dinheiro(valor)} ({percentual}%).")
+                linhas.append(f"Maior gasto: {nome}, {_dinheiro(valor)} ({percentual}%).")
 
             # O tom segue o saldo: elogiar uma semana no vermelho soaria
             # deboche, e lamentar uma no azul, falta de atenção.

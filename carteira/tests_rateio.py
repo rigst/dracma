@@ -1,4 +1,4 @@
-"""Dividir o gasto: igual, por proporção, por valor — e o acerto de contas."""
+"""Dividir o gasto: igual, por proporção, por valor, e o acerto de contas."""
 
 from __future__ import annotations
 

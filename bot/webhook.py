@@ -49,7 +49,7 @@ def token_valido(cabecalho: str | None) -> bool:
 def extrair_mensagens(payload: dict) -> list[dict]:
     """Normaliza o update numa lista de mensagens.
 
-    O Telegram manda UM update por POST, então a lista tem no máximo um item —
+    O Telegram manda UM update por POST, então a lista tem no máximo um item,
     devolver lista mesmo assim mantém a view igual à de qualquer outro canal e
     dispensa um caso especial para "não havia mensagem nenhuma".
 
@@ -136,7 +136,7 @@ def _corpo_da_midia(bruta: dict, campo: str) -> dict:
     """O corpo do anexo. `photo` é o caso torto.
 
     Ela vem como uma LISTA de tamanhos, do menor ao maior. O último é o de
-    maior resolução — que é o que se quer para ler um comprovante: as
+    maior resolução, que é o que se quer para ler um comprovante: as
     miniaturas ficam ilegíveis e o modelo erra o valor.
     """
     corpo = bruta.get(campo)

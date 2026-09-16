@@ -1,6 +1,6 @@
 """Tasks do Celery: tudo que não cabe no ciclo de request do webhook.
 
-A view devolve 200 em milissegundos e o trabalho real acontece aqui — baixar
+A view devolve 200 em milissegundos e o trabalho real acontece aqui, baixar
 mídia, transcrever, falar com a Claude e responder. Se isso rodasse na view, o
 Telegram veria respostas lentas e passaria a espaçar as entregas.
 """
@@ -166,7 +166,7 @@ def _historico(mensagem: Mensagem) -> list[dict]:
     Reproduz os blocos `tool_use`/`tool_result` guardados em `Mensagem.turno`,
     e não só o texto. A diferença não é cosmética: com o histórico só de
     texto, o modelo lê a própria confirmação (“Uber de R$ 20 registrado ✅”)
-    como narração e refaz a tool — em produção isso duplicou um lançamento e
+    como narração e refaz a tool, em produção isso duplicou um lançamento e
     ainda confirmou um ajuste que não tinha feito.
 
     O que não tem turno guardado (onboarding, respostas anteriores a este
@@ -189,7 +189,7 @@ def _historico(mensagem: Mensagem) -> list[dict]:
     for m in reversed(list(recentes)):
         if m.direcao == Mensagem.Direcao.ENTRADA:
             # Texto e não mídia: remandar a imagem de todo turno anterior
-            # multiplicaria o custo por nada — o que importava dela já virou
+            # multiplicaria o custo por nada, o que importava dela já virou
             # lançamento.
             if m.conteudo:
                 historico.append({"role": "user", "content": m.conteudo})
@@ -204,7 +204,7 @@ def _historico(mensagem: Mensagem) -> list[dict]:
 def _comecando_no_usuario(historico: list[dict]) -> list[dict]:
     """A API exige que a conversa comece por uma fala do usuário.
 
-    A janela pode cair no meio de um turno — ou logo depois de uma mensagem do
+    A janela pode cair no meio de um turno, ou logo depois de uma mensagem do
     roteiro de onboarding, que não responde a ninguém.
     """
     while historico and historico[0]["role"] != "user":

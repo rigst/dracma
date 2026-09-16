@@ -12,7 +12,7 @@ class MensagemEnviada:
     id_externo: str = ""
     entregue: bool = True
     erro: str = ""
-    # O destino recusou de forma permanente — no Telegram, 403: a pessoa
+    # O destino recusou de forma permanente, no Telegram, 403: a pessoa
     # bloqueou o bot ou apagou a conversa. Distinto de `entregue=False` por
     # falha de rede, que adianta tentar de novo. Aqui não adianta, e quem
     # chama marca a conta para parar de insistir.

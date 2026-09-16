@@ -25,7 +25,7 @@ def gerar_token_pareamento() -> str:
     """Payload do deep link `t.me/bot?start=<token>`.
 
     Separado do código de 6 dígitos porque o uso é outro: ninguém digita este,
-    ele viaja na URL. Sendo assim pode — e deve — ser largo o bastante para não
+    ele viaja na URL. Sendo assim pode (e deve) ser largo o bastante para não
     valer a pena chutar. O Telegram aceita até 64 caracteres de [A-Za-z0-9_-],
     que é exatamente o alfabeto do `token_urlsafe`.
     """
@@ -36,14 +36,14 @@ class ContaTelegram(models.Model):
     """Conversa do Telegram vinculada a um usuário.
 
     O vínculo é o que decide em qual espaço o lançamento cai. Sem ele, uma
-    mensagem de conta desconhecida não vira transação nenhuma — só o convite
+    mensagem de conta desconhecida não vira transação nenhuma, só o convite
     para parear.
     """
 
     # O `chat.id` do Telegram. BigInteger e não Char: são inteiros de verdade e
     # os de grupo/canal são negativos e passam de 32 bits.
     chat_id = models.BigIntegerField("chat id", unique=True)
-    # Só para reconhecer a pessoa no admin — o Telegram não expõe telefone, e
+    # Só para reconhecer a pessoa no admin: o Telegram não expõe telefone, e
     # o @username é opcional e pode mudar a qualquer momento. Nunca use como
     # identidade; a identidade é o chat_id.
     username = models.CharField("@username", max_length=64, blank=True)
@@ -157,7 +157,7 @@ class Mensagem(models.Model):
     tipo = models.CharField("tipo", max_length=20, choices=Tipo, default=Tipo.TEXTO)
     # Chave de idempotência. O `message_id` do Telegram só é único DENTRO de
     # uma conversa, então sozinho ele colidiria entre usuários; o que guardamos
-    # é "<chat_id>:<message_id>" — ver bot.webhook.identificador().
+    # é "<chat_id>:<message_id>", ver bot.webhook.identificador().
     id_externo = models.CharField(
         "id externo", max_length=128, unique=True, null=True, blank=True
     )
@@ -174,7 +174,7 @@ class Mensagem(models.Model):
     #
     # Guardado porque o histórico só de texto mentia: o modelo lia a própria
     # confirmação (“Uber de R$ 20 registrado ✅”) como narração, não como prova
-    # de que a escrita aconteceu, e refazia a tool — em produção isso duplicou
+    # de que a escrita aconteceu, e refazia a tool, em produção isso duplicou
     # um lançamento e ainda confirmou o ajuste que não tinha feito.
     turno = models.JSONField("turno", null=True, blank=True)
     criada_em = models.DateTimeField("criada em", auto_now_add=True)

@@ -403,7 +403,7 @@ class HistoricoComToolsTest(BaseTaskTest):
 
     def test_historico_comeca_sempre_pelo_usuario(self):
         # A janela pode cair logo depois de uma mensagem do roteiro de
-        # onboarding, que não responde a ninguém — e a API exige começar no
+        # onboarding, que não responde a ninguém, e a API exige começar no
         # usuário.
         from bot.tasks import _historico
 

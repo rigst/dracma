@@ -2,7 +2,7 @@
 
 Serve para o seed inicial e para levar ao ar um texto revisado em editor de código.
 Nunca sobrescreve uma versão já existente: se o arquivo mudou, é preciso criar uma
-versão nova — é o que impede alterar retroativamente um texto já aceito.
+versão nova, é o que impede alterar retroativamente um texto já aceito.
 """
 
 from datetime import datetime

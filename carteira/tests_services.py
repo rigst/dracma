@@ -1,4 +1,4 @@
-"""Testes da camada de serviço — o ponto único de escrita do domínio."""
+"""Testes da camada de serviço: o ponto único de escrita do domínio."""
 
 from datetime import date
 from decimal import Decimal
@@ -97,7 +97,7 @@ class RegistrarTransacaoTest(BaseEspacoTest):
 
     def test_conta_inexistente_nao_e_criada(self):
         # Inventar conta por erro de transcrição espalharia saldo por contas
-        # fantasma — diferente de categoria, aqui o certo é ficar sem.
+        # fantasma, diferente de categoria, aqui o certo é ficar sem.
         t = services.registrar_transacao(
             espaco=self.espaco, valor="10", descricao="Café", conta="Nubannk Pagamentos"
         )

@@ -8,7 +8,7 @@ todo envio proativo a consultar uma janela, escolher entre texto e template, e
 adiar quando não houvesse nenhum aprovado.
 
 No Telegram nada disso existe: depois do `/start`, o bot escreve quando
-quiser. Sobrou o que de fato importa — mandar, registrar, e parar de insistir
+quiser. Sobrou o que de fato importa, mandar, registrar, e parar de insistir
 com quem bloqueou o bot.
 """
 
@@ -35,7 +35,7 @@ def responder(conta: ContaTelegram, texto: str, canal=None, turno=None) -> Mensa
 
 
 def notificar(conta: ContaTelegram, texto: str, canal=None) -> tuple[bool, Mensagem | None]:
-    """Mensagem PROATIVA — alerta de limite, lembrete de vencimento, resumo.
+    """Mensagem PROATIVA, alerta de limite, lembrete de vencimento, resumo.
 
     Devolve (alcançou, mensagem). Diferente de `responder` em um ponto só: uma
     conta bloqueada é pulada antes de gastar a chamada de rede, já que o
@@ -55,7 +55,7 @@ def _enviar(conta: ContaTelegram, texto: str, canal=None, turno=None) -> Mensage
 
     if resultado.bloqueado:
         # Permanente: sem isto, todo alerta futuro viraria uma chamada de rede
-        # inútil por rodada do beat, para sempre. O vínculo NÃO é desfeito — a
+        # inútil por rodada do beat, para sempre. O vínculo NÃO é desfeito: a
         # pessoa pode desbloquear, e o histórico continua sendo dela.
         ContaTelegram.objects.filter(pk=conta.pk).update(bloqueado_em=timezone.now())
         conta.bloqueado_em = timezone.now()

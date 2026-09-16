@@ -22,7 +22,7 @@ class DataInput(forms.DateInput):
     """`<input type="date">` que de fato mostra o valor.
 
     O widget padrão do Django formata a data no locale (dd/mm/aaaa em pt-BR) e
-    o campo nativo do HTML só aceita ISO — o resultado é um campo que aparece
+    o campo nativo do HTML só aceita ISO: o resultado é um campo que aparece
     VAZIO mesmo com `initial` definido, e o formulário fica preso na validação
     do navegador sem dizer por quê.
     """
@@ -38,8 +38,8 @@ class ValorField(forms.CharField):
 
     O campo numérico do HTML recusa a vírgula quando a página não está num
     locale pt-BR, e a pessoa daqui digita "42,50". Como `services.para_decimal`
-    já entende "42,50", "1.234,56" e "R$ 19,90" — porque o mesmo valor chega
-    de transcrição de áudio e de leitura de comprovante —, o proveito é usar a
+    já entende "42,50", "1.234,56" e "R$ 19,90", porque o mesmo valor chega
+    de transcrição de áudio e de leitura de comprovante , o proveito é usar a
     MESMA conversão nos dois caminhos, em vez de duas regras divergindo.
     """
 
@@ -82,7 +82,7 @@ class RateioMixin:
     """Campos de divisão montados a partir dos membros do espaço.
 
     Os campos por pessoa nascem em `__init__` porque dependem de quem está no
-    espaço — e campos declarativos são coletados na definição da classe, antes
+    espaço, e campos declarativos são coletados na definição da classe, antes
     de existir espaço algum.
     """
 
@@ -140,7 +140,7 @@ class RateioMixin:
     def _validar_rateio(self, dados):
         """Valida a divisão AQUI, e não no serviço.
 
-        O serviço também recusa uma divisão que não fecha — é a última linha de
+        O serviço também recusa uma divisão que não fecha, é a última linha de
         defesa, e protege o caminho do agente. Mas de lá o erro sobe como
         exceção e vira 500; validado no formulário, ele volta para dentro do
         diálogo, ao lado do campo errado.

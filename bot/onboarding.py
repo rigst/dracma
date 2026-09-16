@@ -10,7 +10,7 @@ Duas metades do mesmo problema:
   conectei" sozinho deixa a pessoa olhando para uma conversa vazia sem saber que
   pode mandar áudio, foto de comprovante ou pedir um limite.
 
-O roteiro tem três etapas e para sozinho. Mais que isso vira spam — e mesmo sem
+O roteiro tem três etapas e para sozinho. Mais que isso vira spam. Mesmo sem
 a régua de qualidade que a Meta aplicava, o custo aqui é direto: o botão de
 bloquear fica a um toque de distância.
 
@@ -45,8 +45,8 @@ Pronto, conectei esta conversa à sua conta ✅
 Eu sou a Dracma. Daqui pra frente é só me contar seus gastos, do jeito que for \
 mais fácil:
 
-💬 escrevendo — “almocei 32 reais no cartão”
-🎤 mandando áudio — útil quando você está na rua
+💬 escrevendo: “almocei 32 reais no cartão”
+🎤 mandando áudio: útil quando você está na rua
 📸 foto do comprovante ou print do PIX
 📄 PDF do extrato ou do boleto
 
@@ -61,7 +61,7 @@ que a fatura fechou.
 
 Experimenta: “cria um limite de R$ 400 pra delivery”
 
-E quando quiser saber como está o mês, é só perguntar — “quanto sobra esse \
+E quando quiser saber como está o mês, é só perguntar: “quanto sobra esse \
 mês?” ou “dá pra comprar um tênis de 420?”\
 """
 
@@ -79,7 +79,7 @@ CONVITE_PAREAMENTO = """\
 Oi! Eu sou a Dracma 💜
 
 Esta conversa ainda não está ligada a nenhuma conta. Entre no portal, abra \
-“Conectar Telegram” e toque no botão de conectar — ou me mande aqui o código \
+“Conectar Telegram” e toque no botão de conectar. Ou me mande aqui o código \
 de 6 dígitos que aparece na tela.
 
 {url}\
@@ -99,7 +99,7 @@ def link_telegram(token: str) -> str:
     """Deep link que abre o bot já mandando o `/start` com o token.
 
     É a grande vantagem do Telegram no pareamento: a pessoa toca uma vez e o
-    token chega sozinho — sem digitar, sem copiar, sem errar dígito.
+    token chega sozinho, sem digitar, sem copiar, sem errar dígito.
     """
     usuario_bot = (settings.TELEGRAM_BOT_USERNAME or "").strip().lstrip("@")
     if not usuario_bot:
@@ -135,7 +135,7 @@ def qr_svg(conteudo: str) -> str:
     """QR em SVG inline.
 
     É o que resolve o desktop: a pessoa está no computador e precisa levar o
-    link para o celular. Sem cor fixa — as classes deixam o CSS pintar, então o
+    link para o celular. Sem cor fixa: as classes deixam o CSS pintar, então o
     QR acompanha o tema claro e escuro.
     """
     import io

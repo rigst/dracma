@@ -7,7 +7,7 @@ import os
 from celery import Celery
 
 # Em produção o worker deve ser seguro mesmo se o EnvironmentFile não definir
-# DJANGO_SETTINGS_MODULE — sem este default o beat migraria/consultaria o
+# DJANGO_SETTINGS_MODULE, sem este default o beat migraria/consultaria o
 # SQLite de dev reportando sucesso. Para desenvolvimento, exporte
 # config.settings.development.
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.production")

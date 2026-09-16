@@ -101,7 +101,7 @@ class DocumentoLegal(models.Model):
         return self.status == StatusDocumento.RASCUNHO and not self.tem_aceites
 
     def html_preview(self):
-        """Render do rascunho, sem congelar nada — para a pré-visualização."""
+        """Render do rascunho, sem congelar nada, para a pré-visualização."""
         return renderizar_markdown(self.corpo_md)
 
     def publicar(self):

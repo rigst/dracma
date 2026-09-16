@@ -2,7 +2,7 @@
 
 Este módulo substitui os testes da janela de 24h da Meta. A regra sumiu com a
 plataforma: no Telegram, depois do `/start`, o bot escreve quando quiser. O que
-sobrou para testar é o que de fato pode dar errado — a entrega falhar, e a
+sobrou para testar é o que de fato pode dar errado: a entrega falhar, e a
 pessoa bloquear o bot.
 """
 

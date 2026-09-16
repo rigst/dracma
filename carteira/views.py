@@ -3,7 +3,7 @@
 Um painel só, com tudo que a pessoa precisa ver, e as edições em diálogo ou na
 própria linha. Era possível quebrar em telas de transações, limites e
 relatórios, mas isso obrigaria a navegar para responder perguntas que são a
-mesma pergunta — "como está o meu mês?".
+mesma pergunta: "como está o meu mês?".
 
 As views de fragmento existem para o HTMX trocar só o pedaço que mudou: depois
 de lançar uma despesa, volta a tabela e os totais, não a página.
@@ -105,7 +105,7 @@ def _consumos(espaco, usuario, hoje=None):
     """Consumo dos limites como ESTA pessoa o enxerga.
 
     Duas pessoas podem ver percentuais diferentes do mesmo limite, porque veem
-    conjuntos diferentes de gastos. É o certo — ver o número do outro seria ver
+    conjuntos diferentes de gastos. É o certo, ver o número do outro seria ver
     o gasto do outro.
     """
     hoje = hoje or timezone.localdate()
@@ -176,7 +176,7 @@ def _insights(resumo) -> list[str]:
     variaveis = round(float(resumo.variaveis / resumo.despesas) * 100)
     if variaveis >= 80:
         observacoes.append(
-            f"{variaveis}% dos gastos foram variáveis — é onde há mais espaço para ajustar."
+            f"{variaveis}% dos gastos foram variáveis, é onde há mais espaço para ajustar."
         )
     elif variaveis <= 20:
         observacoes.append(
@@ -239,7 +239,7 @@ def _fragmento_apos_escrita(request, espaco):
     """Depois de gravar, devolve o painel inteiro atualizado.
 
     A alternativa seria devolver só a tabela, mas um lançamento novo mexe no
-    saldo, na rosca, nos limites e nas próximas contas ao mesmo tempo — trocar
+    saldo, na rosca, nos limites e nas próximas contas ao mesmo tempo, trocar
     um pedaço só deixaria o resto da tela mentindo.
     """
     contexto = _contexto_do_mes(espaco, request.user)
@@ -265,7 +265,7 @@ def _fragmento_apos_escrita(request, espaco):
     resposta = render(request, "carteira/_painel_corpo.html", contexto)
     # Os formulários miram o próprio diálogo, para que um erro de validação
     # volte PARA DENTRO dele. No sucesso não há formulário para mostrar, e o
-    # alvo é redirecionado aqui — senão o painel inteiro seria injetado na
+    # alvo é redirecionado aqui, senão o painel inteiro seria injetado na
     # caixinha do diálogo.
     resposta["HX-Retarget"] = "#painel-corpo"
     resposta["HX-Reswap"] = "innerHTML"
@@ -384,7 +384,7 @@ def editar_transacao(request, codigo):
 def excluir_transacao(request, codigo):
     espaco = _espaco(request)
     # 404 e não erro de domínio: pedir para apagar o lançamento pessoal de
-    # outra pessoa tem que responder como se ele não existisse — que, do ponto
+    # outra pessoa tem que responder como se ele não existisse, que, do ponto
     # de vista de quem pediu, é a verdade.
     alvo = get_object_or_404(
         services.visiveis_para(Transacao.objects.filter(espaco=espaco), request.user),

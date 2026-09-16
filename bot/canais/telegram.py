@@ -1,7 +1,7 @@
 """Canal da Bot API do Telegram.
 
 Bem mais simples do que a Cloud API da Meta que este app usava antes, e a
-diferença não é de estilo — são três regras da plataforma que somem:
+diferença não é de estilo, são três regras da plataforma que somem:
 
 1. **Não há janela de 24h.** Uma vez que a pessoa deu `/start`, o bot pode
    escrever quando quiser. Todo o aparato de janela e de template aprovado
@@ -10,7 +10,7 @@ diferença não é de estilo — são três regras da plataforma que somem:
    qualquer pessoa, o que torna o canal `console` uma conveniência de
    desenvolvimento em vez de uma necessidade da demo.
 3. **Não há assinatura HMAC no webhook.** A autenticidade vem de um segredo
-   que nós escolhemos e o Telegram repete no cabeçalho — ver `bot.webhook`.
+   que nós escolhemos e o Telegram repete no cabeçalho, ver `bot.webhook`.
 
 O que continua igual: mídia vem em duas etapas e o link de download expira.
 """
@@ -36,7 +36,7 @@ TIMEOUT = httpx.Timeout(20.0, connect=10.0)
 MAX_CHARS = 4096
 
 # Uma falha de rede não pode custar a resposta da pessoa. Sem repetir, um
-# handshake TLS que estoura o tempo — coisa que acontece — deixa a fala do
+# handshake TLS que estoura o tempo (coisa que acontece) deixa a fala do
 # agente gravada como erro e a pessoa esperando para sempre por algo que
 # nunca vai chegar. Três tentativas cobrem o blip de segundos sem segurar
 # o worker por muito tempo.
@@ -67,7 +67,7 @@ class TelegramCanal(CanalMensagem):
         A Bot API responde 200 com `{"ok": false}` em alguns casos, então
         conferir o status HTTP não basta: quem manda é o campo `ok`.
 
-        Repete o que é transitório — falha de rede, 429 e 5xx — e desiste na
+        Repete o que é transitório (falha de rede, 429 e 5xx) e desiste na
         hora do que é definitivo, como o 403 de quem bloqueou o bot ou um 400
         de payload inválido. Insistir nesses só atrasaria a conclusão que já
         se tem.
@@ -155,7 +155,7 @@ class TelegramCanal(CanalMensagem):
     def baixar_midia(self, file_id: str, mime_hint: str = "") -> MidiaBaixada:
         """Duas chamadas: `getFile` e depois o binário.
 
-        O `file_path` devolvido no primeiro passo expira em cerca de uma hora —
+        O `file_path` devolvido no primeiro passo expira em cerca de uma hora,
         não adianta guardá-lo em vez do arquivo.
         """
         arquivo = self._chamar("getFile", file_id=file_id)
@@ -210,7 +210,7 @@ def identificador(mensagem: dict) -> str:
     """Chave estável de uma mensagem: "<chat_id>:<message_id>".
 
     O `message_id` do Telegram só é único dentro de uma conversa. Sozinho, ele
-    colidiria entre usuários — e como o campo é `unique`, a mensagem de um
+    colidiria entre usuários, e como o campo é `unique`, a mensagem de um
     seria descartada como repetição da de outro.
     """
     chat = (mensagem.get("chat") or {}).get("id")
@@ -223,7 +223,7 @@ def identificador(mensagem: dict) -> str:
 def _mime_do_caminho(caminho: str) -> str:
     """O `getFile` não devolve mime_type; o `file_path` traz a extensão.
 
-    Usado só quando o update não trouxe um mime melhor — em foto, por exemplo,
+    Usado só quando o update não trouxe um mime melhor, em foto, por exemplo,
     onde o Telegram simplesmente não informa nenhum.
     """
     adivinhado, _ = mimetypes.guess_type(caminho)

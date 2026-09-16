@@ -7,7 +7,7 @@ import nh3
 from markdown import markdown
 
 # Tags que fazem sentido num documento legal. Tudo fora desta lista é removido
-# pelo nh3 — o texto vem do admin, mas é servido para o público e vira prova.
+# pelo nh3: o texto vem do admin, mas é servido para o público e vira prova.
 TAGS_PERMITIDAS = {
     "h1",
     "h2",
@@ -37,7 +37,7 @@ TAGS_PERMITIDAS = {
 }
 
 # `rel` fica fora de propósito: quem o gerencia é o link_rel do nh3, que injeta
-# noopener/noreferrer em todo link — declarar os dois é erro de configuração.
+# noopener/noreferrer em todo link, declarar os dois é erro de configuração.
 ATRIBUTOS_PERMITIDOS = {"a": {"href", "title", "target"}}
 
 
@@ -46,7 +46,7 @@ def ip_do_request(request):
 
     Atrás de `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for`, o nginx
     ANEXA o IP que ele mesmo observou ao final do cabeçalho. Os itens anteriores
-    vieram do cliente e são forjáveis, então o único confiável é o último — pegar
+    vieram do cliente e são forjáveis, então o único confiável é o último, pegar
     o primeiro (como faziam trilhas e questões) deixa qualquer um escolher o IP
     que ficará gravado na prova de aceite.
     """

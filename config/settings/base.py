@@ -1,5 +1,5 @@
 """
-Configurações base do Django — Dracma, assistente financeira no Telegram.
+Configurações base do Django, Dracma, assistente financeira no Telegram.
 Compartilhadas entre development e production.
 """
 
@@ -110,7 +110,7 @@ USE_TZ = True
 
 # Com pt-br, o `floatformat` já troca o ponto decimal pela vírgula, mas o
 # separador de milhar só aparece com isto ligado. Sem ele a saída é "1800,00" e
-# a tentação é somar o `intcomma` do humanize — que usa a convenção INGLESA e
+# a tentação é somar o `intcomma` do humanize, que usa a convenção INGLESA e
 # produz "1,800,00". Ligado, `{{ v|floatformat:2 }}` sozinho dá "1.800,00".
 USE_THOUSAND_SEPARATOR = True
 
@@ -126,7 +126,7 @@ MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
 # A suíte roda com `config.settings.development`, que herda o MEDIA_ROOT daqui
-# — e BASE_DIR é a própria árvore de produção. Esta guarda é a rede: quem
+# e BASE_DIR é a própria árvore de produção. Esta guarda é a rede: quem
 # esquecer o override_settings cai no tempdir em vez da mídia do servidor.
 # A terceira condição cobre `python -m pytest`, onde o argv[0] é o
 # `__main__.py` do pacote e o prefixo não bate.
@@ -166,7 +166,7 @@ VISITOR_EXPIRY_HOURS = int(os.getenv("VISITOR_EXPIRY_HOURS", "48"))
 #
 # A alocação foi conferida contra o servidor em 14/09/2026 (`redis-cli INFO
 # keyspace`): 0,1,2,3,9,10 já tinham chaves. Não reaproveitar um DB de outro
-# app — um flush de cache lá derruba a fila daqui, e o estouro é silencioso.
+# app: um flush de cache lá derruba a fila daqui, e o estouro é silencioso.
 CELERY_BROKER_URL = os.getenv(
     "CELERY_BROKER_URL", os.getenv("REDIS_URL", "redis://localhost:6379/6")
 )
@@ -264,7 +264,7 @@ AI_PRICES = {
     "claude-haiku-4-5": (1.0, 5.0),
 }
 # Fallback para um modelo fora do dicionário acima. Alinhado ao Sonnet 5, que
-# é o padrão — se ficasse no preço do Opus, a quota de um modelo desconhecido
+# é o padrão, se ficasse no preço do Opus, a quota de um modelo desconhecido
 # seria consumida quase três vezes mais rápido do que o real.
 AI_PRICE_INPUT_PER_MTOK = float(os.getenv("AI_PRICE_INPUT_PER_MTOK", "2.0"))
 AI_PRICE_OUTPUT_PER_MTOK = float(os.getenv("AI_PRICE_OUTPUT_PER_MTOK", "10.0"))
@@ -289,7 +289,7 @@ AI_MAX_CHARS_MENSAGEM = int(os.getenv("AI_MAX_CHARS_MENSAGEM", "2000"))
 # A API da Anthropic não aceita áudio: os áudios do Telegram passam por aqui
 # antes de virar texto para o agente.
 #
-# O modelo é baixado uma vez e fica FORA da árvore do projeto — se ficasse em
+# O modelo é baixado uma vez e fica FORA da árvore do projeto, se ficasse em
 # BASE_DIR, cada deploy limpo rebaixaria ~500 MB.
 WHISPER_MODELO = os.getenv("WHISPER_MODELO", "small")
 WHISPER_COMPUTE_TYPE = os.getenv("WHISPER_COMPUTE_TYPE", "int8")
@@ -328,7 +328,7 @@ TELEGRAM_WEBHOOK_SECRET = os.getenv("TELEGRAM_WEBHOOK_SECRET", "")
 TELEGRAM_API_BASE = os.getenv("TELEGRAM_API_BASE", "https://api.telegram.org")
 
 # Teto do download de mídia (bytes). O getFile da api.telegram.org não entrega
-# nada acima de 20 MB — cortamos um pouco antes disso.
+# nada acima de 20 MB, cortamos um pouco antes disso.
 TELEGRAM_MAX_MIDIA_BYTES = int(os.getenv("TELEGRAM_MAX_MIDIA_BYTES", str(20 * 1024 * 1024)))
 
 # Canal usado pelo app. `telegram` fala com a Bot API; `console` grava no banco

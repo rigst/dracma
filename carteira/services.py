@@ -1,7 +1,7 @@
 """Serviços do domínio financeiro.
 
 Ponto único de escrita. O agente de IA e as telas do portal chamam as MESMAS
-funções daqui: a resposta da Claude nunca escreve direto no banco — a tool
+funções daqui: a resposta da Claude nunca escreve direto no banco. A tool
 devolve argumentos e é este módulo que valida e persiste. Sem isso, teríamos
 duas regras de negócio divergindo em silêncio.
 """
@@ -50,7 +50,7 @@ MAX_PARCELAS = 36
 
 class ErroDeDominio(Exception):
     """Entrada inválida. A mensagem é mostrada ao usuário como está, então
-    precisa ser escrita para ele — não para o log."""
+    precisa ser escrita para ele, não para o log."""
 
 
 # ---------------------------------------------------------------------------
@@ -60,7 +60,7 @@ class ErroDeDominio(Exception):
 
 def normalizar(texto: str) -> str:
     """Minúsculas, sem acento. Usado para casar 'alimentacao' com 'Alimentação'
-    — o que a IA escreve nem sempre bate com o que está gravado."""
+    o que a IA escreve nem sempre bate com o que está gravado."""
     if not texto:
         return ""
     sem_acento = unicodedata.normalize("NFKD", texto)
@@ -73,7 +73,7 @@ def para_decimal(valor) -> Decimal:
 
     Vale a pena ser tolerante: o valor chega de transcrição de áudio e de
     leitura de comprovante, onde o formato varia. O que NÃO se aceita é float
-    — a conversão passa por str para não herdar o erro de representação.
+    a conversão passa por str para não herdar o erro de representação.
     """
     if isinstance(valor, Decimal):
         quantia = valor
@@ -252,7 +252,7 @@ def buscar_por_codigo(espaco, codigo: str, usuario=None) -> Transacao:
     """Acha pelo código, dentro do que a pessoa PODE ver.
 
     Sem o recorte, saber o código de cinco caracteres bastaria para editar ou
-    apagar o lançamento pessoal de quem divide o espaço — e o erro apareceria
+    apagar o lançamento pessoal de quem divide o espaço, e o erro apareceria
     como "não achei", que é justamente o que deve acontecer.
     """
     codigo = (codigo or "").strip().upper()
@@ -316,7 +316,7 @@ def limites_do_mes(referencia: date | None = None) -> tuple[date, date]:
 
 
 def dia_valido(ano: int, mes: int, dia: int) -> date:
-    """Dia 31 em mês de 30 cai no último dia — não pula o mês.
+    """Dia 31 em mês de 30 cai no último dia, não pula o mês.
 
     Sem isto, um aluguel no dia 31 simplesmente não seria projetado em abril,
     junho, setembro e novembro, e o saldo previsto ficaria otimista sem avisar.
@@ -333,7 +333,7 @@ def dia_valido(ano: int, mes: int, dia: int) -> date:
 def dono_presumido(espaco, autor):
     """Quem assina um lançamento quando ninguém disse.
 
-    Um lançamento pessoal SEM autor não é de ninguém e some para todo mundo —
+    Um lançamento pessoal SEM autor não é de ninguém e some para todo mundo,
     é a armadilha do padrão pessoal. Num espaço de uma pessoa só não existe
     ambiguidade: o dono é ela, e atribuir aqui evita o registro órfão que
     apareceria de comandos, importações e de qualquer caminho sem request.
@@ -350,7 +350,7 @@ def dono_presumido(espaco, autor):
 def com_minha_parte(consulta, usuario):
     """Anota `minha_parte`: quanto do lançamento cabe a ESTA pessoa.
 
-    Sem rateio, a parte é o valor cheio — é o caso do lançamento pessoal e do
+    Sem rateio, a parte é o valor cheio, é o caso do lançamento pessoal e do
     compartilhado que ninguém dividiu. COM rateio, é a linha da pessoa, e zero
     se ela não tem linha nenhuma (um gasto da casa que coube todo ao outro).
 
@@ -382,7 +382,7 @@ def visiveis_para(consulta, usuario):
     """Filtra o que uma pessoa pode ver dentro do próprio espaço.
 
     A regra é uma só: **ou o lançamento é compartilhado, ou é seu**. Nada de
-    "quase" — se ficasse espalhada, o primeiro relatório novo esqueceria dela e
+    "quase", se ficasse espalhada, o primeiro relatório novo esqueceria dela e
     um gasto pessoal apareceria no total do casal.
 
     `usuario=None` significa "sem recorte", e é o que as rotinas de manutenção
@@ -520,7 +520,7 @@ def saldo_da_conta(conta: Conta, usuario=None) -> Decimal:
     dividiram o custo entre si. Saldo é caixa; rateio é custo.
 
     Recortado pela visibilidade: numa conta conjunta, quem não enxerga o gasto
-    pessoal do outro também não pode ver o efeito dele no saldo — senão a
+    pessoal do outro também não pode ver o efeito dele no saldo, senão a
     diferença entre dois números entregaria o lançamento escondido.
     """
     movimento = visiveis_para(
@@ -571,7 +571,7 @@ def consumo_do_limite(limite: Limite, referencia: date | None = None, usuario=No
 
     O limite é do espaço, mas o consumo é recortado pela visibilidade de quem
     pergunta: cada pessoa vê o compartilhado mais o próprio. Duas pessoas podem
-    ver percentuais diferentes do mesmo limite — e isso é o certo, porque elas
+    ver percentuais diferentes do mesmo limite, e isso é o certo, porque elas
     veem conjuntos diferentes de gastos.
 
     A alternativa seria contar só o compartilhado, mas aí quem usa sozinho
@@ -647,7 +647,7 @@ def projetar_recorrentes(espaco, referencia: date | None = None, meses: int = 2)
 
     - Vencimento anterior ao `inicio` da regra é pulado. Quem cadastra
       "aluguel todo dia 5" no dia 14 não quer um lançamento *previsto* no dia 5
-      que já passou — aquilo ou já foi registrado, ou não aconteceu.
+      que já passou, aquilo ou já foi registrado, ou não aconteceu.
     - A checagem de existência é por (regra, data), porque a função roda
       diariamente E a cada consulta de planejamento.
     """
@@ -710,7 +710,7 @@ def acerto_do_periodo(espaco, inicio: date, fim: date) -> dict:
     descobrem quem está devendo a quem.
 
     Considera só o que é COMPARTILHADO. Gasto pessoal é de quem gastou por
-    definição, e entraria dos dois lados da conta sem mudar nada — além de
+    definição, e entraria dos dois lados da conta sem mudar nada, além de
     expor, pelo saldo, um lançamento que o outro não pode ver.
     """
     from .models import Acerto, Rateio
@@ -771,7 +771,7 @@ def acerto_do_periodo(espaco, inicio: date, fim: date) -> dict:
 
     # Com duas pessoas, o acerto é uma frase. Com mais, a lista já diz quem
     # está no positivo e quem está no negativo, e fechar isso em transferências
-    # mínimas é outro problema — que não vale complicar antes de existir.
+    # mínimas é outro problema, que não vale complicar antes de existir.
     sugestao = None
     if len(linhas) == 2:
         credor = max(linhas, key=lambda linha: linha["saldo"])

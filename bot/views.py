@@ -3,7 +3,7 @@
 Regra que manda nesta view: **responder 200 em milissegundos, sempre.**
 
 O Telegram re-tenta o update quando a resposta demora ou falha e, com falhas
-repetidas, vai espaçando as entregas até praticamente parar — o bot fica mudo
+repetidas, vai espaçando as entregas até praticamente parar: o bot fica mudo
 e ninguém é avisado. Por isso a view não chama a Claude, não baixa mídia e não
 toca no domínio: confere o segredo, grava o cru e entrega o resto ao Celery.
 """

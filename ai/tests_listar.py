@@ -2,7 +2,7 @@
 
 Ela existe para a conversa não ter código nenhum: a pessoa diz "o almoço", o
 modelo acha aqui e edita pelo código sem nunca mostrá-lo. Isso significa que
-ela lê lançamentos individuais — e por isso o recorte de visibilidade é o
+ela lê lançamentos individuais, e por isso o recorte de visibilidade é o
 teste que mais importa deste arquivo. Um erro aqui não dá tela quebrada, dá
 vazamento do gasto pessoal de quem divide o espaço.
 """

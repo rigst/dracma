@@ -1,6 +1,6 @@
 """Transcrição de áudio com faster-whisper, local.
 
-A API da Anthropic aceita imagem e PDF nativamente, mas **não aceita áudio** —
+A API da Anthropic aceita imagem e PDF nativamente, mas **não aceita áudio**,
 daí esta etapa. Roda no próprio servidor, em `int8`: o modelo `small` ocupa
 ~1,5 GB de RAM e transcreve a ~6x o tempo real em CPU, então um áudio de 20
 segundos sai em uns 3.
@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 
 class AudioLongoDemais(Exception):
-    """Áudio acima do teto — recusado em vez de ocupar o worker por minutos."""
+    """Áudio acima do teto, recusado em vez de ocupar o worker por minutos."""
 
 
 @lru_cache(maxsize=1)
@@ -44,7 +44,7 @@ def obter_modelo():
 
 
 def duracao_segundos(caminho: Path) -> float:
-    """Duração via ffprobe. Devolve 0 quando não consegue medir — nesse caso a
+    """Duração via ffprobe. Devolve 0 quando não consegue medir, nesse caso a
     guarda de tamanho não se aplica, e o teto de tempo do próprio worker vale."""
     try:
         saida = subprocess.run(
@@ -73,7 +73,7 @@ def para_wav(origem: Path) -> Path:
     """Converte o .oga/OPUS do Telegram para WAV 16 kHz mono.
 
     O faster-whisper lê ogg direto via PyAV, mas converter antes com ffmpeg
-    torna o comportamento previsível e é o formato que o modelo espera — sem
+    torna o comportamento previsível e é o formato que o modelo espera, sem
     isso, o resample acontece dentro da biblioteca e varia com a build.
     """
     destino = Path(tempfile.mkstemp(suffix=".wav", prefix="dracma-audio-")[1])

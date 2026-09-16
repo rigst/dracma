@@ -1,7 +1,7 @@
 """Expiração da sessão de visitante.
 
 Fica depois do MessageMiddleware no MIDDLEWARE: ao expirar, grava um aviso com
-`messages`, e antes daquele ponto `request._messages` ainda não existe — a
+`messages`, e antes daquele ponto `request._messages` ainda não existe: a
 expiração estouraria MessageFailure (500) em vez de redirecionar ao login.
 """
 
@@ -30,7 +30,7 @@ class VisitorExpiryMiddleware:
             # não disparar signals nem reescrever a linha inteira a cada request.
             #
             # `get_user_model()` e não `type(user)`: request.user é um
-            # SimpleLazyObject, e `type()` devolve o proxy — que não tem
+            # SimpleLazyObject, e `type()` devolve o proxy, que não tem
             # `.objects`.
             get_user_model().objects.filter(pk=user.pk).update(ultimo_acesso=timezone.now())
         return self.get_response(request)

@@ -1,7 +1,7 @@
 """Compra parcelada: uma parcela por mês, e o mês fechando pelo caixa real.
 
 Nasceu de um caso de produção. "comprei miçangas de 300 reais no cartão em 3x"
-virou UMA despesa de R$ 300 no dia, paga — o domínio não tinha parcelamento e
+virou UMA despesa de R$ 300 no dia, paga: o domínio não tinha parcelamento e
 a assistente apenas repetiu "em 3x" no texto. O mês ficou R$ 200 mais pesado
 que o caixa e a projeção não sabia das parcelas que ainda vinham.
 """

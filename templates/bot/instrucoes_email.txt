@@ -7,7 +7,7 @@ Para conectar seu Telegram à Dracma, siga estes passos pelo CELULAR:
 
 2. Toque em "Iniciar".
 
-   Pronto — abrindo por este link a conexão é automática, você não
+   Pronto, abrindo por este link a conexão é automática, você não
    precisa digitar nada.
 
    Se preferir procurar @{{ bot_username }} na busca do Telegram, mande
@@ -36,5 +36,5 @@ Não quer usar o Telegram? A mesma assistente funciona pelo portal:
 {{ site }}
 
 --
-Dracma — {{ site }}
+Dracma · {{ site }}
 Você recebeu este e-mail porque pediu as instruções de conexão no portal.

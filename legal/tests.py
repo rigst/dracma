@@ -219,7 +219,7 @@ class ReaceiteMiddlewareTests(TestCase):
         self.client.force_login(self.usuario)
 
     def test_conta_sem_aceite_e_barrada(self):
-        """Contas anteriores ao app caem no interstitial — backfill sem migração."""
+        """Contas anteriores ao app caem no interstitial, backfill sem migração."""
         resposta = self.client.get(reverse("carteira:painel"))
         self.assertRedirects(resposta, reverse("legal:reaceite"))
 

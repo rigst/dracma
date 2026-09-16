@@ -4,7 +4,7 @@ O modo visitante é o que abre a demo pública: o número de teste da Meta só
 atende 5 destinatários allowlistados, então sem isto o projeto não seria
 demonstrável por ninguém de fora.
 
-A conta é descartável — expira por inatividade e some com tudo que é dela,
+A conta é descartável, expira por inatividade e some com tudo que é dela,
 como a política de privacidade promete.
 """
 

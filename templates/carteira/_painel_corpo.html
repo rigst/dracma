@@ -50,7 +50,7 @@ atualizar só a tabela deixaria o resto da tela mentindo.
       <p class="epigrafe">Ainda a pagar</p>
       <p class="valor-pequeno">R$ {{ previsao.a_pagar|floatformat:2 }}</p>
       {% for t in proximas|slice:":2" %}
-      <p class="nota">{{ t.data|date:"d/m" }} — {{ t.rotulo }}</p>
+      <p class="nota">{{ t.data|date:"d/m" }} · {{ t.rotulo }}</p>
       {% empty %}
       <p class="nota">Nada a pagar por enquanto.</p>
       {% endfor %}
@@ -178,7 +178,7 @@ atualizar só a tabela deixaria o resto da tela mentindo.
     </form>
   </div>
   <p class="nota" style="margin-top:0">
-    Pagou menos? Ajuste o valor — o que sobrar continua aparecendo aqui.
+    Pagou menos? Ajuste o valor, o que sobrar continua aparecendo aqui.
   </p>
   {% else %}
   <p class="acerto-frase">Ninguém está devendo nada neste mês.</p>

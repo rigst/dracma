@@ -17,7 +17,7 @@ def cleanup_expired_visitors() -> int:
     """Apaga visitantes inativos e tudo que é deles.
 
     A política de privacidade promete isso. O `delete()` em cascata leva o
-    espaço, as transações e as mensagens junto — é a promessa cumprida, não um
+    espaço, as transações e as mensagens junto, é a promessa cumprida, não um
     efeito colateral.
     """
     from .models import Espaco, Usuario

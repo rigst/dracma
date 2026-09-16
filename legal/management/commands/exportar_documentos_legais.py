@@ -1,6 +1,6 @@
 """Escreve em legal/documentos/ os documentos publicados no banco.
 
-O banco é a fonte da verdade; estes arquivos são o espelho versionado em git —
+O banco é a fonte da verdade; estes arquivos são o espelho versionado em git,
 evidência redundante e diff legível de uma versão para a outra. Rode depois de
 publicar uma versão nova pelo admin e faça commit do resultado.
 """

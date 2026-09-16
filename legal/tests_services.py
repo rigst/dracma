@@ -298,7 +298,7 @@ class AceiteLegalAdminTests(TestCase):
 
 
 class ImutabilidadeNoAdminTests(TestCase):
-    """O admin é a fonte da verdade do texto legal — a trava é aqui, não na disciplina."""
+    """O admin é a fonte da verdade do texto legal: a trava é aqui, não na disciplina."""
 
     def setUp(self):
         self.admin = DocumentoLegalAdmin(DocumentoLegal, AdminSite())

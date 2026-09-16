@@ -52,7 +52,7 @@ def entrar_visitante(request):
         )
 
     # Sem limite por IP, um script criaria visitantes em massa e queimaria o
-    # crédito da API — cada visitante nasce com quota de IA própria.
+    # crédito da API, cada visitante nasce com quota de IA própria.
     if excedeu_limite(f"visitante:{ip_do_request(request)}", limite=5, janela_s=3600):
         messages.error(request, "Muitos acessos de visitante deste endereço. Tente mais tarde.")
         return redirect("login")
@@ -68,7 +68,7 @@ def entrar_visitante(request):
 
 
 # ---------------------------------------------------------------------------
-# Auto-cadastro por e-mail — DESLIGADO por padrão (SIGNUP_ENABLED=False).
+# Auto-cadastro por e-mail, DESLIGADO por padrão (SIGNUP_ENABLED=False).
 # Enquanto a flag for False as três views abaixo respondem 404: o recurso fica
 # pronto, mas invisível e inacessível.
 # ---------------------------------------------------------------------------
@@ -173,7 +173,7 @@ class Entrar(LoginView):
     """Login com o formulário de aceite do visitante junto.
 
     O botão "entrar como visitante" vive na mesma tela, e a criação da conta
-    exige aceite dos termos — então o checkbox precisa estar renderizado aqui,
+    exige aceite dos termos, então o checkbox precisa estar renderizado aqui,
     não numa tela intermediária que só existiria para pedir uma confirmação.
     """
 

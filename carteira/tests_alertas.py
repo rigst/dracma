@@ -149,7 +149,7 @@ class BotBloqueadoTest(BaseAlertaTest):
     """O que sobrou de "o alerta não pode sair".
 
     No WhatsApp era a janela de 24h da Meta. No Telegram é só um caso: a pessoa
-    bloqueou o bot. O alerta continua sendo registrado como adiado — ele conta
+    bloqueou o bot. O alerta continua sendo registrado como adiado, ele conta
     como "já decidido neste período" e não repete a cada hora.
     """
 

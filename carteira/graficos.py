@@ -2,7 +2,7 @@
 
 Sem Chart.js e sem nenhuma lib: o SVG sai pronto do template, funciona com o
 JavaScript desligado, não adiciona requisição nem dependência de CDN, e as
-cores saem dos mesmos tokens CSS do resto da página — então o tema escuro
+cores saem dos mesmos tokens CSS do resto da página, então o tema escuro
 funciona de graça.
 """
 
@@ -45,7 +45,7 @@ def rosca(itens, raio: int = 80, espessura: int = 28) -> list[Fatia]:
     """Fatias de um donut. `itens` é [(rótulo, valor)] já ordenado.
 
     Devolve os caminhos prontos; o template só desenha. Mantém no máximo 7
-    categorias e agrupa o resto em "Outras" — acima disso as fatias ficam
+    categorias e agrupa o resto em "Outras", acima disso as fatias ficam
     finas demais para serem lidas, e a legenda vira uma lista.
     """
     itens = [(rotulo, Decimal(valor)) for rotulo, valor in itens if Decimal(valor) > 0]

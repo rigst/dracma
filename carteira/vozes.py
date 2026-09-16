@@ -1,7 +1,7 @@
 """As pitadas de mitologia grega nos avisos proativos.
 
 O agente tem a personalidade no prompt dele. Estes textos não passam por
-modelo nenhum — são escritos aqui e enviados pelo beat —, então a voz da
+modelo nenhum (são escritos aqui e enviados pelo beat), então a voz da
 Dracma precisa existir também neste arquivo, ou ela vira outra pessoa toda
 vez que o aviso é automático.
 
@@ -14,7 +14,7 @@ Duas regras de dosagem, e a segunda é a que mais importa:
    azar, e um `random` em código de produção ainda vira VULNERABILITY no
    Sonar. Só o hash da chave também não bastava: com quatro frases, medindo
    doze meses do mesmo limite, uma delas caiu três vezes seguidas. O `passo`
-   resolve — a chave decide onde a pessoa começa, o período anda dali.
+   resolve: a chave decide onde a pessoa começa, o período anda dali.
 """
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ import hashlib
 
 ESTOUROU = (
     "Ícaro também achou que dava pra subir mais um pouco.",
-    "As Sereias cantaram e você foi — acontece com os melhores navegadores.",
+    "As Sereias cantaram e você foi. Acontece com os melhores navegadores.",
     "Dioniso aprovaria. Seu orçamento, nem tanto.",
     "O Minotauro deste labirinto atende por esta categoria.",
 )
@@ -44,7 +44,7 @@ MES_NO_AZUL = (
 MES_NO_VERMELHO = (
     "Sísifo também empurra a pedra de novo todo mês.",
     "Penélope desfazia o bordado à noite. Dá pra recomeçar amanhã.",
-    "Nem toda travessia é tranquila — o mapa continua aí.",
+    "Nem toda travessia é tranquila, mas o mapa continua aí.",
 )
 
 
@@ -56,7 +56,7 @@ def escolher(frases: tuple[str, ...], chave: str, passo: int = 0) -> str:
 
     `blake2b` e não `hash()`: o `hash()` de string é salgado por processo no
     Python, então o mesmo alerta sairia com frases diferentes em cada worker
-    do Celery — e o teste passaria na sua máquina e falharia no CI.
+    do Celery, e o teste passaria na sua máquina e falharia no CI.
     """
     digest = hashlib.blake2b(chave.encode(), digest_size=4).digest()
     return frases[(int.from_bytes(digest, "big") + passo) % len(frases)]

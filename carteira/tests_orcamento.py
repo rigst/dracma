@@ -95,7 +95,7 @@ class RecorrenteTest(BaseTest):
         """Regra que já existia antes do mês corrente.
 
         Sem isso, um vencimento anterior à criação da regra é pulado de
-        propósito — e é justamente o que o teste seguinte cobre.
+        propósito, e é justamente o que o teste seguinte cobre.
         """
         regra = services.criar_recorrente(espaco=self.espaco, **kwargs)
         regra.inicio = date(2020, 1, 1)

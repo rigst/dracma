@@ -1,6 +1,6 @@
 """Console web do assistente.
 
-Mesmo agente, mesmas ferramentas, mesmo domínio que o Telegram — só o
+Mesmo agente, mesmas ferramentas, mesmo domínio que o Telegram. Só o
 transporte muda. É o que permite alguém experimentar o produto inteiro no
 navegador, sem instalar nada e sem abrir conversa com bot nenhum.
 """
@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 SEM_QUOTA = (
     "Sua cota de conversas deste mês acabou 😕 "
-    "Ela reinicia no dia 1º — enquanto isso, dá pra lançar tudo pelo portal."
+    "Ela reinicia no dia 1º. Enquanto isso, dá pra lançar tudo pelo portal."
 )
 
 

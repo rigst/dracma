@@ -2,7 +2,7 @@
 
 Quando uma versão material é publicada, todo usuário autenticado é levado à tela de
 re-aceite antes de continuar usando o sistema. Como efeito colateral desejado, as
-contas criadas antes deste app — que nunca registraram aceite — passam pelo mesmo
+contas criadas antes deste app (que nunca registraram aceite) passam pelo mesmo
 caminho no primeiro login, o que dispensa migração de dados.
 """
 

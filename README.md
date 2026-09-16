@@ -2,7 +2,7 @@
 
 Assistente financeira pessoal com IA que vive no **Telegram**, com portal web
 complementar. Você conta um gasto por texto, áudio, foto de comprovante ou PDF;
-ela entende, categoriza, registra — e avisa **antes** de o limite estourar.
+ela entende, categoriza, registra e avisa **antes** de o limite estourar.
 
 > Projeto de portfólio. Não é consultoria financeira e não se conecta a bancos.
 
@@ -12,8 +12,8 @@ ela entende, categoriza, registra — e avisa **antes** de o limite estourar.
 
 **Registro sem atrito.** "uber 34 reais", um áudio no trânsito, o print do PIX
 ou o PDF do extrato. A Claude interpreta, escolhe a categoria e confirma numa
-linha. Para corrigir depois, fala-se do lançamento como ele é — "muda o valor
-do almoço para 30" — e a assistente resolve qual é (`listar_transacoes`). Cada
+linha. Para corrigir depois, fala-se do lançamento como ele é: "muda o valor
+do almoço para 30", e a assistente resolve qual é (`listar_transacoes`). Cada
 lançamento tem um código curto (`0DFPK`), mas ele é identificador interno e
 aparece no portal, não na conversa: ninguém decora cinco caracteres aleatórios.
 
@@ -23,32 +23,32 @@ seguintes já entram na projeção, em vez de aparecerem como surpresa na fatura
 
 **Orçamento que se cuida sozinho.** Limites por categoria, teto geral do mês, e
 limites temporários avulsos ("R$ 200 pra presente essa semana"). Ao chegar em
-80% e ao estourar, a Dracma manda mensagem — antes da fatura fechar.
+80% e ao estourar, a Dracma manda mensagem antes da fatura fechar.
 
 **Planejamento.** Ganhos e despesas recorrentes viram projeção: saldo previsto
 de fechamento do mês, o que ainda entra e o que ainda sai.
 
 **Colaboração, com privacidade.** Toda transação pertence a um *espaço*, não a
 uma pessoa: casal, família ou time acompanham o mesmo mês, cada um lançando do
-próprio Telegram. Mas dividir a conta da casa não é abrir o extrato inteiro —
+próprio Telegram. Mas dividir a conta da casa não é abrir o extrato inteiro,
 cada lançamento é **compartilhado** ou **só eu**, e o que é pessoal some da
 visão dos outros, do CSV, dos alertas e do que a assistente responde.
 
 **Rateio e acerto.** O que é da casa é dividido: igual, por porcentagem ou por
-valor. O espaço tem uma divisão padrão — meio a meio, ou 60/40 porque as rendas
-são diferentes — e cada gasto pode sair dela sem alterá-la. Nos totais de cada
+valor. O espaço tem uma divisão padrão (meio a meio, ou 60/40 porque as rendas
+são diferentes) e cada gasto pode sair dela sem alterá-la. Nos totais de cada
 um entra a **fatia**, não o valor cheio. O painel fecha o mês dizendo quem deve
 quanto a quem, e o pagamento é registrado com um botão: pagou tudo, o mês zera;
 pagou parte, o que sobra continua aparecendo.
 
 **Portal.** Uma página só: saldo do mês, para onde o dinheiro foi, limites,
-recorrentes, lançamentos e a conversa com a assistente — tudo no mesmo painel,
+recorrentes, lançamentos e a conversa com a assistente: tudo no mesmo painel,
 com as edições em diálogo ou na própria linha. Exportação em CSV.
 
 **Onboarding.** A tela *Conectar Telegram* resolve os três pontos de partida:
 QR para quem está no desktop e precisa levar o link ao celular, deep link
-`t.me/<bot>?start=<token>` para quem já está no telefone — um toque, o token
-chega sozinho no `/start` e não se digita nada — e o código de 6 dígitos para
+`t.me/<bot>?start=<token>` para quem já está no telefone: um toque, o token
+chega sozinho no `/start` e não se digita nada, e o código de 6 dígitos para
 quem achou o bot pela busca, com a opção de receber tudo por e-mail. Depois de conectar, a própria
 conversa ensina: três mensagens espaçadas mostram os formatos aceitos, sugerem
 o primeiro limite e apontam o portal.
@@ -69,21 +69,21 @@ Telegram → nginx → view (confere o segredo, grava, 200 OK em milissegundos)
 
 A view do webhook **nunca** chama a IA. O Telegram re-tenta quando a resposta
 demora e, com falhas repetidas, vai espaçando as entregas até o bot ficar mudo
-— então ela valida, persiste o payload cru e entrega o resto ao Celery.
+então ela valida, persiste o payload cru e entrega o resto ao Celery.
 
 ### As decisões que mais moldaram o código
 
 **1. O canal é uma interface, e foi ela que pagou a migração.** `CanalMensagem`
 tem três implementações: `telegram` fala com a Bot API, `console` desenha no
 portal, `fake` guarda em memória para os testes. O app nasceu no WhatsApp e
-trocou de plataforma sem que `carteira` nem `ai` mudassem uma linha — o que a
+trocou de plataforma sem que `carteira` nem `ai` mudassem uma linha, o que a
 troca tocou foi o transporte, e é exatamente isso que a interface delimita.
 
 **2. Trocar de plataforma apagou uma regra de domínio inteira.** A Meta só
 permitia resposta em formato livre dentro de 24h desde a última mensagem *do
 usuário*; fora disso, só template aprovado. Um alerta proativo, portanto, não
 podia simplesmente ser enviado: havia uma janela a consultar, um template a
-escolher e o caso de adiar. No Telegram nada disso existe — depois do `/start`,
+escolher e o caso de adiar. No Telegram nada disso existe: depois do `/start`,
 o bot escreve quando quiser. `zap/janela.py` virou `bot/envio.py` e encolheu
 para o que sobrou de real: mandar, registrar, e parar de insistir com quem
 bloqueou o bot (403, marcado em `ContaTelegram.bloqueado_em` e limpo sozinho se
@@ -91,7 +91,7 @@ a pessoa desbloquear).
 
 **3. A visibilidade é uma regra só.** `services.visiveis_para` responde
 "o que esta pessoa pode ver": ou o lançamento é compartilhado, ou é dela. Está
-num lugar só porque espalhada o primeiro relatório novo esqueceria dela — e o
+num lugar só porque espalhada o primeiro relatório novo esqueceria dela, e o
 erro aqui não é tela quebrada, é vazamento. Limites são a exceção deliberada:
 contam **só o que é do espaço**, porque o alerta vai para todo mundo e um
 percentual calculado com gasto pessoal entregaria esse gasto.
@@ -114,7 +114,7 @@ Django 6 · PostgreSQL · Celery + Redis · Gunicorn · nginx · Claude (Anthrop
 faster-whisper · HTMX
 
 Sem bundler, sem Docker, sem framework de frontend. Os gráficos, o meandro e a
-moeda são SVG — gerados no servidor ou inline — e herdam os tokens de tema.
+moeda são SVG (gerados no servidor ou inline) e herdam os tokens de tema.
 
 ### O visual
 
@@ -123,7 +123,7 @@ figuras negras: o desenho é a silhueta escura sobre a argila alaranjada, e os
 detalhes são **incisos**, riscados até aparecer o barro por baixo.
 
 Daí a decisão que organiza tudo: **a moldura é cerâmica, o conteúdo é mármore**.
-O cabeçalho é um friso de vaso — fundo negro, letra em terracota, meandro — e os
+O cabeçalho é um friso de vaso (fundo negro, letra em terracota, meandro) e os
 dados moram em painéis de mármore. O tema escuro inverte para a vasilha inteira,
 que é como a peça realmente é; o claro mantém o mármore. É o que faz o botão de
 tema significar alguma coisa em vez de ser enfeite.
@@ -131,7 +131,7 @@ tema significar alguma coisa em vez de ser enfeite.
 A paleta sai dos pigmentos: terracota, ocre, oliva, o *added purple* da
 cerâmica, o azul-egeu da policromia dos templos. A tipografia de exibição é a
 **Cormorant Garamond**, auto-hospedada (SIL OFL), em versalete com entreletra
-larga nos rótulos — a letra gravada, não a de interface.
+larga nos rótulos: a letra gravada, não a de interface.
 
 A assinatura é a moeda: coruja de Atena, ramo de oliveira e a lua crescente, os
 três elementos do tetradracma. Ela é o logo, o favicon e o ícone dos estados
@@ -169,7 +169,7 @@ para o console: dá para usar o produto inteiro pelo painel, sem túnel HTTPS e
 sem bot registrado.
 
 Para áudio é preciso o `ffmpeg` no sistema. O modelo do faster-whisper é
-baixado na primeira transcrição, para `WHISPER_CACHE_DIR` — que fica **fora** da
+baixado na primeira transcrição, para `WHISPER_CACHE_DIR`, que fica **fora** da
 árvore do projeto, senão cada deploy limpo rebaixaria ~500 MB.
 
 ### Testes
@@ -197,7 +197,7 @@ e sim vazamento ou dinheiro errado:
 
 1. No Telegram, fale com o [@BotFather](https://t.me/BotFather): `/newbot`,
    escolha o nome e o `@username`. Ele devolve o **token**, no formato
-   `<id do bot>:<segredo>`. É a credencial inteira do bot — quem a tem lê e
+   `<id do bot>:<segredo>`. É a credencial inteira do bot, quem a tem lê e
    escreve toda conversa.
 2. Gere o segredo do webhook:
    `python -c "import secrets; print(secrets.token_urlsafe(32))"`.
@@ -215,7 +215,7 @@ e sim vazamento ou dinheiro errado:
    Confira com `getWebhookInfo`: `pending_update_count` alto ou
    `last_error_message` preenchido significa que o Telegram não está
    conseguindo entregar.
-5. No portal, abra **Conectar Telegram** e toque no botão — ou mande as
+5. No portal, abra **Conectar Telegram** e toque no botão, ou mande as
    instruções para o seu e-mail e abra pelo celular.
 
 **Autenticidade do webhook.** A Bot API não assina o corpo como a Graph API
@@ -240,7 +240,7 @@ que um projeto pessoal usa.
 Um modelo só (`claude-sonnet-5`). As alavancas de custo são outras:
 
 - **Prompt caching** no prefixo estável do system (instruções + tools). A data
-  de hoje e as categorias do espaço vêm **depois** do breakpoint — no último
+  de hoje e as categorias do espaço vêm **depois** do breakpoint, no último
   bloco, o cache seria invalidado toda meia-noite e a cada espaço diferente.
 - **`effort`** baixo para registrar (trabalho mecânico) e alto depois de uma
   ferramenta de consulta, quando a pergunta virou analítica.
@@ -261,7 +261,7 @@ pendente.
 
 O que **precisa ser feito no servidor**, uma vez:
 
-O que precisa de root está em **`deploy/provisionar.sh`** — serviços, nginx e
+O que precisa de root está em **`deploy/provisionar.sh`**: serviços, nginx e
 certificado, idempotente. O resto vem antes:
 
 ```bash
@@ -309,14 +309,14 @@ E no GitHub: criar `rigst/dracma`, adicionar os secrets `CODECOV_TOKEN`,
 
 | Recurso | Valor | Conferido |
 |---|---|---|
-| Porta do gunicorn | **8015** | livre (8000–8014 ocupadas) |
-| Redis | **DB 4** cache, **5** sessões, **6** broker | livres (0–3, 9, 10 em uso) |
+| Porta do gunicorn | **8015** | livre (80008014 ocupadas) |
+| Redis | **DB 4** cache, **5** sessões, **6** broker | livres (03, 9, 10 em uso) |
 | Sistema | `ffmpeg` e `ffprobe` | presentes |
 
 ### Três armadilhas deste deploy
 
 **E-mail cai no console por padrão.** `EMAIL_BACKEND` não configurado escreve a
-mensagem no log e não entrega nada — instruções de conexão e recuperação de
+mensagem no log e não entrega nada, instruções de conexão e recuperação de
 senha sumiriam em silêncio. O `.env.example` já vem com o backend SMTP; falta
 preencher host, usuário e senha.
 
@@ -334,7 +334,7 @@ depois que o resto estiver verde.
 
 O app funciona sem ele: com `TELEGRAM_ENABLED=False` o webhook responde 404 e a
 assistente atende pelo console do painel. Ligar depois é preencher as
-credenciais e apontar o webhook — nada no domínio muda.
+credenciais e apontar o webhook, nada no domínio muda.
 
 ## Licença
 

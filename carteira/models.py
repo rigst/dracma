@@ -57,7 +57,7 @@ class Conta(models.Model):
     nome = models.CharField("nome", max_length=60)
     tipo = models.CharField("tipo", max_length=20, choices=TipoConta, default=TipoConta.CORRENTE)
     # Saldo informado pela pessoa na criação. O saldo corrente é este mais a
-    # soma das transações — calculado, nunca desnormalizado, para não dessincronizar.
+    # soma das transações, calculado, nunca desnormalizado, para não dessincronizar.
     saldo_inicial = models.DecimalField(
         "saldo inicial", max_digits=12, decimal_places=2, default=Decimal("0")
     )
@@ -143,10 +143,10 @@ class Transacao(models.Model):
     # Compartilhada = todo mundo do espaço vê. Pessoal = só quem lançou.
     #
     # O padrão é PESSOAL. Compartilhar é a escolha ativa, não o contrário:
-    # errar para o lado de guardar não custa nada — a pessoa marca de novo —,
+    # errar para o lado de guardar não custa nada (a pessoa marca de novo),
     # enquanto errar para o lado de expor não tem desfazer.
     #
-    # A regra de visibilidade mora em `services.visiveis_para` e é UMA só —
+    # A regra de visibilidade mora em `services.visiveis_para` e é UMA só,
     # espalhada, o primeiro relatório novo esqueceria dela e vazaria gasto
     # pessoal num total do casal.
     compartilhada = models.BooleanField("compartilhada", default=False)
@@ -170,7 +170,7 @@ class Transacao(models.Model):
     #
     # Uma compra em 3x vira TRÊS lançamentos, um por mês, e não um de valor
     # cheio. É o que faz o mês fechar pelo caixa real: R$ 300 em 3x pesa R$ 100
-    # em setembro, não R$ 300 — e as outras duas já aparecem na projeção de
+    # em setembro, não R$ 300, e as outras duas já aparecem na projeção de
     # outubro e novembro em vez de surgirem como surpresa.
     #
     # Guardar o valor cheio numa linha só obrigaria cada consulta de mês,
@@ -223,7 +223,7 @@ class Rateio(models.Model):
 
     Guarda VALOR, não percentual: igual, por proporção e por valor são três
     jeitos de informar a mesma coisa, e converter na entrada evita o arredonda-
-    mento acontecer toda vez que alguém abre um relatório — a soma das partes
+    mento acontecer toda vez que alguém abre um relatório: a soma das partes
     tem que bater com o total ao centavo, sempre.
 
     Um lançamento compartilhado tem rateios que somam o valor cheio. Um pessoal
@@ -250,8 +250,8 @@ class Rateio(models.Model):
 class RateioPadrao(models.Model):
     """Como o espaço divide, quando ninguém disser o contrário.
 
-    Existe porque a divisão costuma ser a MESMA quase sempre — meio a meio, ou
-    60/40 porque as rendas são diferentes — e escolher de novo a cada mercado
+    Existe porque a divisão costuma ser a MESMA quase sempre, meio a meio, ou
+    60/40 porque as rendas são diferentes, e escolher de novo a cada mercado
     seria trabalho repetido. Cada lançamento pode sair do padrão sem alterá-lo.
 
     Sem nenhuma linha, o padrão é dividir igual entre quem está no espaço. É o

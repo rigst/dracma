@@ -77,7 +77,7 @@ class CamposTest(TestCase):
 
     def test_data_renderiza_em_iso_para_o_campo_nativo(self):
         # O widget padrão formata no locale (dd/mm/aaaa) e o <input type=date>
-        # só aceita ISO — o campo aparecia VAZIO mesmo com initial definido, e
+        # só aceita ISO: o campo aparecia VAZIO mesmo com initial definido, e
         # a validação do navegador travava o envio sem dizer por quê.
         html = str(TransacaoForm(espaco=self.espaco, initial={"data": date(2026, 9, 14)}))
         self.assertIn('value="2026-09-14"', html)

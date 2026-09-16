@@ -4,7 +4,7 @@ Loop manual, e não o tool runner do SDK. Três razões:
 
 1. As tools têm efeito colateral no banco, e aqui o controle do que roda, em
    que ordem e sob qual quota é explícito.
-2. O loop é curto — uma ou duas iterações resolvem quase tudo.
+2. O loop é curto: uma ou duas iterações resolvem quase tudo.
 3. Um loop próprio é trivial de testar com um cliente falso, que é como o resto
    da frota testa (unittest.mock puro, sem factory_boy).
 """
@@ -49,7 +49,7 @@ class Resposta:
     ferramentas_usadas: list[str] = field(default_factory=list)
     iteracoes: int = 0
     # As mensagens deste turno, prontas para virar histórico do próximo. Vão
-    # com os blocos `tool_use` e `tool_result` — é isso que diz ao modelo que
+    # com os blocos `tool_use` e `tool_result`, é isso que diz ao modelo que
     # a escrita ACONTECEU. Ver `_para_historico`.
     turno: list[dict] = field(default_factory=list)
 
@@ -63,7 +63,7 @@ def responder(
     """Uma rodada de conversa.
 
     `conteudo` é str ou uma lista de blocos (para imagem e PDF, que a Claude lê
-    nativamente — áudio não, por isso ele chega aqui já transcrito).
+    nativamente, áudio não, por isso ele chega aqui já transcrito).
     """
     if contexto.usuario is not None and not tem_quota(contexto.usuario):
         raise SemQuota("Quota mensal de tokens esgotada.")
@@ -108,7 +108,7 @@ def responder(
             )
 
         # Blocos de tool_use podem vir vários na mesma resposta, e TODOS os
-        # tool_result precisam voltar numa ÚNICA mensagem de usuário —
+        # tool_result precisam voltar numa ÚNICA mensagem de usuário,
         # espalhá-los em mensagens separadas ensina o modelo a parar de chamar
         # ferramentas em paralelo.
         resultados = []
@@ -130,7 +130,7 @@ def responder(
         mensagens.append({"role": "user", "content": resultados})
 
     # Teto batido. Não é para acontecer com um agente deste tamanho; se
-    # acontecer, é uma tool falhando em laço — melhor cortar do que queimar a
+    # acontecer, é uma tool falhando em laço, melhor cortar do que queimar a
     # quota da pessoa.
     logger.warning("Teto de %s iterações atingido.", settings.AI_MAX_ITERACOES)
     return Resposta(
@@ -146,7 +146,7 @@ def responder(
 _BLOCOS_NO_HISTORICO = {"text", "tool_use"}
 
 # Mídia não volta: remandar a imagem de todo turno anterior multiplicaria o
-# custo por nada — o que importava dela já virou lançamento.
+# custo por nada, o que importava dela já virou lançamento.
 _SEM_MIDIA = "(mídia enviada neste turno)"
 
 
@@ -155,12 +155,12 @@ def _para_historico(mensagens: list[dict]) -> list[dict]:
 
     Guardar `tool_use` e `tool_result` é o ponto todo. Um histórico só de
     texto faz o modelo ler a própria confirmação (“Uber de R$ 20 registrado”)
-    como narração, não como prova de que a escrita aconteceu — e refazer. Foi
+    como narração, não como prova de que a escrita aconteceu, e refazer. Foi
     o que duplicou um lançamento em produção.
 
     A fala do usuário fica DE FORA: ela já é a Mensagem de entrada no banco.
     Guardá-la aqui também obrigaria quem monta o histórico a descobrir qual
-    entrada já está coberta por qual turno — e errar isso perde uma fala.
+    entrada já está coberta por qual turno, e errar isso perde uma fala.
     """
     saida: list[dict] = []
 
@@ -232,7 +232,7 @@ def _montar_sistema(contexto: Contexto) -> list[dict]:
     """Prefixo estável com o breakpoint de cache; contexto volátil depois.
 
     Se o `cache_control` ficasse no último bloco, a data de hoje entraria no
-    prefixo e o cache seria invalidado toda meia-noite — pior, a cada espaço
+    prefixo e o cache seria invalidado toda meia-noite, pior, a cada espaço
     diferente.
     """
     categorias = list(

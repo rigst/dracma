@@ -1,6 +1,6 @@
 """Monta o conteúdo multimodal que vai para a Claude.
 
-Imagem e PDF vão como blocos nativos — a API os lê direto, sem OCR nosso.
+Imagem e PDF vão como blocos nativos: a API os lê direto, sem OCR nosso.
 Áudio não: a API não aceita áudio, então ele chega aqui já transcrito.
 """
 

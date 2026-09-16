@@ -2,7 +2,7 @@
 
 O espaço é a unidade de convivência: casal, família ou time acompanham o mesmo
 mês. Entrar num espaço alheio é a operação mais delicada do app, porque mexe
-com dados que já existem dos dois lados — daí este módulo existir separado, com
+com dados que já existem dos dois lados, daí este módulo existir separado, com
 a mudança inteira dentro de uma transação.
 """
 
@@ -202,7 +202,7 @@ def sair_do_espaco(usuario):
     """Sai do espaço compartilhado e leva o que é seu para um espaço novo.
 
     O que é compartilhado FICA: foi lançado para a casa, e quem continua lá
-    ainda precisa dele. O que é pessoal vai junto — é da pessoa.
+    ainda precisa dele. O que é pessoal vai junto, é da pessoa.
     """
     from carteira.models import Conta, Transacao
     from carteira.seeds import semear_categorias

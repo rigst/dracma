@@ -1,11 +1,11 @@
 """Dividir um gasto entre as pessoas do espaço.
 
-Três jeitos de dizer a mesma coisa — igual, por proporção e por valor — e um
+Três jeitos de dizer a mesma coisa (igual, por proporção e por valor) e um
 resultado só: quanto cabe a cada um, em reais. A conversão acontece na entrada,
 e não a cada leitura, porque o arredondamento precisa ser decidido UMA vez: a
 soma das partes tem que bater com o total ao centavo, sempre.
 
-R$ 10,00 entre três pessoas não dá 3,33 para cada — dá 3,34, 3,33 e 3,33. Os
+R$ 10,00 entre três pessoas não dá 3,33 para cada, dá 3,34, 3,33 e 3,33. Os
 centavos que sobram vão para os primeiros da fila, e a ordem é estável (pelo id
 da pessoa), para a mesma divisão dar sempre o mesmo resultado.
 """
@@ -57,7 +57,7 @@ def _distribuir(valor: Decimal, pesos, pessoas) -> dict:
     """Reparte `valor` na proporção dos pesos, sem perder nem inventar centavo.
 
     Arredonda cada parte para BAIXO e depois devolve o que sobrou, um centavo
-    por vez. Arredondar normalmente pode gerar uma soma maior que o total — e
+    por vez. Arredondar normalmente pode gerar uma soma maior que o total, e
     aí o relatório mostraria um gasto que não existiu.
     """
     pessoas = list(pessoas)
@@ -143,7 +143,7 @@ def aplicar(transacao, modo: str = "padrao", partes: dict | None = None):
         if percentuais:
             # O padrão pode ter sido configurado antes de alguém entrar ou sair.
             # Quem não está mais no espaço perde a parte, e o que sobra é
-            # repartido mantendo a PROPORÇÃO entre quem ficou — 70/20/10 sem o
+            # repartido mantendo a PROPORÇÃO entre quem ficou, 70/20/10 sem o
             # terceiro vira 77,78/22,22, e não um erro de "não soma 100%".
             restantes = {p: v for p, v in percentuais.items() if p in membros}
             # Quem entrou depois do padrão ainda não tem parte; sem isto ficaria

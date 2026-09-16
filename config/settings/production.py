@@ -97,7 +97,7 @@ LOGGING = {
 }
 
 # ==============================================================================
-# Monitoramento de erros (Sentry) — ativo só quando SENTRY_DSN está definido.
+# Monitoramento de erros (Sentry), ativo só quando SENTRY_DSN está definido.
 # ==============================================================================
 
 SENTRY_DSN = os.getenv("SENTRY_DSN", "").strip()

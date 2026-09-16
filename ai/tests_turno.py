@@ -1,4 +1,4 @@
-"""O transcript do turno — o que impede o agente de refazer a própria escrita.
+"""O transcript do turno, o que impede o agente de refazer a própria escrita.
 
 Nasceu de um bug de produção. O histórico entre turnos era só texto, então o
 modelo lia a própria confirmação ("Uber de R$ 20,00 registrado ✅") como
@@ -59,7 +59,7 @@ class TranscriptTest(BaseTurnoTest):
     def test_a_fala_do_usuario_fica_de_fora(self):
         """Ela já é a Mensagem de entrada no banco. Guardá-la aqui também
         obrigaria quem monta o histórico a descobrir qual entrada já está
-        coberta por qual turno — e errar isso perde uma fala."""
+        coberta por qual turno, e errar isso perde uma fala."""
         cliente = ClienteFalso().responde("beleza")
         r = responder(self.contexto, "oi", cliente=cliente)
 
@@ -121,7 +121,7 @@ class ReplayTest(BaseTurnoTest):
 class HigieneTest(BaseTurnoTest):
     def test_midia_nao_volta_no_historico(self):
         """Remandar a imagem de todo turno anterior multiplicaria o custo por
-        nada — o que importava dela já virou lançamento."""
+        nada, o que importava dela já virou lançamento."""
         cliente = ClienteFalso().responde("li o comprovante")
         conteudo = [
             {"type": "image", "source": {"type": "base64", "media_type": "image/png",

@@ -103,7 +103,7 @@ class LoopTest(BaseAgenteTest):
 
     def test_erro_de_dominio_volta_como_tool_result_e_nao_estoura(self):
         # A Claude precisa LER o motivo para explicar à pessoa ou tentar de
-        # outro jeito — por isso o erro vira resultado, não exceção.
+        # outro jeito, por isso o erro vira resultado, não exceção.
         cliente = (
             ClienteFalso()
             .chama("excluir_transacao", codigo="ZZZZZ")
@@ -205,7 +205,7 @@ class SchemaTest(TestCase):
 
         `excluir_transacao` é a exceção medida entre as de escrita: recebe só
         um código, e um valor torto já cai no "não achei". Contra o risco real
-        — apagar o lançamento ERRADO — o `strict` nunca protegeu, porque
+        (apagar o lançamento ERRADO) o `strict` nunca protegeu, porque
         valida formato e não semântica.
         """
         sem_strict = tools.SOMENTE_LEITURA | {"excluir_transacao"}
@@ -219,7 +219,7 @@ class SchemaTest(TestCase):
 
         O teto anterior era seis, medido quando o conjunto tinha oito tools. O
         orçamento é agregado sobre TODAS as tools da requisição, não só as
-        strict — então ele encolhe quando uma tool nova entra, mesmo sem
+        strict, então ele encolhe quando uma tool nova entra, mesmo sem
         strict. Ao adicionar tool, meça de novo em vez de confiar no número.
         """
         quantas = sum(1 for t in tools.TOOLS if t.get("strict"))
@@ -231,7 +231,7 @@ class SchemaTest(TestCase):
         Acreditar que exigia custou caro: com os seis campos de
         `editar_transacao` obrigatórios, mudar só o valor obrigava o modelo a
         inventar um valor para os outros quatro. Em produção ele não conseguiu
-        — entrou em laço cuspindo sintaxe corrompida até estourar o teto de
+        entrou em laço cuspindo sintaxe corrompida até estourar o teto de
         iterações, e numa outra tentativa simplesmente não chamou a tool.
         Medido contra a API: `required` parcial é aceito e o modelo passa a
         mandar só os campos que importam.
@@ -251,7 +251,7 @@ class SchemaTest(TestCase):
         """Sob `strict: True` a API recusa alguns validadores do JSON Schema.
 
         Descoberto numa chamada real: `minimum`/`maximum` num campo `integer`
-        derrubam a requisição INTEIRA com 400, e não só aquela ferramenta —
+        derrubam a requisição INTEIRA com 400, e não só aquela ferramenta,
         nenhum teste com cliente falso pegaria isso, porque a validação
         acontece no servidor.
         """

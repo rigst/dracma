@@ -1,12 +1,12 @@
 """Ferramentas que a Claude pode chamar.
 
 Cada tool é um contrato fino sobre `carteira.services`: ela valida e converte
-argumentos, e delega. **Nenhuma tool escreve no banco por conta própria** — o
+argumentos, e delega. **Nenhuma tool escreve no banco por conta própria**: o
 serviço de domínio é o mesmo que as telas do portal usam, senão teríamos duas
 regras de negócio divergindo em silêncio.
 
-Todas declaram `additionalProperties: False`. Já o `strict: True` — que faz a
-API garantir que os argumentos batem com o schema — fica só nas ferramentas de
+Todas declaram `additionalProperties: False`. Já o `strict: True`, que faz a
+API garantir que os argumentos batem com o schema, fica só nas ferramentas de
 ESCRITA.
 
 O motivo é um limite real da plataforma: o orçamento de complexidade do
@@ -36,7 +36,7 @@ TOOLS = [
         "description": (
             "Registra um gasto ou um ganho. Use sempre que a pessoa relatar que gastou, "
             "pagou, comprou, recebeu ou ganhou algum valor. Se a data não for dita, "
-            "assuma hoje. Compra parcelada vira uma parcela por mês — passe o total em "
+            "assuma hoje. Compra parcelada vira uma parcela por mês, passe o total em "
             "'valor' e a quantidade em 'parcelas'."
         ),
         "strict": True,
@@ -71,13 +71,13 @@ TOOLS = [
                     "type": "boolean",
                     "description": (
                         "False (padrão) para o gasto ficar só com quem lançou. True só "
-                        "quando a pessoa disser que é da casa — 'põe no nosso', 'isso é "
+                        "quando a pessoa disser que é da casa: 'põe no nosso', 'isso é "
                         "nosso', 'conta da casa'."
                     ),
                 },
             },
             # Só o que a pessoa de fato informa. Exigir os oito obrigava o
-            # modelo a inventar um valor para cada campo que ela não disse —
+            # modelo a inventar um valor para cada campo que ela não disse,
             # ver o comentário de `editar_transacao`, onde isso quebrou.
             "required": ["valor", "descricao", "tipo", "categoria"],
             "additionalProperties": False,
@@ -98,7 +98,7 @@ TOOLS = [
             # conseguiu, e ou entrou em laço cuspindo sintaxe corrompida nos
             # parâmetros até estourar o teto de iterações, ou desistiu de
             # chamar a ferramenta. Campo opcional sob `strict` é aceito pela
-            # API e resolve — o que ela não aceita é a união `["string",
+            # API e resolve, o que ela não aceita é a união `["string",
             # "null"]`, que estourava o orçamento de complexidade com 400
             # "Schema is too complex."
             "type": "object",
@@ -124,7 +124,7 @@ TOOLS = [
         #
         # Esta é a que menos perde. O único argumento é uma string, e um valor
         # torto cai no "não achei nenhum lançamento com esse código" que já
-        # existe. Contra o risco real — apagar o lançamento ERRADO — o `strict`
+        # existe. Contra o risco real (apagar o lançamento ERRADO) o `strict`
         # nunca protegeu: ele valida o formato, não a semântica.
         "input_schema": {
             "type": "object",
@@ -138,13 +138,13 @@ TOOLS = [
         "description": (
             "Lista lançamentos individuais, do mais recente para o mais antigo. "
             "Use SEMPRE que a pessoa se referir a um lançamento pelo que ele é em vez "
-            "do código — 'o almoço', 'aquele mercado de ontem', 'o último' — para achar "
+            "do código ('o almoço', 'aquele mercado de ontem', 'o último') para achar "
             "qual é antes de corrigir ou apagar. Também serve para 'o que eu lancei "
             "hoje?'."
         ),
         # Sem `strict`, como as outras tools de leitura. Não é preferência: a
         # sexta tool strict do conjunto estoura o orçamento de complexidade da
-        # API com 400 "Schema is too complex." — medido. E aqui custa pouco:
+        # API com 400 "Schema is too complex.", medido. E aqui custa pouco:
         # argumento torto numa consulta traz menos linhas, enquanto numa tool
         # de escrita gravaria errado.
         "input_schema": {
@@ -286,7 +286,7 @@ def executar(nome: str, argumentos: dict, contexto) -> str:
     """Roda uma tool e devolve o resultado como texto para a Claude.
 
     Texto e não JSON: o modelo lê melhor, e o resultado volta para ele redigir
-    a resposta final ao usuário — não é consumido por código.
+    a resposta final ao usuário, não é consumido por código.
     """
     espaco = contexto.espaco
     manipulador = _MANIPULADORES.get(nome)
@@ -384,7 +384,7 @@ def _listar_transacoes(args, contexto, espaco):
     o modelo acha aqui e edita pelo código sem nunca mostrá-lo. Sem esta tool,
     só dava para corrigir o que ainda estivesse na janela curta de histórico.
 
-    O recorte de visibilidade é o mesmo de todo o resto — `visiveis_para` — e
+    O recorte de visibilidade é o mesmo de todo o resto (`visiveis_para`) e
     não é opcional: sem ele, listar entregaria o gasto pessoal de quem divide
     o espaço.
     """

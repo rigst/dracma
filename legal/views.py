@@ -63,7 +63,7 @@ def privacidade(request):
 
 @require_GET
 def versao(request, tipo, versao):
-    """Versão específica, inclusive arquivada — transparência sobre o histórico."""
+    """Versão específica, inclusive arquivada, transparência sobre o histórico."""
     if tipo not in TipoDocumento.values:
         raise Http404("Tipo de documento desconhecido.")
     documento = get_object_or_404(
@@ -93,7 +93,7 @@ def aceite_visitante(request):
 
     O formulário posta na rota que cada projeto usa para criar o visitante
     (`LEGAL_VISITOR_ACTION`), com os campos extras que aquela view espera
-    (`LEGAL_VISITOR_EXTRA`) — é o que mantém esta tela igual entre os sistemas
+    (`LEGAL_VISITOR_EXTRA`), é o que mantém esta tela igual entre os sistemas
     sem que o app `legal` precise saber como cada um cria a conta.
     """
     destino = getattr(settings, "LEGAL_VISITOR_ACTION", None)
@@ -148,7 +148,7 @@ def reaceite(request):
 @require_GET
 @login_required
 def meus_aceites(request):
-    """Comprovante do próprio usuário — LGPD art. 18, direito de acesso."""
+    """Comprovante do próprio usuário, LGPD art. 18, direito de acesso."""
     aceites = (
         AceiteLegal.objects.filter(usuario=request.user)
         .select_related("documento")

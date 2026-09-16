@@ -1,7 +1,7 @@
 """Leitura e escrita dos arquivos `legal/documentos/<tipo>/<versao>.md`.
 
 Formato do arquivo: um cabeçalho `chave: valor` por linha, um `---` isolado, e o
-Markdown a seguir. Parser à mão de propósito — não vale uma dependência de YAML
+Markdown a seguir. Parser à mão de propósito: não vale uma dependência de YAML
 para três chaves.
 """
 
