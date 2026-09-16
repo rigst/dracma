@@ -20,7 +20,7 @@ class CategoriaAdmin(ModelAdmin):
 
 @admin.register(Transacao)
 class TransacaoAdmin(ModelAdmin):
-    list_display = ("codigo", "data", "descricao", "tipo", "valor", "categoria", "origem", "pago")
+    list_display = ("codigo", "data", "rotulo", "tipo", "valor", "categoria", "origem", "pago")
     list_filter = ("tipo", "origem", "pago", "prevista", "data")
     search_fields = ("codigo", "descricao")
     date_hierarchy = "data"

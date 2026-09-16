@@ -12,7 +12,7 @@ import calendar
 import unicodedata
 from dataclasses import dataclass
 from datetime import date, timedelta
-from decimal import Decimal, InvalidOperation
+from decimal import ROUND_DOWN, Decimal, InvalidOperation
 
 from django.db import transaction as db_transaction
 from django.db.models import (
@@ -39,7 +39,13 @@ from .models import (
     Recorrente,
     TipoTransacao,
     Transacao,
+    gerar_codigo_transacao,
 )
+
+# Teto do parcelamento. 36x cobre o que o varejo brasileiro pratica, e o limite
+# existe porque cada parcela é uma linha: um "1000x" digitado errado encheria a
+# tabela da pessoa e a projeção dos próximos 83 anos.
+MAX_PARCELAS = 36
 
 
 class ErroDeDominio(Exception):
@@ -155,6 +161,7 @@ def registrar_transacao(
     modo_rateio: str = "padrao",
     partes: dict | None = None,
     observacao: str = "",
+    parcelas: int = 1,
 ) -> Transacao:
     if tipo not in TipoTransacao.values:
         raise ErroDeDominio(f"Tipo de transação desconhecido: {tipo}.")
@@ -163,28 +170,82 @@ def registrar_transacao(
     if not descricao:
         raise ErroDeDominio("A transação precisa de uma descrição.")
 
-    dono = dono_presumido(espaco, autor)
-    transacao = Transacao.objects.create(
-        espaco=espaco,
-        autor=dono,
-        tipo=tipo,
-        valor=para_decimal(valor),
-        descricao=descricao,
-        data=data_lancamento or date.today(),
-        categoria=achar_categoria(espaco, categoria, tipo),
-        conta=achar_conta(espaco, conta),
-        pago=pago,
-        origem=origem,
-        compartilhada=compartilhada,
-        # Quem pagou, quando ninguém disse, é quem lançou.
-        pago_por=pago_por or dono,
-        observacao=observacao or "",
-    )
+    parcelas = int(parcelas or 1)
+    if parcelas < 1:
+        raise ErroDeDominio("O número de parcelas precisa ser pelo menos 1.")
+    if parcelas > MAX_PARCELAS:
+        raise ErroDeDominio(f"No máximo {MAX_PARCELAS} parcelas.")
 
+    dono = dono_presumido(espaco, autor)
     from . import rateios
 
-    rateios.aplicar(transacao, modo_rateio, partes)
-    return transacao
+    primeira_data = data_lancamento or date.today()
+    comuns = {
+        "espaco": espaco,
+        "autor": dono,
+        "tipo": tipo,
+        "descricao": descricao,
+        "categoria": achar_categoria(espaco, categoria, tipo),
+        "conta": achar_conta(espaco, conta),
+        "origem": origem,
+        "compartilhada": compartilhada,
+        # Quem pagou, quando ninguém disse, é quem lançou.
+        "pago_por": pago_por or dono,
+        "observacao": observacao or "",
+    }
+
+    if parcelas == 1:
+        transacao = Transacao.objects.create(
+            **comuns, valor=para_decimal(valor), data=primeira_data, pago=pago
+        )
+        rateios.aplicar(transacao, modo_rateio, partes)
+        return transacao
+
+    grupo = gerar_codigo_transacao()
+    criadas = []
+    for numero, (valor_parcela, data_parcela) in enumerate(
+        zip(_dividir(valor, parcelas), _meses_a_frente(primeira_data, parcelas), strict=True),
+        start=1,
+    ):
+        transacao = Transacao.objects.create(
+            **comuns,
+            valor=valor_parcela,
+            data=data_parcela,
+            # Só a primeira pode já estar paga. As outras ainda vão vencer, e
+            # marcá-las como pagas inflaria o saldo da conta com dinheiro que
+            # não saiu.
+            pago=pago if numero == 1 else False,
+            grupo_parcela=grupo,
+            parcela=numero,
+            total_parcelas=parcelas,
+        )
+        rateios.aplicar(transacao, modo_rateio, partes)
+        criadas.append(transacao)
+
+    # A primeira: é dela que quem chamou fala ("registrei a 1/3").
+    return criadas[0]
+
+
+def _dividir(valor, parcelas: int) -> list:
+    """Divide em centavos exatos, sobra na primeira parcela.
+
+    R$ 100,00 em 3x é 33,34 + 33,33 + 33,33. Arredondar cada uma para 33,33
+    perderia um centavo do total, e um centavo que some a cada compra vira
+    diferença de extrato que ninguém consegue explicar.
+    """
+    total = para_decimal(valor)
+    base = (total / parcelas).quantize(Decimal("0.01"), rounding=ROUND_DOWN)
+    resto = total - base * parcelas
+    return [base + resto] + [base] * (parcelas - 1)
+
+
+def _meses_a_frente(inicio: date, quantas: int) -> list[date]:
+    """Mesma data nos meses seguintes, com o dia 31 caindo no último dia."""
+    datas = []
+    for passo in range(quantas):
+        mes = inicio.month - 1 + passo
+        datas.append(dia_valido(inicio.year + mes // 12, mes % 12 + 1, inicio.day))
+    return datas
 
 
 def buscar_por_codigo(espaco, codigo: str, usuario=None) -> Transacao:

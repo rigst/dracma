@@ -36,7 +36,8 @@ TOOLS = [
         "description": (
             "Registra um gasto ou um ganho. Use sempre que a pessoa relatar que gastou, "
             "pagou, comprou, recebeu ou ganhou algum valor. Se a data não for dita, "
-            "assuma hoje."
+            "assuma hoje. Compra parcelada vira uma parcela por mês — passe o total em "
+            "'valor' e a quantidade em 'parcelas'."
         ),
         "strict": True,
         "input_schema": {
@@ -58,6 +59,14 @@ TOOLS = [
                 },
                 "data": {"type": "string", "description": "AAAA-MM-DD. Omita para hoje."},
                 "pago": {"type": "boolean", "description": "False se ainda vai pagar."},
+                "parcelas": {
+                    "type": "integer",
+                    "description": (
+                        "Número de parcelas quando a compra foi parcelada ('300 em 3x'). "
+                        "Informe o valor TOTAL da compra em 'valor'; a divisão é feita "
+                        "aqui. Omita ou 1 para à vista."
+                    ),
+                },
                 "compartilhada": {
                     "type": "boolean",
                     "description": (
@@ -108,7 +117,15 @@ TOOLS = [
     {
         "name": "excluir_transacao",
         "description": "Apaga um lançamento pelo código de 5 caracteres.",
-        "strict": True,
+        # A única tool de escrita sem `strict`, e a escolha foi medida: o
+        # orçamento de complexidade é agregado sobre TODAS as tools, e o campo
+        # `parcelas` novo em `registrar_transacao` não cabia junto com cinco
+        # tools strict (400 "Schema is too complex.").
+        #
+        # Esta é a que menos perde. O único argumento é uma string, e um valor
+        # torto cai no "não achei nenhum lançamento com esse código" que já
+        # existe. Contra o risco real — apagar o lançamento ERRADO — o `strict`
+        # nunca protegeu: ele valida o formato, não a semântica.
         "input_schema": {
             "type": "object",
             "properties": {"codigo": {"type": "string"}},
@@ -297,9 +314,19 @@ def _registrar(args, contexto, espaco):
         origem=contexto.origem,
         autor=contexto.usuario,
         compartilhada=args.get("compartilhada", False),
+        parcelas=args.get("parcelas") or 1,
     )
     categoria = transacao.categoria.nome if transacao.categoria else "sem categoria"
-    conta = transacao.conta.nome if transacao.conta else "sem conta"
+    # Dito assim de propósito: se a pessoa nomeou uma conta que não existe,
+    # `achar_conta` devolve None em silêncio, e sem esta pista o agente
+    # confirmaria "no cartão" um lançamento que ficou sem conta nenhuma.
+    pedida = (args.get("conta") or "").strip()
+    if transacao.conta:
+        conta = transacao.conta.nome
+    elif pedida:
+        conta = f"NAO_ENCONTRADA (a pessoa disse “{pedida}”; avise que não existe essa conta)"
+    else:
+        conta = "sem conta"
     quem_ve = "todo o espaço" if transacao.compartilhada else "só quem lançou"
     linha = (
         f"Registrado. código={transacao.codigo} valor={_dinheiro(transacao.valor)} "
@@ -307,6 +334,16 @@ def _registrar(args, contexto, espaco):
         f"data={transacao.data:%d/%m/%Y} tipo={transacao.get_tipo_display()} "
         f"quem_ve={quem_ve}"
     )
+    if transacao.parcelada:
+        irmas = transacao.espaco.transacoes.filter(
+            grupo_parcela=transacao.grupo_parcela
+        ).order_by("parcela")
+        linha += (
+            f" parcelas={transacao.total_parcelas}"
+            f" valor_da_parcela={_dinheiro(transacao.valor)}"
+            f" total_da_compra={_dinheiro(sum(t.valor for t in irmas))}"
+            f" vencimentos={', '.join(f'{t.data:%d/%m}' for t in irmas)}"
+        )
     # Quando dividiu, a parte de quem falou é o número que interessa a ela.
     minha = transacao.rateios.filter(pessoa=contexto.usuario).first()
     if minha is not None and minha.valor != transacao.valor:
@@ -380,7 +417,7 @@ def _listar_transacoes(args, contexto, espaco):
     for t in achados:
         categoria = t.categoria.nome if t.categoria else "sem categoria"
         linhas.append(
-            f"codigo={t.codigo} data={t.data:%d/%m/%Y} descricao={t.descricao} "
+            f"codigo={t.codigo} data={t.data:%d/%m/%Y} descricao={t.rotulo} "
             f"valor={_dinheiro(t.valor)} categoria={categoria} "
             f"tipo={t.get_tipo_display()} pago={'sim' if t.pago else 'nao'}"
         )

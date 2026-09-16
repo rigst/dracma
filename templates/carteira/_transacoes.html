@@ -11,7 +11,7 @@
       <tr>
         <td>{{ t.data|date:"d/m" }}</td>
         <td>
-          {{ t.descricao }}
+          {{ t.rotulo }}
           {% if not t.pago %}<span class="etiqueta">a pagar</span>{% endif %}
           {% if compartilhado and not t.compartilhada %}<span class="pessoal">só eu</span>{% endif %}
           {% if compartilhado and t.compartilhada and t.autor and t.autor != user %}
@@ -39,7 +39,7 @@
           <button class="ligacao ligacao--perigo"
                   hx-post="{% url 'carteira:excluir_transacao' t.codigo %}"
                   hx-target="#painel-corpo"
-                  hx-confirm="Apagar “{{ t.descricao }}”?">apagar</button>
+                  hx-confirm="Apagar “{{ t.rotulo }}”?">apagar</button>
         </td>
       </tr>
       {% empty %}

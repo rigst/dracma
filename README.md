@@ -17,6 +17,10 @@ do almoço para 30" — e a assistente resolve qual é (`listar_transacoes`). Ca
 lançamento tem um código curto (`0DFPK`), mas ele é identificador interno e
 aparece no portal, não na conversa: ninguém decora cinco caracteres aleatórios.
 
+**Compra parcelada vira parcela, não susto.** "300 em 3x" registra três
+lançamentos de R$ 100, um por mês. O mês fecha pelo caixa real e as parcelas
+seguintes já entram na projeção, em vez de aparecerem como surpresa na fatura.
+
 **Orçamento que se cuida sozinho.** Limites por categoria, teto geral do mês, e
 limites temporários avulsos ("R$ 200 pra presente essa semana"). Ao chegar em
 80% e ao estourar, a Dracma manda mensagem — antes da fatura fechar.

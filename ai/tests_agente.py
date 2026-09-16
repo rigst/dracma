@@ -197,15 +197,21 @@ class SchemaTest(TestCase):
             with self.subTest(tool=tool["name"]):
                 self.assertFalse(tool["input_schema"]["additionalProperties"])
 
-    def test_strict_fica_nas_ferramentas_de_escrita(self):
+    def test_strict_fica_onde_um_argumento_torto_gravaria_errado(self):
         """O orçamento de complexidade do `strict` é agregado sobre todas as
-        tools da requisição e não cabe para as oito (400 "Schema is too
+        tools da requisição e não cabe para todas (400 "Schema is too
         complex."). Ele é gasto onde um argumento inválido gravaria dinheiro
-        errado; numa consulta, o pior caso é uma leitura ruim."""
+        errado; numa consulta, o pior caso é uma leitura ruim.
+
+        `excluir_transacao` é a exceção medida entre as de escrita: recebe só
+        um código, e um valor torto já cai no "não achei". Contra o risco real
+        — apagar o lançamento ERRADO — o `strict` nunca protegeu, porque
+        valida formato e não semântica.
+        """
+        sem_strict = tools.SOMENTE_LEITURA | {"excluir_transacao"}
         for tool in tools.TOOLS:
-            escrita = tool["name"] not in tools.SOMENTE_LEITURA
             with self.subTest(tool=tool["name"]):
-                self.assertEqual(tool.get("strict", False), escrita)
+                self.assertEqual(tool.get("strict", False), tool["name"] not in sem_strict)
 
     def test_no_maximo_cinco_tools_strict(self):
         """Medido contra a API em 16/09/2026, com as nove tools atuais: cinco

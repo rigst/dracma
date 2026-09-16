@@ -22,7 +22,7 @@ from django.utils import timezone
 
 from accounts.models import Espaco
 
-from . import services
+from . import services, vozes
 from .models import Alerta, Limite, TipoTransacao, Transacao
 
 logger = logging.getLogger(__name__)
@@ -123,12 +123,17 @@ def _avisar_limite(limite, membro) -> int:
     alvo = limite.categoria.nome if limite.categoria else (limite.rotulo or "geral")
     referencia = f"{consumo['inicio']:%Y-%m}"
 
+    chave_voz = f"limite:{limite.pk}:{membro.pk}"
+
     if consumo["estourado"]:
         excedente = consumo["gasto"] - limite.valor
         texto = (
             f"⚠️ Você passou do limite de {alvo}: "
             f"{_dinheiro(consumo['gasto'])} de {_dinheiro(limite.valor)} "
             f"({_dinheiro(excedente)} acima).\n\n"
+            # O número primeiro, a graça depois: quem estourou o orçamento
+            # quer saber quanto, não ouvir um mito.
+            f"{vozes.escolher(vozes.ESTOUROU, chave_voz, consumo['inicio'].month)}\n\n"
             "Quer ajustar o limite ou segurar outra categoria pra compensar?"
         )
         return int(
@@ -146,7 +151,8 @@ def _avisar_limite(limite, membro) -> int:
         texto = (
             f"Você já usou {consumo['percentual']}% do limite de {alvo} "
             f"({_dinheiro(consumo['gasto'])} de {_dinheiro(limite.valor)}).\n\n"
-            f"Restam {_dinheiro(consumo['restante'])} até {consumo['fim']:%d/%m}."
+            f"Restam {_dinheiro(consumo['restante'])} até {consumo['fim']:%d/%m}. "
+            f"{vozes.escolher(vozes.PERTO, chave_voz, consumo['inicio'].month)}"
         )
         return int(
             _avisar(
@@ -242,6 +248,12 @@ def resumo_semanal() -> int:
                 nome, valor, percentual = maior
                 linhas.append("")
                 linhas.append(f"Maior gasto: {nome} — {_dinheiro(valor)} ({percentual}%).")
+
+            # O tom segue o saldo: elogiar uma semana no vermelho soaria
+            # deboche, e lamentar uma no azul, falta de atenção.
+            frases = vozes.MES_NO_AZUL if resumo.saldo >= 0 else vozes.MES_NO_VERMELHO
+            linhas.append("")
+            linhas.append(vozes.escolher(frases, f"semanal:{membro.pk}", hoje.isocalendar().week))
 
             if _avisar(
                 espaco,

@@ -165,6 +165,23 @@ class Transacao(models.Model):
     # Previstas nascem do recorrente e ainda não aconteceram; entram na
     # projeção do mês, mas não no "já saiu".
     prevista = models.BooleanField("prevista", default=False)
+
+    # --- Parcelamento -----------------------------------------------------
+    #
+    # Uma compra em 3x vira TRÊS lançamentos, um por mês, e não um de valor
+    # cheio. É o que faz o mês fechar pelo caixa real: R$ 300 em 3x pesa R$ 100
+    # em setembro, não R$ 300 — e as outras duas já aparecem na projeção de
+    # outubro e novembro em vez de surgirem como surpresa.
+    #
+    # Guardar o valor cheio numa linha só obrigaria cada consulta de mês,
+    # limite, gráfico e CSV a saber dividir, e a primeira que esquecesse
+    # voltaria a errar o mês em silêncio.
+    #
+    # Estes três campos são só para agrupar e mostrar "2/3"; nenhum cálculo
+    # depende deles.
+    grupo_parcela = models.CharField("grupo da parcela", max_length=8, blank=True, db_index=True)
+    parcela = models.PositiveSmallIntegerField("parcela", null=True, blank=True)
+    total_parcelas = models.PositiveSmallIntegerField("total de parcelas", null=True, blank=True)
     observacao = models.TextField("observação", blank=True)
     criada_em = models.DateTimeField("criada em", auto_now_add=True)
     atualizada_em = models.DateTimeField("atualizada em", auto_now=True)
@@ -180,7 +197,18 @@ class Transacao(models.Model):
         ]
 
     def __str__(self) -> str:
-        return f"{self.codigo} · {self.descricao} · R$ {self.valor}"
+        return f"{self.codigo} · {self.rotulo} · R$ {self.valor}"
+
+    @property
+    def parcelada(self) -> bool:
+        return bool(self.total_parcelas and self.total_parcelas > 1)
+
+    @property
+    def rotulo(self) -> str:
+        """Descrição com o "2/3" quando for parcela. É o que a pessoa lê."""
+        if not self.parcelada:
+            return self.descricao
+        return f"{self.descricao} ({self.parcela}/{self.total_parcelas})"
 
     @property
     def sinal(self) -> Decimal:
