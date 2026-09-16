@@ -164,7 +164,7 @@ def _preparar_espaco(usuario):
     from .models import Espaco
 
     if usuario.espaco_id is None:
-        usuario.espaco = Espaco.objects.create(nome="Meu espaço")
+        usuario.espaco = Espaco.objects.create()
         usuario.save(update_fields=["espaco"])
     semear_categorias(usuario.espaco)
 

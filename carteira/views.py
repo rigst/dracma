@@ -30,6 +30,7 @@ from .forms import (
     ContaForm,
     DivisaoPadraoForm,
     EntrarNoEspacoForm,
+    NomeDoEspacoForm,
     LimiteForm,
     RecorrenteForm,
     TransacaoForm,
@@ -51,7 +52,7 @@ def _espaco(request):
 
         from .seeds import semear_categorias
 
-        usuario.espaco = Espaco.objects.create(nome="Meu espaço")
+        usuario.espaco = Espaco.objects.create()
         usuario.save(update_fields=["espaco"])
         semear_categorias(usuario.espaco)
     return usuario.espaco
@@ -592,6 +593,26 @@ def exportar(request):
 # ---------------------------------------------------------------------------
 
 
+def _contexto_compartilhar(request, espaco, **trocas):
+    """O contexto da tela de compartilhar.
+
+    Num lugar só porque três views a desenham, cada uma com um formulário
+    diferente ligado: montar o dicionário em cada uma deixaria as telas
+    divergindo conforme uma delas ganhasse um campo novo.
+    """
+    contexto = {
+        "espaco": espaco,
+        "convite": espacos.convite_vigente(espaco, request.user),
+        "membros": espaco.membros.order_by("username"),
+        "form": EntrarNoEspacoForm(),
+        "form_divisao": DivisaoPadraoForm(espaco=espaco),
+        "form_nome": NomeDoEspacoForm(initial={"nome": espaco.nome}),
+        "compartilhado": espaco.membros.count() > 1,
+    }
+    contexto.update(trocas)
+    return contexto
+
+
 @login_required
 def compartilhar(request):
     """Convidar alguém, ou entrar no espaço de quem convidou."""
@@ -609,18 +630,10 @@ def compartilhar(request):
                 messages.success(request, f"Você entrou em “{destino.nome}”.")
                 return _fragmento_apos_escrita(request, destino)
 
-    convite = espacos.convite_vigente(espaco, request.user)
     return render(
         request,
         "carteira/_compartilhar.html",
-        {
-            "espaco": espaco,
-            "convite": convite,
-            "membros": espaco.membros.order_by("username"),
-            "form": form,
-            "form_divisao": DivisaoPadraoForm(espaco=espaco),
-            "compartilhado": espaco.membros.count() > 1,
-        },
+        _contexto_compartilhar(request, espaco, form=form),
     )
 
 
@@ -679,14 +692,30 @@ def divisao_padrao(request):
     return render(
         request,
         "carteira/_compartilhar.html",
-        {
-            "espaco": espaco,
-            "convite": espacos.convite_vigente(espaco, request.user),
-            "membros": espaco.membros.order_by("username"),
-            "form": EntrarNoEspacoForm(),
-            "form_divisao": form,
-            "compartilhado": espaco.membros.count() > 1,
-        },
+        _contexto_compartilhar(request, espaco, form_divisao=form),
+    )
+
+
+@login_required
+@require_POST
+def renomear_espaco(request):
+    """Troca o nome do espaço.
+
+    Não fecha o diálogo no sucesso, diferente de quem grava lançamento: o nome
+    não aparece no painel, então fechar não mostraria nada mudando. A pessoa
+    vê o campo com o nome novo e o título acima dele.
+    """
+    espaco = _espaco(request)
+    form = NomeDoEspacoForm(request.POST)
+    if form.is_valid():
+        espaco.nome = form.cleaned_data["nome"]
+        espaco.save(update_fields=["nome"])
+        form = NomeDoEspacoForm(initial={"nome": espaco.nome})
+
+    return render(
+        request,
+        "carteira/_compartilhar.html",
+        _contexto_compartilhar(request, espaco, form_nome=form),
     )
 
 

@@ -31,6 +31,13 @@ def gerar_codigo(tamanho: int = 6) -> str:
 class Espaco(models.Model):
     """Onde o dinheiro é acompanhado em conjunto."""
 
+    # O default é a fonte única do nome inicial: quatro lugares criam espaço, e
+    # repetir o literal em cada um faria o nome divergir na primeira vez que
+    # alguém mudasse só um. Trocar aqui vale para todos.
+    #
+    # Ele não fica assim para sempre: a tela de Compartilhar deixa renomear, e
+    # é lá que o nome passa a importar, quando o espaço deixa de ser de uma
+    # pessoa só.
     nome = models.CharField("nome", max_length=80, default="Meu espaço")
     criado_em = models.DateTimeField("criado em", auto_now_add=True)
 
@@ -88,7 +95,7 @@ class Usuario(AbstractUser):
         if self.espaco_id is None:
             from carteira.seeds import semear_categorias
 
-            self.espaco = Espaco.objects.create(nome="Meu espaço")
+            self.espaco = Espaco.objects.create()
             semear_categorias(self.espaco)
             # `update_fields` é uma lista do que vai ao banco: sem incluir o
             # campo aqui, o espaço seria criado e o vínculo não seria gravado.

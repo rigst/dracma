@@ -213,7 +213,7 @@ def sair_do_espaco(usuario):
     if antigo is None or antigo.membros.count() <= 1:
         raise ErroDeEspaco("Você não está compartilhando este espaço com ninguém.")
 
-    novo = Espaco.objects.create(nome="Meu espaço")
+    novo = Espaco.objects.create()
     semear_categorias(novo)
 
     usuario.espaco = novo

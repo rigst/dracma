@@ -719,6 +719,20 @@ dialog::backdrop { background: rgba(23, 18, 14, .55); }
 
 /* Membros do espaço ------------------------------------------------------ */
 
+/* O nome do espaço fica em linha com o botão: é um campo só, e empilhar
+   daria a ele mais peso do que merece numa tela cheia de outras coisas.
+   Abaixo de 420px a linha quebra, senão o input encolhe até não caber nada. */
+/* `flex-end` e não uma margem no botão: alinhar pela base dispensa saber a
+   altura do rótulo, que muda com a fonte e com o zoom do navegador. */
+.nome-espaco { display: flex; gap: .5rem; align-items: flex-end; margin-top: 1.25rem; }
+.nome-espaco .campo { flex: 1; margin-bottom: 0; }
+.nome-espaco .botao { white-space: nowrap; }
+
+@media (max-width: 420px) {
+  .nome-espaco { flex-direction: column; align-items: stretch; }
+  .nome-espaco .botao { align-self: flex-end; }
+}
+
 .membros { list-style: none; padding: 0; margin: 0; font-size: .92rem; }
 .membros li {
   display: flex; align-items: center; gap: .6rem;

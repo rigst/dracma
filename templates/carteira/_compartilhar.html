@@ -1,9 +1,19 @@
-<h2>Compartilhar o espaço</h2>
+<h2>Compartilhar “{{ espaco.nome }}”</h2>
 <p class="nota nota--larga" style="margin-top:0">
   Quem entra no espaço acompanha o mesmo mês: vê os lançamentos
   <strong>compartilhados</strong>, os limites e a previsão. O que você marcar
   como <strong>só eu</strong> continua sendo só seu.
 </p>
+
+<form class="nome-espaco" hx-post="{% url 'carteira:renomear_espaco' %}"
+      hx-target="#dialogo-corpo">
+  {% csrf_token %}
+  <div class="campo">
+    {{ form_nome.nome.label_tag }}{{ form_nome.nome }}
+    {% for e in form_nome.nome.errors %}<p class="erro">{{ e }}</p>{% endfor %}
+  </div>
+  <button type="submit" class="botao botao--fantasma">Salvar nome</button>
+</form>
 
 <h3 style="margin-top:1.5rem">Quem está aqui</h3>
 <ul class="membros">

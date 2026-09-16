@@ -18,6 +18,7 @@ urlpatterns = [
     path("conta/nova/", views.nova_conta, name="nova_conta"),
     path("compartilhar/", views.compartilhar, name="compartilhar"),
     path("compartilhar/sair/", views.sair_do_espaco, name="sair_do_espaco"),
+    path("compartilhar/nome/", views.renomear_espaco, name="renomear_espaco"),
     path("compartilhar/divisao/", views.divisao_padrao, name="divisao_padrao"),
     path("acerto/", views.registrar_acerto, name="registrar_acerto"),
     path("acerto/<int:pk>/desfazer/", views.desfazer_acerto, name="desfazer_acerto"),

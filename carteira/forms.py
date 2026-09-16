@@ -415,6 +415,25 @@ class AcertoForm(forms.Form):
         return dados
 
 
+class NomeDoEspacoForm(forms.Form):
+    """O nome do espaço.
+
+    Existe porque todo espaço nasce como "Meu espaço", e o nome só passa a
+    importar quando ele deixa de ser de uma pessoa só. Sem esta tela, um
+    espaço de casal se chamaria "Meu espaço" para sempre, ou exigiria o admin.
+    """
+
+    nome = forms.CharField(
+        label="Nome do espaço",
+        max_length=80,
+        widget=forms.TextInput(attrs={"placeholder": "Casa, República, Família…"}),
+    )
+
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault("label_suffix", "")
+        super().__init__(*args, **kwargs)
+
+
 class EntrarNoEspacoForm(forms.Form):
     """Código de convite de outro espaço."""
 
