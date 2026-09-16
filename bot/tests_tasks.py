@@ -20,6 +20,7 @@ from bot.canais.fake import FakeCanal
 from bot.conteudo import montar
 from bot.models import CodigoPareamento, Mensagem, Midia, ContaTelegram
 from bot.tasks import processar_mensagem
+from bot import envio
 
 PNG_1x1 = base64.b64decode(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
@@ -304,3 +305,151 @@ class ConteudoTest(TestCase):
 
         blocos = montar(self.mensagem)
         self.assertIn("comprovante", blocos[1]["text"])
+
+
+class HistoricoComToolsTest(BaseTaskTest):
+    """A regressão das duas Ubers.
+
+    O histórico entre turnos era só texto. O modelo lia a própria confirmação
+    ("Uber de R$ 20,00 registrado ✅") como narração e refazia a tool no turno
+    seguinte: criou uma segunda Uber, editou a duplicata e confirmou um ajuste
+    que nunca tocou no lançamento original.
+    """
+
+    def _turno(self, texto_entrada, cliente, id_externo):
+        from bot.tasks import processar_mensagem
+
+        entrada = Mensagem.objects.create(
+            conta=self.conta,
+            usuario=self.usuario,
+            canal="fake",
+            direcao=Mensagem.Direcao.ENTRADA,
+            tipo=Mensagem.Tipo.TEXTO,
+            id_externo=id_externo,
+            texto=texto_entrada,
+        )
+        with self._agente(cliente):
+            processar_mensagem(entrada.pk)
+        return entrada
+
+    def test_a_resposta_guarda_os_blocos_de_tool(self):
+        cliente = (
+            ClienteFalso()
+            .chama(
+                "registrar_transacao",
+                valor=20,
+                descricao="Uber",
+                tipo="despesa",
+                categoria="Transporte",
+            )
+            .responde("Uber de R$ 20,00 registrado ✅")
+        )
+        self._turno("gastei 20 de uber", cliente, "123:10")
+
+        # Pela resposta em si: `avancar` cria outra saída (a dica do roteiro)
+        # logo depois, e ela não tem turno nenhum.
+        saida = Mensagem.objects.get(
+            direcao=Mensagem.Direcao.SAIDA, texto="Uber de R$ 20,00 registrado ✅"
+        )
+        self.assertIsNotNone(saida.turno)
+        tipos = [
+            b["type"]
+            for m in saida.turno
+            if isinstance(m["content"], list)
+            for b in m["content"]
+        ]
+        self.assertIn("tool_use", tipos)
+        self.assertIn("tool_result", tipos)
+
+    def test_o_turno_seguinte_ve_que_a_escrita_aconteceu(self):
+        from bot.tasks import _historico
+
+        cliente = (
+            ClienteFalso()
+            .chama(
+                "registrar_transacao",
+                valor=20,
+                descricao="Uber",
+                tipo="despesa",
+                categoria="Transporte",
+            )
+            .responde("Uber de R$ 20,00 registrado ✅")
+        )
+        self._turno("gastei 20 de uber", cliente, "123:10")
+
+        seguinte = Mensagem.objects.create(
+            conta=self.conta,
+            usuario=self.usuario,
+            canal="fake",
+            direcao=Mensagem.Direcao.ENTRADA,
+            tipo=Mensagem.Tipo.TEXTO,
+            id_externo="123:11",
+            texto="ajusta o uber para 22",
+        )
+        historico = _historico(seguinte)
+
+        tipos = [
+            b["type"]
+            for m in historico
+            if isinstance(m["content"], list)
+            for b in m["content"]
+        ]
+        self.assertIn("tool_use", tipos)
+        self.assertIn("tool_result", tipos)
+        # E a fala do usuário aparece UMA vez só.
+        self.assertEqual(
+            sum(1 for m in historico if m["content"] == "gastei 20 de uber"), 1
+        )
+
+    def test_historico_comeca_sempre_pelo_usuario(self):
+        # A janela pode cair logo depois de uma mensagem do roteiro de
+        # onboarding, que não responde a ninguém — e a API exige começar no
+        # usuário.
+        from bot.tasks import _historico
+
+        envio.responder(self.conta, "dica do roteiro", canal=self.canal)
+        nova = Mensagem.objects.create(
+            conta=self.conta,
+            usuario=self.usuario,
+            canal="fake",
+            direcao=Mensagem.Direcao.ENTRADA,
+            tipo=Mensagem.Tipo.TEXTO,
+            id_externo="123:12",
+            texto="e aí?",
+        )
+        historico = _historico(nova)
+        self.assertTrue(not historico or historico[0]["role"] == "user")
+
+    def test_mensagem_antiga_sem_turno_ainda_entra_como_texto(self):
+        # Tudo que foi gravado antes deste campo existir.
+        from bot.tasks import _historico
+
+        Mensagem.objects.create(
+            conta=self.conta,
+            usuario=self.usuario,
+            canal="fake",
+            direcao=Mensagem.Direcao.ENTRADA,
+            tipo=Mensagem.Tipo.TEXTO,
+            id_externo="123:20",
+            texto="pergunta antiga",
+        )
+        Mensagem.objects.create(
+            conta=self.conta,
+            usuario=self.usuario,
+            canal="fake",
+            direcao=Mensagem.Direcao.SAIDA,
+            tipo=Mensagem.Tipo.TEXTO,
+            texto="resposta antiga",
+        )
+        nova = Mensagem.objects.create(
+            conta=self.conta,
+            usuario=self.usuario,
+            canal="fake",
+            direcao=Mensagem.Direcao.ENTRADA,
+            tipo=Mensagem.Tipo.TEXTO,
+            id_externo="123:21",
+            texto="nova",
+        )
+        conteudos = [m["content"] for m in _historico(nova)]
+        self.assertIn("pergunta antiga", conteudos)
+        self.assertIn("resposta antiga", conteudos)

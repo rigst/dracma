@@ -11,6 +11,7 @@ Loop manual, e não o tool runner do SDK. Três razões:
 
 from __future__ import annotations
 
+import dataclasses
 import logging
 from dataclasses import dataclass, field
 from datetime import date
@@ -47,6 +48,10 @@ class Resposta:
     texto: str
     ferramentas_usadas: list[str] = field(default_factory=list)
     iteracoes: int = 0
+    # As mensagens deste turno, prontas para virar histórico do próximo. Vão
+    # com os blocos `tool_use` e `tool_result` — é isso que diz ao modelo que
+    # a escrita ACONTECEU. Ver `_para_historico`.
+    turno: list[dict] = field(default_factory=list)
 
 
 def responder(
@@ -65,6 +70,9 @@ def responder(
 
     cliente = cliente or obter_cliente()
     mensagens = list(historico or [])
+    # Onde começa ESTE turno: o que vier daqui para frente é o que o próximo
+    # turno precisa reproduzir.
+    inicio = len(mensagens)
     mensagens.append({"role": "user", "content": conteudo})
 
     sistema = _montar_sistema(contexto)
@@ -93,7 +101,10 @@ def responder(
 
         if resposta.stop_reason != "tool_use":
             return Resposta(
-                texto=_texto_de(resposta), ferramentas_usadas=usadas, iteracoes=iteracao
+                texto=_texto_de(resposta),
+                ferramentas_usadas=usadas,
+                iteracoes=iteracao,
+                turno=_para_historico(mensagens[inicio + 1 :]),
             )
 
         # Blocos de tool_use podem vir vários na mesma resposta, e TODOS os
@@ -126,7 +137,95 @@ def responder(
         texto="Me embananei aqui 😅 Pode repetir de outro jeito?",
         ferramentas_usadas=usadas,
         iteracoes=iteracao,
+        turno=_para_historico(mensagens[inicio + 1 :]),
     )
+
+
+# Blocos que valem a pena guardar. `thinking` fica de fora: é caro, é longo e
+# a API não o exige de volta em turnos anteriores. `tool_use` é o que importa.
+_BLOCOS_NO_HISTORICO = {"text", "tool_use"}
+
+# Mídia não volta: remandar a imagem de todo turno anterior multiplicaria o
+# custo por nada — o que importava dela já virou lançamento.
+_SEM_MIDIA = "(mídia enviada neste turno)"
+
+
+def _para_historico(mensagens: list[dict]) -> list[dict]:
+    """Serializa a troca do agente para o banco, em JSON puro.
+
+    Guardar `tool_use` e `tool_result` é o ponto todo. Um histórico só de
+    texto faz o modelo ler a própria confirmação (“Uber de R$ 20 registrado”)
+    como narração, não como prova de que a escrita aconteceu — e refazer. Foi
+    o que duplicou um lançamento em produção.
+
+    A fala do usuário fica DE FORA: ela já é a Mensagem de entrada no banco.
+    Guardá-la aqui também obrigaria quem monta o histórico a descobrir qual
+    entrada já está coberta por qual turno — e errar isso perde uma fala.
+    """
+    saida: list[dict] = []
+
+    for mensagem in mensagens:
+        conteudo = _conteudo_serializavel(mensagem["content"])
+        # Um turno em que o modelo só pensou e chamou tool não tem bloco algum
+        # que valha guardar; mensagem de conteúdo vazio é recusada pela API.
+        if not conteudo:
+            continue
+        saida.append({"role": mensagem["role"], "content": conteudo})
+
+    return _sem_tool_use_orfao(saida)
+
+
+def _conteudo_serializavel(conteudo):
+    if isinstance(conteudo, str):
+        return conteudo
+
+    blocos = []
+    for bloco in conteudo:
+        dados = _como_dicionario(bloco)
+        tipo = dados.get("type")
+
+        if tipo in ("image", "document"):
+            blocos.append({"type": "text", "text": _SEM_MIDIA})
+        elif tipo == "tool_result" or tipo in _BLOCOS_NO_HISTORICO:
+            blocos.append(dados)
+
+    return blocos
+
+
+def _como_dicionario(bloco) -> dict:
+    """Bloco em JSON puro, venha de onde vier.
+
+    Três formas chegam aqui: os `tool_result` que nós mesmos montamos (já são
+    dicionários), os blocos do SDK (pydantic) e os do cliente falso da suíte
+    (dataclasses). Depender só de `model_dump` quebraria os testes sem quebrar
+    a produção, que é a pior combinação possível.
+    """
+    if isinstance(bloco, dict):
+        return bloco
+    if hasattr(bloco, "model_dump"):
+        return bloco.model_dump(exclude_none=True)
+    if dataclasses.is_dataclass(bloco):
+        return dataclasses.asdict(bloco)
+    return {k: v for k, v in vars(bloco).items() if not k.startswith("_")}
+
+
+def _sem_tool_use_orfao(mensagens: list[dict]) -> list[dict]:
+    """Corta um `tool_use` final que ficou sem o `tool_result` correspondente.
+
+    Acontece quando o teto de iterações corta o laço no meio: a API recusa o
+    histórico com 400 se um `tool_use` não for seguido do resultado dele.
+    """
+    while mensagens:
+        ultima = mensagens[-1]
+        blocos = ultima["content"]
+        tem_tool_use = isinstance(blocos, list) and any(
+            b.get("type") == "tool_use" for b in blocos
+        )
+        if ultima["role"] == "assistant" and tem_tool_use:
+            mensagens.pop()
+            continue
+        return mensagens
+    return mensagens
 
 
 def _montar_sistema(contexto: Contexto) -> list[dict]:

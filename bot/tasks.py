@@ -103,7 +103,7 @@ def processar_mensagem(self, mensagem_id: int, file_id: str = "", mime_hint: str
         _falhar(mensagem, conta, canal, str(exc), "Deu um problema aqui 😕 Tenta de novo?")
         return
 
-    _responder(mensagem, conta, canal, resposta.texto or "Ok!")
+    _responder(mensagem, conta, canal, resposta.texto or "Ok!", turno=resposta.turno)
     Mensagem.objects.filter(pk=mensagem_id).update(status=Mensagem.Status.RESPONDIDA)
 
     # O roteiro avança DEPOIS da resposta, e só quando o agente de fato fez
@@ -163,8 +163,14 @@ def _transcrever(mensagem: Mensagem) -> None:
 def _historico(mensagem: Mensagem) -> list[dict]:
     """Últimos turnos, para a conversa ter memória curta.
 
-    Só texto: remandar a imagem de todo turno anterior multiplicaria o custo
-    por nada — o que importa dela já virou lançamento.
+    Reproduz os blocos `tool_use`/`tool_result` guardados em `Mensagem.turno`,
+    e não só o texto. A diferença não é cosmética: com o histórico só de
+    texto, o modelo lê a própria confirmação (“Uber de R$ 20 registrado ✅”)
+    como narração e refaz a tool — em produção isso duplicou um lançamento e
+    ainda confirmou um ajuste que não tinha feito.
+
+    O que não tem turno guardado (onboarding, respostas anteriores a este
+    campo, erros) entra como texto, que é o melhor disponível.
     """
     from django.conf import settings
 
@@ -174,23 +180,41 @@ def _historico(mensagem: Mensagem) -> list[dict]:
         else Mensagem.objects.filter(usuario=mensagem.usuario)
     )
     recentes = (
-        alvo.exclude(pk=mensagem.pk)
-        .exclude(texto="", transcricao="")
+        alvo.filter(criada_em__lt=mensagem.criada_em)
+        .exclude(pk=mensagem.pk)
         .order_by("-criada_em")[: settings.AI_HISTORICO_TURNOS]
     )
 
-    return [
-        {
-            "role": "user" if m.direcao == Mensagem.Direcao.ENTRADA else "assistant",
-            "content": m.conteudo,
-        }
-        for m in reversed(list(recentes))
-    ]
+    historico: list[dict] = []
+    for m in reversed(list(recentes)):
+        if m.direcao == Mensagem.Direcao.ENTRADA:
+            # Texto e não mídia: remandar a imagem de todo turno anterior
+            # multiplicaria o custo por nada — o que importava dela já virou
+            # lançamento.
+            if m.conteudo:
+                historico.append({"role": "user", "content": m.conteudo})
+        elif m.turno:
+            historico.extend(m.turno)
+        elif m.conteudo:
+            historico.append({"role": "assistant", "content": m.conteudo})
+
+    return _comecando_no_usuario(historico)
 
 
-def _responder(mensagem: Mensagem, conta, canal, texto: str) -> None:
+def _comecando_no_usuario(historico: list[dict]) -> list[dict]:
+    """A API exige que a conversa comece por uma fala do usuário.
+
+    A janela pode cair no meio de um turno — ou logo depois de uma mensagem do
+    roteiro de onboarding, que não responde a ninguém.
+    """
+    while historico and historico[0]["role"] != "user":
+        historico.pop(0)
+    return historico
+
+
+def _responder(mensagem: Mensagem, conta, canal, texto: str, turno=None) -> None:
     if conta is not None:
-        envio.responder(conta, texto, canal=canal)
+        envio.responder(conta, texto, canal=canal, turno=turno)
         return
     Mensagem.objects.create(
         usuario=mensagem.usuario,
@@ -199,6 +223,7 @@ def _responder(mensagem: Mensagem, conta, canal, texto: str) -> None:
         tipo=Mensagem.Tipo.TEXTO,
         texto=texto,
         status=Mensagem.Status.RESPONDIDA,
+        turno=turno or None,
     )
 
 

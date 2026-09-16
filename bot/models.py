@@ -169,6 +169,14 @@ class Mensagem(models.Model):
     erro = models.TextField("erro", blank=True)
     # Payload cru do webhook, para depurar sem precisar reproduzir no Telegram.
     payload = models.JSONField("payload", null=True, blank=True)
+    # As mensagens do turno que gerou esta resposta, com os blocos `tool_use` e
+    # `tool_result`. É o que o próximo turno reproduz como histórico.
+    #
+    # Guardado porque o histórico só de texto mentia: o modelo lia a própria
+    # confirmação (“Uber de R$ 20 registrado ✅”) como narração, não como prova
+    # de que a escrita aconteceu, e refazia a tool — em produção isso duplicou
+    # um lançamento e ainda confirmou o ajuste que não tinha feito.
+    turno = models.JSONField("turno", null=True, blank=True)
     criada_em = models.DateTimeField("criada em", auto_now_add=True)
 
     class Meta:

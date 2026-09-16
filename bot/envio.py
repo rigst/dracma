@@ -24,9 +24,14 @@ from .models import ContaTelegram, Mensagem
 logger = logging.getLogger(__name__)
 
 
-def responder(conta: ContaTelegram, texto: str, canal=None) -> Mensagem:
-    """Resposta a uma mensagem do usuário."""
-    return _enviar(conta, texto, canal=canal)
+def responder(conta: ContaTelegram, texto: str, canal=None, turno=None) -> Mensagem:
+    """Resposta a uma mensagem do usuário.
+
+    `turno` é o transcript do agente (com os blocos de tool), guardado para o
+    próximo turno reproduzir. Vazio nas mensagens que não vieram do agente,
+    como as do roteiro de onboarding.
+    """
+    return _enviar(conta, texto, canal=canal, turno=turno)
 
 
 def notificar(conta: ContaTelegram, texto: str, canal=None) -> tuple[bool, Mensagem | None]:
@@ -44,7 +49,7 @@ def notificar(conta: ContaTelegram, texto: str, canal=None) -> tuple[bool, Mensa
     return mensagem.status != Mensagem.Status.ERRO, mensagem
 
 
-def _enviar(conta: ContaTelegram, texto: str, canal=None) -> Mensagem:
+def _enviar(conta: ContaTelegram, texto: str, canal=None, turno=None) -> Mensagem:
     canal = canal or obter_canal()
     resultado = canal.enviar_texto(conta.chat_id, texto)
 
@@ -71,4 +76,5 @@ def _enviar(conta: ContaTelegram, texto: str, canal=None) -> Mensagem:
         id_externo=resultado.id_externo or None,
         status=Mensagem.Status.RESPONDIDA if resultado.entregue else Mensagem.Status.ERRO,
         erro=resultado.erro,
+        turno=turno or None,
     )

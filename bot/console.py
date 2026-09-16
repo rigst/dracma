@@ -43,21 +43,16 @@ def conversar(usuario, texto: str) -> tuple[Mensagem, Mensagem]:
         status=Mensagem.Status.PROCESSANDO,
     )
 
-    anteriores = [
-        {
-            "role": "user" if m.direcao == Mensagem.Direcao.ENTRADA else "assistant",
-            "content": m.conteudo,
-        }
-        for m in historico(usuario)
-        if m.pk != pergunta.pk and m.conteudo
-    ]
+    anteriores = _anteriores(usuario, pergunta)
+    turno = None
 
     try:
-        saida = responder(
+        resultado = responder(
             Contexto(espaco=usuario.espaco, usuario=usuario, origem=Origem.PORTAL),
             texto,
             historico=anteriores,
-        ).texto
+        )
+        saida, turno = resultado.texto, resultado.turno
         status = Mensagem.Status.RESPONDIDA
     except SemQuota:
         saida, status = SEM_QUOTA, Mensagem.Status.RESPONDIDA
@@ -75,5 +70,30 @@ def conversar(usuario, texto: str) -> tuple[Mensagem, Mensagem]:
         tipo=Mensagem.Tipo.TEXTO,
         texto=saida or "Ok!",
         status=status,
+        turno=turno or None,
     )
     return pergunta, resposta
+
+
+def _anteriores(usuario, pergunta) -> list[dict]:
+    """Histórico do console, com os blocos de tool dos turnos anteriores.
+
+    Mesma razão do Telegram (ver `bot.tasks._historico`): só texto faz o modelo
+    ler a própria confirmação como narração e refazer a escrita.
+    """
+    historico_montado: list[dict] = []
+
+    for m in historico(usuario):
+        if m.pk == pergunta.pk:
+            continue
+        if m.direcao == Mensagem.Direcao.ENTRADA:
+            if m.conteudo:
+                historico_montado.append({"role": "user", "content": m.conteudo})
+        elif m.turno:
+            historico_montado.extend(m.turno)
+        elif m.conteudo:
+            historico_montado.append({"role": "assistant", "content": m.conteudo})
+
+    while historico_montado and historico_montado[0]["role"] != "user":
+        historico_montado.pop(0)
+    return historico_montado
