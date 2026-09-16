@@ -1,8 +1,8 @@
 """Console web do assistente.
 
-Mesmo agente, mesmas ferramentas, mesmo domínio que o WhatsApp — só o
+Mesmo agente, mesmas ferramentas, mesmo domínio que o Telegram — só o
 transporte muda. É o que permite alguém experimentar o produto inteiro no
-navegador sem estar na allowlist de 5 números do número de teste da Meta.
+navegador, sem instalar nada e sem abrir conversa com bot nenhum.
 """
 
 from __future__ import annotations
@@ -26,7 +26,7 @@ SEM_QUOTA = (
 
 
 def historico(usuario, limite: int | None = None):
-    consulta = Mensagem.objects.filter(usuario=usuario, numero__isnull=True).order_by("-criada_em")
+    consulta = Mensagem.objects.filter(usuario=usuario, conta__isnull=True).order_by("-criada_em")
     return list(reversed(list(consulta[: limite or settings.AI_HISTORICO_TURNOS * 2])))
 
 

@@ -4,12 +4,12 @@
 
 <div class="painel">
   <p class="nota nota--larga" style="margin-top:0">
-    É o mesmo assistente que atende no WhatsApp. Conte um gasto
+    É o mesmo assistente que atende no Telegram. Conte um gasto
     (“almocei 32 reais no cartão”), pergunte quanto sobra no mês ou peça um limite.
   </p>
 
   <div class="conversa" id="conversa">
-    {% include "zap/_falas.html" %}
+    {% include "bot/_falas.html" %}
     {% if not falas %}
     <div class="fala fala--dela">
       <p>Oi! Eu sou a Dracma.</p>
@@ -19,7 +19,7 @@
   </div>
 
   <form class="linha-envio"
-        hx-post="{% url 'zap:console' %}"
+        hx-post="{% url 'bot:console' %}"
         hx-target="#conversa"
         hx-swap="beforeend"
         hx-on::after-request="this.reset(); this.mensagem.focus()">

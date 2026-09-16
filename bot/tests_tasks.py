@@ -15,11 +15,11 @@ from accounts.models import Espaco, Usuario
 from ai.fakes import ClienteFalso
 from carteira.models import Origem, Transacao
 from carteira.seeds import semear_categorias
-from zap.canais.base import MidiaBaixada
-from zap.canais.fake import FakeCanal
-from zap.conteudo import montar
-from zap.models import CodigoPareamento, Mensagem, Midia, NumeroWhatsApp
-from zap.tasks import processar_mensagem
+from bot.canais.base import MidiaBaixada
+from bot.canais.fake import FakeCanal
+from bot.conteudo import montar
+from bot.models import CodigoPareamento, Mensagem, Midia, ContaTelegram
+from bot.tasks import processar_mensagem
 
 PNG_1x1 = base64.b64decode(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
@@ -33,27 +33,27 @@ class BaseTaskTest(TestCase):
         self.usuario = Usuario.objects.create_user(
             username="ana", email="ana@exemplo.com", password="x", espaco=self.espaco
         )
-        self.numero = NumeroWhatsApp.objects.create(
-            numero="5511999998888", usuario=self.usuario, verificado_em=timezone.now()
+        self.conta = ContaTelegram.objects.create(
+            chat_id=987654321, usuario=self.usuario, verificado_em=timezone.now()
         )
         self.canal = FakeCanal()
-        self.patch_canal = mock.patch("zap.tasks.obter_canal", return_value=self.canal)
+        self.patch_canal = mock.patch("bot.tasks.obter_canal", return_value=self.canal)
         self.patch_canal.start()
         self.addCleanup(self.patch_canal.stop)
 
-    def _entrada(self, texto="Uber 34 reais", tipo=Mensagem.Tipo.TEXTO, wamid="wamid.1"):
+    def _entrada(self, texto="Uber 34 reais", tipo=Mensagem.Tipo.TEXTO, id_externo="123:1"):
         return Mensagem.objects.create(
-            numero=self.numero,
+            conta=self.conta,
             usuario=self.usuario,
             canal="fake",
             direcao=Mensagem.Direcao.ENTRADA,
             tipo=tipo,
-            wamid=wamid,
+            id_externo=id_externo,
             texto=texto,
         )
 
     def _agente(self, cliente):
-        return mock.patch("zap.tasks.responder", wraps=_agente_real(cliente))
+        return mock.patch("bot.tasks.responder", wraps=_agente_real(cliente))
 
 
 def _agente_real(cliente):
@@ -94,14 +94,6 @@ class ProcessamentoTest(BaseTaskTest):
         mensagem.refresh_from_db()
         self.assertEqual(mensagem.status, Mensagem.Status.RESPONDIDA)
 
-    def test_abre_a_janela_de_atendimento(self):
-        mensagem = self._entrada()
-        with self._agente(ClienteFalso().responde("oi")):
-            processar_mensagem(mensagem.pk)
-        from zap import janela
-
-        self.assertTrue(janela.janela_aberta(self.numero))
-
     def test_reprocessar_a_mesma_mensagem_nao_duplica(self):
         # O broker pode reentregar a task. Sem a guarda de status, o mesmo
         # áudio viraria duas transações.
@@ -117,7 +109,7 @@ class ProcessamentoTest(BaseTaskTest):
 
     def test_falha_do_agente_avisa_a_pessoa(self):
         mensagem = self._entrada()
-        with mock.patch("zap.tasks.responder", side_effect=RuntimeError("boom")):
+        with mock.patch("bot.tasks.responder", side_effect=RuntimeError("boom")):
             processar_mensagem(mensagem.pk)
         mensagem.refresh_from_db()
         self.assertEqual(mensagem.status, Mensagem.Status.ERRO)
@@ -134,20 +126,20 @@ class ProcessamentoTest(BaseTaskTest):
 
     def test_historico_alimenta_a_conversa(self):
         Mensagem.objects.create(
-            numero=self.numero,
+            conta=self.conta,
             usuario=self.usuario,
             canal="fake",
             direcao=Mensagem.Direcao.ENTRADA,
             texto="quanto gastei?",
-            wamid="w0",
+            id_externo="w0",
         )
         Mensagem.objects.create(
-            numero=self.numero,
+            conta=self.conta,
             usuario=self.usuario,
             canal="fake",
             direcao=Mensagem.Direcao.SAIDA,
             texto="R$ 120 até agora",
-            wamid="w0b",
+            id_externo="w0b",
         )
         mensagem = self._entrada(texto="e com mercado?")
         cliente = ClienteFalso().responde("R$ 80")
@@ -161,24 +153,24 @@ class ProcessamentoTest(BaseTaskTest):
 class PareamentoTest(BaseTaskTest):
     def setUp(self):
         super().setUp()
-        self.desconhecido = NumeroWhatsApp.objects.create(numero="5511777776666")
+        self.desconhecido = ContaTelegram.objects.create(chat_id=555000111)
 
     def _entrada_desconhecida(self, texto):
         return Mensagem.objects.create(
-            numero=self.desconhecido,
+            conta=self.desconhecido,
             canal="fake",
             direcao=Mensagem.Direcao.ENTRADA,
             texto=texto,
-            wamid="wamid.novo",
+            id_externo="123:novo",
         )
 
-    def test_numero_desconhecido_recebe_convite(self):
+    def test_conversa_desconhecida_recebe_convite(self):
         processar_mensagem(self._entrada_desconhecida("oi").pk)
-        self.assertIn("Conectar WhatsApp", self.canal.ultimo_texto)
+        self.assertIn("Conectar Telegram", self.canal.ultimo_texto)
         self.assertIn("6 dígitos", self.canal.ultimo_texto)
         self.assertEqual(Transacao.objects.count(), 0)
 
-    def test_codigo_valido_vincula_o_numero(self):
+    def test_codigo_valido_vincula_a_conta(self):
         CodigoPareamento.objects.create(
             usuario=self.usuario,
             codigo="123456",

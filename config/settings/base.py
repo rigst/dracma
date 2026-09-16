@@ -1,5 +1,5 @@
 """
-Configurações base do Django — Dracma, assistente financeira no WhatsApp.
+Configurações base do Django — Dracma, assistente financeira no Telegram.
 Compartilhadas entre development e production.
 """
 
@@ -44,7 +44,7 @@ INSTALLED_APPS = [
     "accounts",
     "core",
     "carteira",
-    "zap",
+    "bot",
     "ai",
     "legal",
 ]
@@ -210,7 +210,7 @@ CELERY_BEAT_SCHEDULE = {
 # para não travar o atendimento das mensagens de texto na fila default.
 CELERY_TASK_DEFAULT_QUEUE = "celery"
 CELERY_TASK_ROUTES = {
-    "zap.tasks.transcrever_audio": {"queue": "midia"},
+    "bot.tasks.transcrever_audio": {"queue": "midia"},
 }
 
 
@@ -236,7 +236,7 @@ SITE_URL = os.getenv("SITE_URL", "https://dracma.stolben.com")
 
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 
-# Um modelo só. O agente do WhatsApp é curto (1-2 iterações de tool use) e a
+# Um modelo só. O agente do Telegram é curto (1-2 iterações de tool use) e a
 # alavanca de custo aqui é o prompt caching do prefixo estável + o `effort`,
 # não a troca de modelo.
 AI_MODEL = os.getenv("AI_MODEL", "claude-sonnet-5")
@@ -286,7 +286,7 @@ AI_MAX_CHARS_MENSAGEM = int(os.getenv("AI_MAX_CHARS_MENSAGEM", "2000"))
 # Transcrição de áudio (faster-whisper, local)
 # ==============================================================================
 
-# A API da Anthropic não aceita áudio: os áudios do WhatsApp passam por aqui
+# A API da Anthropic não aceita áudio: os áudios do Telegram passam por aqui
 # antes de virar texto para o agente.
 #
 # O modelo é baixado uma vez e fica FORA da árvore do projeto — se ficasse em
@@ -303,46 +303,38 @@ FFMPEG_BIN = os.getenv("FFMPEG_BIN", "ffmpeg")
 
 
 # ==============================================================================
-# WhatsApp Cloud API (Meta)
+# Telegram (Bot API)
 # ==============================================================================
 
-# Desligar aqui faz o webhook responder 404 e o envio virar no-op: é como se
-# sobe o código antes do número estar aprovado, sem quebrar nada.
-WHATSAPP_ENABLED = os.getenv("WHATSAPP_ENABLED", "False").lower() in ("true", "1", "yes")
+# Desligar aqui faz o webhook responder 404 e o envio virar no-op: dá para
+# subir o código antes do bot existir, sem quebrar nada.
+TELEGRAM_ENABLED = os.getenv("TELEGRAM_ENABLED", "False").lower() in ("true", "1", "yes")
 
-WHATSAPP_API_VERSION = os.getenv("WHATSAPP_API_VERSION", "v23.0")
-WHATSAPP_PHONE_NUMBER_ID = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "")
-# O número em si, em E.164 sem o "+", para montar o link wa.me e o QR da tela
-# de conexão. É diferente do PHONE_NUMBER_ID, que é o identificador interno da
-# Meta e não serve para discar.
-WHATSAPP_NUMERO = os.getenv("WHATSAPP_NUMERO", "")
-WHATSAPP_ACCESS_TOKEN = os.getenv("WHATSAPP_ACCESS_TOKEN", "")
-# Segredo escolhido por nós e repetido no painel da Meta; é o que ela devolve
-# no handshake GET do webhook.
-WHATSAPP_VERIFY_TOKEN = os.getenv("WHATSAPP_VERIFY_TOKEN", "")
-# App Secret: assina cada POST em X-Hub-Signature-256. Sem ele qualquer um que
-# descubra a URL injeta transação na conta alheia.
-WHATSAPP_APP_SECRET = os.getenv("WHATSAPP_APP_SECRET", "")
+# Token do BotFather, no formato "<id do bot>:<segredo>". É a credencial
+# inteira do bot: quem a tem lê e escreve toda conversa.
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
+# O @username do bot, sem o "@". Serve para montar o deep link t.me e o QR da
+# tela de conexão; não é credencial e pode aparecer em página pública.
+TELEGRAM_BOT_USERNAME = os.getenv("TELEGRAM_BOT_USERNAME", "")
+# Segredo escolhido por nós e informado no setWebhook; o Telegram o repete em
+# X-Telegram-Bot-Api-Secret-Token a cada POST. Como não há assinatura do corpo
+# na Bot API, é ISTO que impede qualquer um que descubra a URL de injetar
+# transação em conta alheia.
+TELEGRAM_WEBHOOK_SECRET = os.getenv("TELEGRAM_WEBHOOK_SECRET", "")
 
-# Janela de atendimento da Meta: dentro de 24h desde a ÚLTIMA mensagem do
-# usuário, a resposta pode ser livre; fora disso, só template aprovado.
-# É regra da plataforma, não preferência nossa — ver zap/janela.py.
-WHATSAPP_JANELA_HORAS = int(os.getenv("WHATSAPP_JANELA_HORAS", "24"))
+# Host da API. Configurável por causa do Bot API Server local, que é a saída
+# para arquivos acima de 20 MB; contra a api.telegram.org o teto é da
+# plataforma e não adianta aumentar o valor abaixo.
+TELEGRAM_API_BASE = os.getenv("TELEGRAM_API_BASE", "https://api.telegram.org")
 
-# Nomes dos templates utility aprovados no painel, usados quando a janela está
-# fechada. Vazio = o alerta é adiado em vez de enviado.
-WHATSAPP_TEMPLATE_LIMITE = os.getenv("WHATSAPP_TEMPLATE_LIMITE", "")
-WHATSAPP_TEMPLATE_VENCIMENTO = os.getenv("WHATSAPP_TEMPLATE_VENCIMENTO", "")
-WHATSAPP_TEMPLATE_IDIOMA = os.getenv("WHATSAPP_TEMPLATE_IDIOMA", "pt_BR")
+# Teto do download de mídia (bytes). O getFile da api.telegram.org não entrega
+# nada acima de 20 MB — cortamos um pouco antes disso.
+TELEGRAM_MAX_MIDIA_BYTES = int(os.getenv("TELEGRAM_MAX_MIDIA_BYTES", str(20 * 1024 * 1024)))
 
-# Teto do download de mídia da Graph API (bytes). O limite da própria Meta é
-# 16 MB para áudio/imagem e 100 MB para documento; cortamos antes disso.
-WHATSAPP_MAX_MIDIA_BYTES = int(os.getenv("WHATSAPP_MAX_MIDIA_BYTES", str(16 * 1024 * 1024)))
-
-# Canal usado pelo app. `cloud_api` fala com a Meta; `console` grava no banco e
-# desenha no portal (é o que sustenta a demo pública e o desenvolvimento local
-# sem ngrok).
-CANAL_PADRAO = os.getenv("CANAL_PADRAO", "cloud_api" if WHATSAPP_ENABLED else "console")
+# Canal usado pelo app. `telegram` fala com a Bot API; `console` grava no banco
+# e desenha no portal (é o que sustenta a demo pública e o desenvolvimento
+# local sem túnel HTTPS).
+CANAL_PADRAO = os.getenv("CANAL_PADRAO", "telegram" if TELEGRAM_ENABLED else "console")
 
 
 # ==============================================================================
@@ -382,6 +374,7 @@ UNFOLD = {
 LEGAL_REDIRECT_URL = "carteira:painel"
 LEGAL_VISITOR_ACTION = "accounts:entrar_visitante"
 LEGAL_VISITOR_EXTRA: dict[str, Any] = {}
-# O webhook da Meta não pode ser interceptado pelo middleware de re-aceite: um
-# 302 ali vira falha de entrega e, repetida, a Meta desabilita a subscrição.
-LEGAL_ALLOWLIST_EXTRA = ("/zap/webhook/",)
+# O webhook do Telegram não pode ser interceptado pelo middleware de
+# re-aceite: um 302 ali vira falha de entrega e, repetida, o Telegram passa a
+# espaçar os updates até o bot ficar mudo.
+LEGAL_ALLOWLIST_EXTRA = ("/bot/webhook/",)

@@ -21,7 +21,7 @@ jobs:
       python-version: "3.12"
       django-settings-module: config.settings.production
       test-settings-module: config.settings.development
-      source-paths: "accounts ai carteira config core legal zap"
+      source-paths: "accounts ai bot carteira config core legal"
       postgres: false
 
       # Projeto novo: sobe com as etapas pesadas tolerando falha e vai

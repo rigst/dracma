@@ -1,4 +1,4 @@
-"""Console web: mesmo agente do WhatsApp, transporte diferente."""
+"""Console web: mesmo agente do Telegram, transporte diferente."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from accounts.models import Espaco, Usuario
 from ai.fakes import ClienteFalso
 from carteira.models import Origem, Transacao
 from carteira.seeds import semear_categorias
-from zap.models import Mensagem
+from bot.models import Mensagem
 
 
 class BaseConsoleTest(TestCase):
@@ -22,7 +22,7 @@ class BaseConsoleTest(TestCase):
             username="ana", email="ana@exemplo.com", password="x", espaco=self.espaco
         )
         self.client.force_login(self.usuario)
-        self.url = reverse("zap:console")
+        self.url = reverse("bot:console")
 
     def _com(self, cliente):
         from ai.agente import responder as real
@@ -30,7 +30,7 @@ class BaseConsoleTest(TestCase):
         def chamada(contexto, conteudo, historico=None):
             return real(contexto, conteudo, historico=historico, cliente=cliente)
 
-        return mock.patch("zap.console.responder", wraps=chamada)
+        return mock.patch("bot.console.responder", wraps=chamada)
 
 
 class ConsoleTest(BaseConsoleTest):
@@ -76,7 +76,7 @@ class ConsoleTest(BaseConsoleTest):
         self.assertEqual(Mensagem.objects.count(), 0)
 
     def test_falha_do_agente_vira_resposta_amigavel(self):
-        with mock.patch("zap.console.responder", side_effect=RuntimeError("boom")):
+        with mock.patch("bot.console.responder", side_effect=RuntimeError("boom")):
             resposta = self.client.post(self.url, {"mensagem": "oi"})
         self.assertContains(resposta, "problema")
         self.assertEqual(Mensagem.objects.last().status, Mensagem.Status.ERRO)
@@ -105,23 +105,23 @@ class ConsoleTest(BaseConsoleTest):
             self.client.post(self.url, {"mensagem": "x" * 500})
         self.assertEqual(len(Mensagem.objects.first().texto), 20)
 
-    def test_historico_do_console_ignora_o_whatsapp(self):
+    def test_historico_do_console_ignora_o_telegram(self):
         # As duas conversas são do mesmo usuário, mas o console só mostra o que
         # foi dito nele: misturar deixaria a tela com falas que a pessoa mandou
         # de outro lugar.
-        from zap.models import NumeroWhatsApp
+        from bot.models import ContaTelegram
 
-        numero = NumeroWhatsApp.objects.create(numero="5511999998888", usuario=self.usuario)
+        conta = ContaTelegram.objects.create(chat_id=987654321, usuario=self.usuario)
         Mensagem.objects.create(
-            numero=numero,
+            conta=conta,
             usuario=self.usuario,
-            canal="cloud_api",
+            canal="telegram",
             direcao=Mensagem.Direcao.ENTRADA,
-            texto="veio do zap",
-            wamid="w1",
+            texto="veio do telegram",
+            id_externo="w1",
         )
         resposta = self.client.get(reverse("carteira:painel"))
-        self.assertNotContains(resposta, "veio do zap")
+        self.assertNotContains(resposta, "veio do telegram")
 
     def test_conversa_tem_memoria_curta(self):
         cliente = ClienteFalso().responde("primeira").responde("segunda")

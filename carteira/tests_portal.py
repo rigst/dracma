@@ -63,7 +63,7 @@ class AcessoTest(TestCase):
             "carteira:novo_limite",
             "carteira:novo_recorrente",
             "carteira:nova_conta",
-            "zap:console",
+            "bot:console",
         ):
             with self.subTest(rota=rota):
                 resposta = self.client.get(reverse(rota))

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{% block title %}Dracma{% endblock %}</title>
-<meta name="description" content="{% block description %}Assistente financeira com IA no WhatsApp.{% endblock %}">
+<meta name="description" content="{% block description %}Assistente financeira com IA no Telegram.{% endblock %}">
 <link rel="icon" href="{% static 'img/favicon.svg' %}" type="image/svg+xml">
 <link rel="stylesheet" href="{% static 'css/app.css' %}">
 {% comment %}
@@ -28,7 +28,7 @@ escuro vê um lampejo de mármore em toda navegação.
     {% if user.is_authenticated %}
     <nav class="friso-menu" aria-label="Principal">
       <a href="{% url 'carteira:painel' %}" aria-current="page">Painel</a>
-      <a href="{% url 'carteira:painel' %}?conectar=1">WhatsApp</a>
+      <a href="{% url 'carteira:painel' %}?conectar=1">Telegram</a>
       <a href="{% url 'carteira:exportar' %}">Exportar</a>
     </nav>
     {% endif %}

@@ -1,6 +1,6 @@
 # Dracma
 
-Assistente financeira pessoal com IA que vive no **WhatsApp**, com portal web
+Assistente financeira pessoal com IA que vive no **Telegram**, com portal web
 complementar. Você conta um gasto por texto, áudio, foto de comprovante ou PDF;
 ela entende, categoriza, registra — e avisa **antes** de o limite estourar.
 
@@ -23,7 +23,7 @@ de fechamento do mês, o que ainda entra e o que ainda sai.
 
 **Colaboração, com privacidade.** Toda transação pertence a um *espaço*, não a
 uma pessoa: casal, família ou time acompanham o mesmo mês, cada um lançando do
-próprio WhatsApp. Mas dividir a conta da casa não é abrir o extrato inteiro —
+próprio Telegram. Mas dividir a conta da casa não é abrir o extrato inteiro —
 cada lançamento é **compartilhado** ou **só eu**, e o que é pessoal some da
 visão dos outros, do CSV, dos alertas e do que a assistente responde.
 
@@ -38,10 +38,11 @@ pagou parte, o que sobra continua aparecendo.
 recorrentes, lançamentos e a conversa com a assistente — tudo no mesmo painel,
 com as edições em diálogo ou na própria linha. Exportação em CSV.
 
-**Onboarding.** A tela *Conectar WhatsApp* resolve os três pontos de partida:
+**Onboarding.** A tela *Conectar Telegram* resolve os três pontos de partida:
 QR para quem está no desktop e precisa levar o link ao celular, deep link
-`wa.me` para quem já está no telefone, e o código de 6 dígitos para digitar à
-mão — com a opção de receber tudo por e-mail. Depois de conectar, a própria
+`t.me/<bot>?start=<token>` para quem já está no telefone — um toque, o token
+chega sozinho no `/start` e não se digita nada — e o código de 6 dígitos para
+quem achou o bot pela busca, com a opção de receber tudo por e-mail. Depois de conectar, a própria
 conversa ensina: três mensagens espaçadas mostram os formatos aceitos, sugerem
 o primeiro limite e apontam o portal.
 
@@ -50,7 +51,7 @@ o primeiro limite e apontam o portal.
 ## Como funciona
 
 ```
-WhatsApp → nginx → view (valida HMAC, grava, 200 OK em milissegundos)
+Telegram → nginx → view (confere o segredo, grava, 200 OK em milissegundos)
                         ↓ Celery
               baixa mídia → transcreve (áudio) / lê (imagem, PDF)
                         ↓
@@ -59,24 +60,27 @@ WhatsApp → nginx → view (valida HMAC, grava, 200 OK em milissegundos)
               serviço de domínio grava → responde pelo canal
 ```
 
-A view do webhook **nunca** chama a IA. A Meta re-tenta quando a resposta
-demora e, com falhas repetidas, desabilita a subscrição — então ela valida,
-persiste o payload cru e entrega o resto ao Celery.
+A view do webhook **nunca** chama a IA. O Telegram re-tenta quando a resposta
+demora e, com falhas repetidas, vai espaçando as entregas até o bot ficar mudo
+— então ela valida, persiste o payload cru e entrega o resto ao Celery.
 
 ### As decisões que mais moldaram o código
 
-**1. A janela de 24 horas é uma regra de domínio.** A Meta só permite resposta
-em formato livre dentro de 24h desde a última mensagem *do usuário*; fora disso,
-só template aprovado. Ou seja, **um alerta proativo não pode simplesmente ser
-enviado**. A decisão mora em `zap/janela.py`, num lugar só — espalhada como um
-`if` em cada ponto de envio, a primeira task nova esqueceria dela e as
-mensagens passariam a falhar em silêncio.
+**1. O canal é uma interface, e foi ela que pagou a migração.** `CanalMensagem`
+tem três implementações: `telegram` fala com a Bot API, `console` desenha no
+portal, `fake` guarda em memória para os testes. O app nasceu no WhatsApp e
+trocou de plataforma sem que `carteira` nem `ai` mudassem uma linha — o que a
+troca tocou foi o transporte, e é exatamente isso que a interface delimita.
 
-**2. O canal é uma interface.** `CanalMensagem` tem três implementações:
-`cloud_api` fala com a Meta, `console` desenha no portal, `fake` guarda em
-memória para os testes. É isso que permite construir e demonstrar o agente
-inteiro sem tocar na Meta — e o que sustenta a demo pública, já que o número de
-teste dela só atende 5 destinatários allowlistados.
+**2. Trocar de plataforma apagou uma regra de domínio inteira.** A Meta só
+permitia resposta em formato livre dentro de 24h desde a última mensagem *do
+usuário*; fora disso, só template aprovado. Um alerta proativo, portanto, não
+podia simplesmente ser enviado: havia uma janela a consultar, um template a
+escolher e o caso de adiar. No Telegram nada disso existe — depois do `/start`,
+o bot escreve quando quiser. `zap/janela.py` virou `bot/envio.py` e encolheu
+para o que sobrou de real: mandar, registrar, e parar de insistir com quem
+bloqueou o bot (403, marcado em `ContaTelegram.bloqueado_em` e limpo sozinho se
+a pessoa desbloquear).
 
 **3. A visibilidade é uma regra só.** `services.visiveis_para` responde
 "o que esta pessoa pode ver": ou o lançamento é compartilhado, ou é dela. Está
@@ -130,13 +134,13 @@ vazios.
 
 | App | Responsabilidade |
 |---|---|
-| `carteira` | domínio financeiro, rateio e o painel. Não conhece WhatsApp nem IA. |
-| `zap` | transporte: webhook, canais, mídia, janela de atendimento, onboarding |
+| `carteira` | domínio financeiro, rateio e o painel. Não conhece Telegram nem IA. |
+| `bot` | transporte: webhook, canais, mídia, envio, onboarding e pareamento |
 | `ai` | cliente Claude, tools, loop do agente, transcrição |
 | `accounts` | usuário, espaço, modo visitante, quota de IA |
 | `legal` | termos e privacidade versionados, com aceite obrigatório |
 
-A dependência é de mão única: `zap` e `ai` chamam `carteira`; `carteira` não
+A dependência é de mão única: `bot` e `ai` chamam `carteira`; `carteira` não
 importa nenhum dos dois.
 
 ---
@@ -153,9 +157,9 @@ cp .env.example .env          # ajuste ANTHROPIC_API_KEY
 ./venv/bin/python manage.py runserver
 ```
 
-Com `WHATSAPP_ENABLED=False` (o padrão), o webhook responde 404 e o canal cai
-para o console: dá para usar o produto inteiro em `/zap/console/` sem ngrok e
-sem credencial da Meta.
+Com `TELEGRAM_ENABLED=False` (o padrão), o webhook responde 404 e o canal cai
+para o console: dá para usar o produto inteiro pelo painel, sem túnel HTTPS e
+sem bot registrado.
 
 Para áudio é preciso o `ffmpeg` no sistema. O modelo do faster-whisper é
 baixado na primeira transcrição, para `WHISPER_CACHE_DIR` — que fica **fora** da
@@ -167,8 +171,8 @@ baixado na primeira transcrição, para `WHISPER_CACHE_DIR` — que fica **fora*
 ./venv/bin/python -m pytest
 ```
 
-Sem chamar a API da Anthropic nem a da Meta: `ai/fakes.py` tem um cliente
-Claude falso e `zap/canais/fake.py` um canal que acumula em memória.
+Sem chamar a API da Anthropic nem a do Telegram: `ai/fakes.py` tem um cliente
+Claude falso e `bot/canais/fake.py` um canal que acumula em memória.
 
 Os módulos que mais valem a leitura, porque um erro neles não dá tela quebrada
 e sim vazamento ou dinheiro errado:
@@ -177,39 +181,50 @@ e sim vazamento ou dinheiro errado:
 |---|---|
 | `carteira/tests_compartilhamento.py` | quem vê o quê, em cada caminho que consulta dinheiro |
 | `carteira/tests_rateio.py` | a divisão fecha ao centavo, e o acerto abate o mês certo |
-| `zap/tests_webhook.py` | assinatura, idempotência e o 200 rápido |
-| `zap/tests_janela.py` | a regra de 24 horas da Meta |
+| `bot/tests_webhook.py` | autenticidade, idempotência e o 200 rápido |
+| `bot/tests_envio.py` | entrega, bloqueio do bot e a volta dele |
 
 ---
 
-## Ligando o WhatsApp
+## Ligando o Telegram
 
-1. No [Meta for Developers](https://developers.facebook.com/), crie um app do
-   tipo *Business* e adicione o produto **WhatsApp**. Ele já vem com um número
-   de teste gratuito, sem verificação de negócio, que envia para até **5
-   destinatários allowlistados**.
-2. Preencha no `.env`: `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_ACCESS_TOKEN`,
-   `WHATSAPP_APP_SECRET` e um `WHATSAPP_VERIFY_TOKEN` escolhido por você.
-3. Aponte o webhook para `https://SEU_DOMINIO/zap/webhook/`, repetindo o mesmo
-   verify token, e assine o campo `messages`.
-4. `WHATSAPP_ENABLED=True`.
-5. Preencha também `WHATSAPP_NUMERO` com o número em E.164 sem o `+` (ex.:
-   `5511999998888`). Ele é diferente do `PHONE_NUMBER_ID` e é o que monta o
-   link `wa.me` e o QR da tela de conexão.
-6. No portal, abra **Conectar WhatsApp** e siga os passos — ou mande as
+1. No Telegram, fale com o [@BotFather](https://t.me/BotFather): `/newbot`,
+   escolha o nome e o `@username`. Ele devolve o **token**, no formato
+   `<id do bot>:<segredo>`. É a credencial inteira do bot — quem a tem lê e
+   escreve toda conversa.
+2. Gere o segredo do webhook:
+   `python -c "import secrets; print(secrets.token_urlsafe(32))"`.
+3. Preencha no `.env`: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME` (sem o
+   `@`), `TELEGRAM_WEBHOOK_SECRET` e `TELEGRAM_ENABLED=True`.
+4. Registre o webhook (o `secret_token` é o que autentica cada POST):
+
+   ```bash
+   curl -sS "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/setWebhook" \
+     -d "url=https://SEU_DOMINIO/bot/webhook/" \
+     -d "secret_token=$TELEGRAM_WEBHOOK_SECRET" \
+     -d "allowed_updates=[\"message\"]"
+   ```
+
+   Confira com `getWebhookInfo`: `pending_update_count` alto ou
+   `last_error_message` preenchido significa que o Telegram não está
+   conseguindo entregar.
+5. No portal, abra **Conectar Telegram** e toque no botão — ou mande as
    instruções para o seu e-mail e abra pelo celular.
 
-**Templates.** Os alertas fora da janela de 24h exigem template *utility*
-aprovado no painel. Sem `WHATSAPP_TEMPLATE_LIMITE` e
-`WHATSAPP_TEMPLATE_VENCIMENTO` configurados, esses alertas são registrados como
-adiados e saem na próxima vez que a pessoa falar — insistir numa entrega que a
-Meta recusa aproxima o número de ser bloqueado.
+**Autenticidade do webhook.** A Bot API não assina o corpo como a Graph API
+fazia com o `X-Hub-Signature-256`; o mecanismo oficial é o `secret_token`, que
+o Telegram repete em `X-Telegram-Bot-Api-Secret-Token` a cada POST. Sem ele
+configurado a view recusa tudo, de propósito: aceitar sem conferir deixaria a
+URL aberta para quem a descobrisse injetar transação em conta alheia.
 
-**Custo.** O acesso à plataforma é gratuito; paga-se por mensagem. Desde
-**1º/10/2026** as *service messages* (respostas dentro da janela de 24h) são
-cobradas **após 1.000 grátis por mês por número** — volume de projeto pessoal
-não encosta nisso. É preciso ter método de pagamento cadastrado para que
-continuem sendo entregues.
+**Mídia.** O download passa de 20 MB só com um *Bot API Server* local, apontado
+por `TELEGRAM_API_BASE`. Contra a `api.telegram.org` o teto é da plataforma e
+aumentar `TELEGRAM_MAX_MIDIA_BYTES` não adianta.
+
+**Custo.** A Bot API é gratuita e não há limite de mensagens por mês, nem
+janela de atendimento, nem template a aprovar. O limite prático é de vazão
+(~30 mensagens por segundo, 1 por segundo na mesma conversa), muito acima do
+que um projeto pessoal usa.
 
 ---
 
@@ -308,9 +323,9 @@ repositório e o texto que as pessoas aceitaram estariam discordando. O conserto
 `mypy,bandit,pip-audit`, na ordem do RUNBOOK §4. Zerar isso é a última etapa,
 depois que o resto estiver verde.
 
-### Antes de ligar o WhatsApp
+### Antes de ligar o Telegram
 
-O app funciona sem ele: com `WHATSAPP_ENABLED=False` o webhook responde 404 e a
+O app funciona sem ele: com `TELEGRAM_ENABLED=False` o webhook responde 404 e a
 assistente atende pelo console do painel. Ligar depois é preencher as
 credenciais e apontar o webhook — nada no domínio muda.
 

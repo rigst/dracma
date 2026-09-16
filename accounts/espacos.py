@@ -29,7 +29,7 @@ def convite_vigente(espaco, criado_por):
     """Convite aberto do espaço, criado se não houver.
 
     Reaproveitar importa: cada recarga da tela geraria um código novo e o que a
-    pessoa já mandou pelo WhatsApp pararia de funcionar.
+    pessoa já mandou pelo Telegram pararia de funcionar.
     """
     from .models import ConviteEspaco
 

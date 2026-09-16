@@ -20,7 +20,7 @@
 {% include "carteira/_conversa.html" %}
 
 {% if abrir_conectar %}
-{# Chegou por link de e-mail ou pelo convite do WhatsApp: abre o diálogo. #}
-<div hx-get="{% url 'zap:conectar' %}" hx-target="#dialogo-corpo" hx-trigger="load"></div>
+{# Chegou por link de e-mail ou pelo convite do Telegram: abre o diálogo. #}
+<div hx-get="{% url 'bot:conectar' %}" hx-target="#dialogo-corpo" hx-trigger="load"></div>
 {% endif %}
 {% endblock %}

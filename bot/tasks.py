@@ -1,8 +1,8 @@
 """Tasks do Celery: tudo que não cabe no ciclo de request do webhook.
 
 A view devolve 200 em milissegundos e o trabalho real acontece aqui — baixar
-mídia, transcrever, falar com a Claude e responder. Se isso rodasse na view, a
-Meta veria respostas lentas e acabaria desabilitando a subscrição.
+mídia, transcrever, falar com a Claude e responder. Se isso rodasse na view, o
+Telegram veria respostas lentas e passaria a espaçar as entregas.
 """
 
 from __future__ import annotations
@@ -16,10 +16,11 @@ from django.db import transaction
 from ai.agente import Contexto, SemQuota, responder
 from carteira.models import Origem
 
-from . import janela, onboarding
+from . import envio, onboarding
 from .canais import obter_canal
 from .conteudo import montar
 from .models import Mensagem, Midia
+from .webhook import comando_start
 
 logger = logging.getLogger(__name__)
 
@@ -35,11 +36,13 @@ SEM_QUOTA = (
     "Enquanto isso, dá pra lançar tudo pelo portal."
 )
 
+JA_CONECTADO = "Você já está conectado 💜 Pode mandar seus gastos que eu registro."
+
 
 @shared_task(bind=True, max_retries=3)
-def processar_mensagem(self, mensagem_id: int, media_id: str = "") -> None:
+def processar_mensagem(self, mensagem_id: int, file_id: str = "", mime_hint: str = "") -> None:
     try:
-        mensagem = Mensagem.objects.select_related("numero", "usuario").get(pk=mensagem_id)
+        mensagem = Mensagem.objects.select_related("conta", "usuario").get(pk=mensagem_id)
     except Mensagem.DoesNotExist:
         logger.warning("Mensagem %s sumiu antes de ser processada.", mensagem_id)
         return
@@ -53,25 +56,30 @@ def processar_mensagem(self, mensagem_id: int, media_id: str = "") -> None:
     Mensagem.objects.filter(pk=mensagem_id).update(status=Mensagem.Status.PROCESSANDO)
     canal = obter_canal(mensagem.canal)
 
-    numero = mensagem.numero
-    if numero is not None:
-        janela.registrar_inbound(numero)
+    conta = mensagem.conta
 
-    # Número sem vínculo não tem espaço onde lançar: o caminho é o pareamento.
-    usuario = mensagem.usuario or (numero.usuario if numero else None)
+    # Conversa sem vínculo não tem espaço onde lançar: o caminho é o pareamento.
+    usuario = mensagem.usuario or (conta.usuario if conta else None)
     if usuario is None or usuario.espaco_id is None:
-        if numero is not None:
-            _tentar_parear(mensagem, numero, canal)
+        if conta is not None:
+            _tentar_parear(mensagem, conta, canal)
+        return
+
+    # `/start` de quem já está conectado não vai para o agente: ele o leria
+    # como uma fala qualquer e tentaria achar um gasto em "/start".
+    if conta is not None and comando_start(mensagem.texto) is not None:
+        envio.responder(conta, JA_CONECTADO, canal=canal)
+        Mensagem.objects.filter(pk=mensagem_id).update(status=Mensagem.Status.RESPONDIDA)
         return
 
     try:
-        if media_id:
-            _baixar_midia(mensagem, media_id, canal)
+        if file_id:
+            _baixar_midia(mensagem, file_id, mime_hint, canal)
         if mensagem.tipo == Mensagem.Tipo.AUDIO:
             _transcrever(mensagem)
     except Exception as exc:
         logger.exception("Falha ao preparar a mídia da mensagem %s", mensagem_id)
-        _falhar(mensagem, numero, canal, str(exc), "Não consegui abrir esse arquivo 😕")
+        _falhar(mensagem, conta, canal, str(exc), "Não consegui abrir esse arquivo 😕")
         return
 
     mensagem.refresh_from_db()
@@ -87,21 +95,21 @@ def processar_mensagem(self, mensagem_id: int, media_id: str = "") -> None:
             historico=_historico(mensagem),
         )
     except SemQuota:
-        _responder(mensagem, numero, canal, SEM_QUOTA)
+        _responder(mensagem, conta, canal, SEM_QUOTA)
         Mensagem.objects.filter(pk=mensagem_id).update(status=Mensagem.Status.RESPONDIDA)
         return
     except Exception as exc:
         logger.exception("Agente falhou na mensagem %s", mensagem_id)
-        _falhar(mensagem, numero, canal, str(exc), "Deu um problema aqui 😕 Tenta de novo?")
+        _falhar(mensagem, conta, canal, str(exc), "Deu um problema aqui 😕 Tenta de novo?")
         return
 
-    _responder(mensagem, numero, canal, resposta.texto or "Ok!")
+    _responder(mensagem, conta, canal, resposta.texto or "Ok!")
     Mensagem.objects.filter(pk=mensagem_id).update(status=Mensagem.Status.RESPONDIDA)
 
     # O roteiro avança DEPOIS da resposta, e só quando o agente de fato fez
     # algo: uma dica emendada numa conversa que falhou é ruído.
-    if numero is not None and resposta.ferramentas_usadas:
-        onboarding.avancar(numero, canal=canal)
+    if conta is not None and resposta.ferramentas_usadas:
+        onboarding.avancar(conta, canal=canal)
 
 
 @shared_task
@@ -120,19 +128,21 @@ def transcrever_audio(midia_id: int) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _baixar_midia(mensagem: Mensagem, media_id: str, canal) -> None:
+def _baixar_midia(mensagem: Mensagem, file_id: str, mime_hint: str, canal) -> None:
     if hasattr(mensagem, "midia"):
         return
 
-    baixada = canal.baixar_midia(media_id)
+    baixada = canal.baixar_midia(file_id, mime_hint)
     extensao = _extensao(baixada.mime_type)
     midia = Midia(
         mensagem=mensagem,
-        media_id=media_id,
+        file_id=file_id,
         mime_type=baixada.mime_type,
         tamanho=baixada.tamanho,
     )
-    midia.arquivo.save(f"{media_id}{extensao}", ContentFile(baixada.conteudo), save=False)
+    # O file_id do Telegram é longo e cheio de `-` e `_`; cortamos para o nome
+    # do arquivo não estourar o limite do sistema de arquivos.
+    midia.arquivo.save(f"{file_id[:60]}{extensao}", ContentFile(baixada.conteudo), save=False)
     midia.save()
 
 
@@ -159,8 +169,8 @@ def _historico(mensagem: Mensagem) -> list[dict]:
     from django.conf import settings
 
     alvo = (
-        Mensagem.objects.filter(numero=mensagem.numero)
-        if mensagem.numero_id
+        Mensagem.objects.filter(conta=mensagem.conta)
+        if mensagem.conta_id
         else Mensagem.objects.filter(usuario=mensagem.usuario)
     )
     recentes = (
@@ -178,9 +188,9 @@ def _historico(mensagem: Mensagem) -> list[dict]:
     ]
 
 
-def _responder(mensagem: Mensagem, numero, canal, texto: str) -> None:
-    if numero is not None:
-        janela.responder(numero, texto, canal=canal)
+def _responder(mensagem: Mensagem, conta, canal, texto: str) -> None:
+    if conta is not None:
+        envio.responder(conta, texto, canal=canal)
         return
     Mensagem.objects.create(
         usuario=mensagem.usuario,
@@ -192,35 +202,47 @@ def _responder(mensagem: Mensagem, numero, canal, texto: str) -> None:
     )
 
 
-def _falhar(mensagem: Mensagem, numero, canal, erro: str, aviso: str) -> None:
+def _falhar(mensagem: Mensagem, conta, canal, erro: str, aviso: str) -> None:
     Mensagem.objects.filter(pk=mensagem.pk).update(status=Mensagem.Status.ERRO, erro=erro[:2000])
-    _responder(mensagem, numero, canal, aviso)
+    _responder(mensagem, conta, canal, aviso)
 
 
 @transaction.atomic
-def _tentar_parear(mensagem: Mensagem, numero, canal) -> None:
-    """Um número desconhecido só pode fazer uma coisa: mandar o código."""
+def _tentar_parear(mensagem: Mensagem, conta, canal) -> None:
+    """Uma conversa desconhecida só pode fazer uma coisa: apresentar a credencial.
+
+    Duas formas chegam aqui. O deep link manda `/start <token>` sozinho, e é o
+    caminho de um toque. Quem abriu o bot pela busca digita o código de 6
+    dígitos. Os dois consomem o mesmo `CodigoPareamento`.
+    """
     from django.utils import timezone
 
     from .models import CodigoPareamento
 
-    codigo = (mensagem.conteudo or "").strip()
-    pareamento = (
-        CodigoPareamento.objects.select_related("usuario")
-        .filter(codigo=codigo, usado_em__isnull=True, expira_em__gt=timezone.now())
-        .first()
-        if codigo.isdigit()
-        else None
+    texto = (mensagem.conteudo or "").strip()
+    payload = comando_start(texto)
+
+    consulta = CodigoPareamento.objects.select_related("usuario").filter(
+        usado_em__isnull=True, expira_em__gt=timezone.now()
     )
+    if payload:
+        pareamento = consulta.filter(token=payload).first()
+    elif texto.isdigit():
+        pareamento = consulta.filter(codigo=texto).first()
+    else:
+        pareamento = None
 
     if pareamento is None:
-        janela.responder(numero, onboarding.texto_convite(), canal=canal)
+        envio.responder(conta, onboarding.texto_convite(), canal=canal)
         Mensagem.objects.filter(pk=mensagem.pk).update(status=Mensagem.Status.IGNORADA)
         return
 
-    numero.usuario = pareamento.usuario
-    numero.verificado_em = timezone.now()
-    numero.save(update_fields=["usuario", "verificado_em"])
+    conta.usuario = pareamento.usuario
+    conta.verificado_em = timezone.now()
+    # Quem acabou de parear obviamente não está bloqueando o bot; uma marca
+    # velha de um vínculo anterior faria os alertas nascerem desligados.
+    conta.bloqueado_em = None
+    conta.save(update_fields=["usuario", "verificado_em", "bloqueado_em"])
 
     pareamento.usado_em = timezone.now()
     pareamento.save(update_fields=["usado_em"])
@@ -228,13 +250,15 @@ def _tentar_parear(mensagem: Mensagem, numero, canal) -> None:
     # Boas-vindas são a primeira etapa do roteiro, não uma linha solta: sem
     # elas a pessoa fica olhando para uma conversa vazia sem saber que pode
     # mandar áudio, foto de comprovante ou pedir um limite.
-    onboarding.avancar(numero, canal=canal)
+    onboarding.avancar(conta, canal=canal)
     Mensagem.objects.filter(pk=mensagem.pk).update(status=Mensagem.Status.RESPONDIDA)
 
 
 def _extensao(mime: str) -> str:
     return {
         "audio/ogg": ".ogg",
+        "audio/mpeg": ".mp3",
+        "audio/mp4": ".m4a",
         "image/jpeg": ".jpg",
         "image/png": ".png",
         "image/webp": ".webp",

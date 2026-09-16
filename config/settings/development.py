@@ -22,6 +22,6 @@ CELERY_TASK_EAGER_PROPAGATES = False
 CELERY_RESULT_BACKEND = "cache"
 CELERY_CACHE_BACKEND = "memory"
 
-# Em dev o canal é sempre o console: nada sai para a Meta por acidente.
+# Em dev o canal é sempre o console: nada sai para o Telegram por acidente.
 CANAL_PADRAO = "console"
-WHATSAPP_ENABLED = False
+TELEGRAM_ENABLED = False

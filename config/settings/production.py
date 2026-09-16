@@ -114,7 +114,7 @@ if SENTRY_DSN:
             environment=os.getenv("SENTRY_ENVIRONMENT", "production"),
             release=os.getenv("SENTRY_RELEASE") or None,
             traces_sample_rate=float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.0")),
-            # O corpo das mensagens do WhatsApp é dado financeiro do usuário e
+            # O corpo das mensagens do Telegram é dado financeiro do usuário e
             # não pode vazar para o Sentry junto com o stacktrace.
             send_default_pii=False,
             ignore_errors=[DisallowedHost],

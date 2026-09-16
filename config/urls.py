@@ -41,6 +41,6 @@ urlpatterns = [
     path("termos/", legal_views.termos, name="termos"),
     path("legal/", include("legal.urls")),
     path("accounts/", include("accounts.urls")),
-    path("zap/", include("zap.urls")),
+    path("bot/", include("bot.urls")),
     path("", include("carteira.urls")),
 ]

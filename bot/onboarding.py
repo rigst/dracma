@@ -1,17 +1,21 @@
-"""Primeiros passos, no WhatsApp e no portal.
+"""Primeiros passos, no Telegram e no portal.
 
 Duas metades do mesmo problema:
 
 - **No portal** a pessoa descobre COMO conectar. Num desktop ela não consegue
-  tocar num link que abre o WhatsApp do celular, então a página oferece os três
-  caminhos: QR para ler com o celular, link `wa.me` para quem está no próprio
-  telefone, e o código para digitar à mão.
-- **No WhatsApp** ela descobre O QUE fazer depois de conectar. Um "pronto,
+  tocar num link que abre o Telegram do celular, então a página oferece os três
+  caminhos: QR para ler com o celular, deep link `t.me` para quem já está no
+  próprio telefone, e o código para digitar à mão.
+- **No Telegram** ela descobre O QUE fazer depois de conectar. Um "pronto,
   conectei" sozinho deixa a pessoa olhando para uma conversa vazia sem saber que
   pode mandar áudio, foto de comprovante ou pedir um limite.
 
-O roteiro tem três etapas e para sozinho. Mais que isso vira spam, e a Meta
-trata volume de mensagem não solicitada como sinal de qualidade ruim.
+O roteiro tem três etapas e para sozinho. Mais que isso vira spam — e mesmo sem
+a régua de qualidade que a Meta aplicava, o custo aqui é direto: o botão de
+bloquear fica a um toque de distância.
+
+Nenhum texto usa Markdown. O envio é em texto puro (ver `bot.canais.telegram`),
+então um `*` aqui apareceria literal na conversa.
 """
 
 from __future__ import annotations
@@ -36,7 +40,7 @@ CONCLUIDO = 3
 VALIDADE_CODIGO = timedelta(minutes=30)
 
 BOAS_VINDAS = """\
-Pronto, conectei este número à sua conta ✅
+Pronto, conectei esta conversa à sua conta ✅
 
 Eu sou a Dracma. Daqui pra frente é só me contar seus gastos, do jeito que for \
 mais fácil:
@@ -52,7 +56,7 @@ Me manda o primeiro pra gente começar 👇\
 DICA_LIMITE = """\
 Boa, primeiro lançamento registrado 🎉
 
-Agora o mais útil: me peça um limite e eu aviso *antes* de estourar, não depois \
+Agora o mais útil: me peça um limite e eu aviso antes de estourar, não depois \
 que a fatura fechou.
 
 Experimenta: “cria um limite de R$ 400 pra delivery”
@@ -74,8 +78,9 @@ Qualquer coisa, é só me chamar por aqui 💜\
 CONVITE_PAREAMENTO = """\
 Oi! Eu sou a Dracma 💜
 
-Este número ainda não está ligado a nenhuma conta. Entre no portal, abra \
-*Conectar WhatsApp* e me mande o código de 6 dígitos que aparece lá.
+Esta conversa ainda não está ligada a nenhuma conta. Entre no portal, abra \
+“Conectar Telegram” e toque no botão de conectar — ou me mande aqui o código \
+de 6 dígitos que aparece na tela.
 
 {url}\
 """
@@ -87,26 +92,27 @@ def _url(rota: str = "carteira:painel") -> str:
 
 
 def texto_convite() -> str:
-    return CONVITE_PAREAMENTO.format(url=_url("zap:conectar"))
+    return CONVITE_PAREAMENTO.format(url=_url("bot:conectar"))
 
 
-def link_wa_me(codigo: str) -> str:
-    """Deep link que abre a conversa com o texto já preenchido.
+def link_telegram(token: str) -> str:
+    """Deep link que abre o bot já mandando o `/start` com o token.
 
-    O número aqui é o NOSSO, o do bot: `wa.me` monta uma conversa com ele, e o
-    `text` é o que a pessoa vai enviar — o código de pareamento.
+    É a grande vantagem do Telegram no pareamento: a pessoa toca uma vez e o
+    token chega sozinho — sem digitar, sem copiar, sem errar dígito.
     """
-    numero = (settings.WHATSAPP_NUMERO or "").strip()
-    if not numero:
+    usuario_bot = (settings.TELEGRAM_BOT_USERNAME or "").strip().lstrip("@")
+    if not usuario_bot:
         return ""
-    return f"https://wa.me/{numero}?text={codigo}"
+    return f"https://t.me/{usuario_bot}?start={token}"
 
 
 def gerar_codigo(usuario):
-    """Código válido para este usuário, reaproveitando um vigente.
+    """Credencial válida para este usuário, reaproveitando uma vigente.
 
     Reaproveitar importa: sem isso, cada recarga da página inventaria um código
-    novo e o que a pessoa já tinha anotado pararia de funcionar.
+    novo e o que a pessoa já tinha anotado (ou o QR que já fotografou) pararia
+    de funcionar.
     """
     from .models import CodigoPareamento
 
@@ -151,17 +157,17 @@ def qr_svg(conteudo: str) -> str:
     return buffer.getvalue().decode()
 
 
-def avancar(numero, canal=None) -> bool:
+def avancar(conta, canal=None) -> bool:
     """Manda a próxima mensagem do roteiro, se houver. True se enviou.
 
     Chamado depois de cada interação bem-sucedida. As etapas são gravadas antes
     do envio, para uma falha de entrega não deixar a pessoa presa recebendo a
     mesma dica para sempre.
     """
-    from . import janela
-    from .models import NumeroWhatsApp
+    from . import envio
+    from .models import ContaTelegram
 
-    etapa = numero.onboarding_etapa
+    etapa = conta.onboarding_etapa
     if etapa >= CONCLUIDO:
         return False
 
@@ -172,8 +178,8 @@ def avancar(numero, canal=None) -> bool:
     else:
         texto, proxima = DICA_PORTAL.format(url=_url()), CONCLUIDO
 
-    NumeroWhatsApp.objects.filter(pk=numero.pk).update(onboarding_etapa=proxima)
-    numero.onboarding_etapa = proxima
+    ContaTelegram.objects.filter(pk=conta.pk).update(onboarding_etapa=proxima)
+    conta.onboarding_etapa = proxima
 
-    janela.responder(numero, texto, canal=canal)
+    envio.responder(conta, texto, canal=canal)
     return True
