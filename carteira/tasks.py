@@ -194,8 +194,8 @@ def lembrar_vencimentos() -> int:
         texto = (
             f"🔔 {transacao.descricao} vence {quando} "
             f"({transacao.data:%d/%m}): {_dinheiro(transacao.valor)}.\n\n"
-            f"Se já pagou, me avisa que eu dou baixa — é só mandar "
-            f"“paguei {transacao.codigo}”."
+            f"Se já pagou, me avisa que eu dou baixa — é só dizer "
+            f"“paguei o {transacao.descricao.lower()}”."
         )
         if _avisar(
             transacao.espaco,

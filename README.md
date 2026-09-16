@@ -11,8 +11,11 @@ ela entende, categoriza, registra — e avisa **antes** de o limite estourar.
 ## O que ele faz
 
 **Registro sem atrito.** "uber 34 reais", um áudio no trânsito, o print do PIX
-ou o PDF do extrato. A Claude interpreta, escolhe a categoria e devolve um
-código curto (`0DFPK`) para corrigir depois.
+ou o PDF do extrato. A Claude interpreta, escolhe a categoria e confirma numa
+linha. Para corrigir depois, fala-se do lançamento como ele é — "muda o valor
+do almoço para 30" — e a assistente resolve qual é (`listar_transacoes`). Cada
+lançamento tem um código curto (`0DFPK`), mas ele é identificador interno e
+aparece no portal, não na conversa: ninguém decora cinco caracteres aleatórios.
 
 **Orçamento que se cuida sozinho.** Limites por categoria, teto geral do mês, e
 limites temporários avulsos ("R$ 200 pra presente essa semana"). Ao chegar em

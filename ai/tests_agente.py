@@ -207,18 +207,39 @@ class SchemaTest(TestCase):
             with self.subTest(tool=tool["name"]):
                 self.assertEqual(tool.get("strict", False), escrita)
 
-    def test_no_maximo_seis_tools_strict(self):
-        # Medido contra a API em 14/09/2026: seis passam, oito dão 400.
-        quantas = sum(1 for t in tools.TOOLS if t.get("strict"))
-        self.assertLessEqual(quantas, 6)
+    def test_no_maximo_cinco_tools_strict(self):
+        """Medido contra a API em 16/09/2026, com as nove tools atuais: cinco
+        strict passam, seis dão 400 "Schema is too complex.".
 
-    def test_required_cobre_todas_as_propriedades(self):
-        # `strict` exige que todo campo declarado esteja em `required`; o
-        # "não informado" se expressa com string vazia ou 0.
+        O teto anterior era seis, medido quando o conjunto tinha oito tools. O
+        orçamento é agregado sobre TODAS as tools da requisição, não só as
+        strict — então ele encolhe quando uma tool nova entra, mesmo sem
+        strict. Ao adicionar tool, meça de novo em vez de confiar no número.
+        """
+        quantas = sum(1 for t in tools.TOOLS if t.get("strict"))
+        self.assertLessEqual(quantas, 5)
+
+    def test_required_traz_so_o_que_e_mesmo_obrigatorio(self):
+        """`strict` NÃO exige que todo campo esteja em `required`.
+
+        Acreditar que exigia custou caro: com os seis campos de
+        `editar_transacao` obrigatórios, mudar só o valor obrigava o modelo a
+        inventar um valor para os outros quatro. Em produção ele não conseguiu
+        — entrou em laço cuspindo sintaxe corrompida até estourar o teto de
+        iterações, e numa outra tentativa simplesmente não chamou a tool.
+        Medido contra a API: `required` parcial é aceito e o modelo passa a
+        mandar só os campos que importam.
+
+        O que continua valendo é `required ⊆ properties`.
+        """
         for tool in tools.TOOLS:
             with self.subTest(tool=tool["name"]):
                 esquema = tool["input_schema"]
-                self.assertEqual(set(esquema["required"]), set(esquema["properties"]), tool["name"])
+                self.assertTrue(set(esquema["required"]) <= set(esquema["properties"]))
+
+    def test_editar_transacao_exige_so_o_codigo(self):
+        editar = next(t for t in tools.TOOLS if t["name"] == "editar_transacao")
+        self.assertEqual(editar["input_schema"]["required"], ["codigo"])
 
     def test_nenhum_schema_usa_validador_recusado_pela_api(self):
         """Sob `strict: True` a API recusa alguns validadores do JSON Schema.

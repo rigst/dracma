@@ -201,7 +201,18 @@ class VencimentoTest(BaseAlertaTest):
         texto = self.canal.ultimo_texto
         self.assertIn("vence hoje", texto)
         self.assertIn("R$ 743,20", texto)
-        self.assertIn(transacao.codigo, texto)
+
+    def test_o_lembrete_nao_ensina_o_codigo(self):
+        """O aviso dizia “paguei {código}”, o que treinava a pessoa a decorar
+        cinco caracteres aleatórios para dar baixa. A assistente resolve qual
+        é o lançamento pelo nome (ver `listar_transacoes`), então o código não
+        precisa sair do portal."""
+        transacao = self._conta_para(timezone.localdate())
+        lembrar_vencimentos()
+        texto = self.canal.ultimo_texto
+
+        self.assertNotIn(transacao.codigo, texto)
+        self.assertIn("paguei o cartão itaú", texto)
 
     def test_avisa_o_que_vence_amanha(self):
         self._conta_para(timezone.localdate() + timedelta(days=1))

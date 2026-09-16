@@ -54,9 +54,9 @@ TOOLS = [
                 },
                 "conta": {
                     "type": "string",
-                    "description": "Conta ou cartão usado. Vazio se a pessoa não disse.",
+                    "description": "Conta ou cartão usado. Omita se a pessoa não disse.",
                 },
-                "data": {"type": "string", "description": "AAAA-MM-DD."},
+                "data": {"type": "string", "description": "AAAA-MM-DD. Omita para hoje."},
                 "pago": {"type": "boolean", "description": "False se ainda vai pagar."},
                 "compartilhada": {
                     "type": "boolean",
@@ -67,16 +67,10 @@ TOOLS = [
                     ),
                 },
             },
-            "required": [
-                "valor",
-                "descricao",
-                "tipo",
-                "categoria",
-                "conta",
-                "data",
-                "pago",
-                "compartilhada",
-            ],
+            # Só o que a pessoa de fato informa. Exigir os oito obrigava o
+            # modelo a inventar um valor para cada campo que ela não disse —
+            # ver o comentário de `editar_transacao`, onde isso quebrou.
+            "required": ["valor", "descricao", "tipo", "categoria"],
             "additionalProperties": False,
         },
     },
@@ -87,20 +81,27 @@ TOOLS = [
         ),
         "strict": True,
         "input_schema": {
-            # Campo não informado vai como string vazia (ou 0, no valor), e não
-            # como tipo-união `["string", "null"]`: sob `strict` as uniões
-            # contam caro no orçamento de complexidade e o conjunto das tools
-            # estourava com 400 "Schema is too complex."
+            # Só `codigo` é obrigatório: informe apenas os campos a mudar.
+            #
+            # Antes os seis eram obrigatórios, com "vazio = não alterar" como
+            # convenção. Isso quebrou em produção: para mudar só o valor, o
+            # modelo tinha de emitir string vazia para os outros quatro, não
+            # conseguiu, e ou entrou em laço cuspindo sintaxe corrompida nos
+            # parâmetros até estourar o teto de iterações, ou desistiu de
+            # chamar a ferramenta. Campo opcional sob `strict` é aceito pela
+            # API e resolve — o que ela não aceita é a união `["string",
+            # "null"]`, que estourava o orçamento de complexidade com 400
+            # "Schema is too complex."
             "type": "object",
             "properties": {
                 "codigo": {"type": "string"},
-                "valor": {"type": "number", "description": "0 para não alterar."},
-                "descricao": {"type": "string", "description": "Vazio para não alterar."},
-                "categoria": {"type": "string", "description": "Vazio para não alterar."},
-                "conta": {"type": "string", "description": "Vazio para não alterar."},
-                "data": {"type": "string", "description": "AAAA-MM-DD, ou vazio."},
+                "valor": {"type": "number"},
+                "descricao": {"type": "string"},
+                "categoria": {"type": "string"},
+                "conta": {"type": "string"},
+                "data": {"type": "string", "description": "AAAA-MM-DD."},
             },
-            "required": ["codigo", "valor", "descricao", "categoria", "conta", "data"],
+            "required": ["codigo"],
             "additionalProperties": False,
         },
     },
@@ -112,6 +113,35 @@ TOOLS = [
             "type": "object",
             "properties": {"codigo": {"type": "string"}},
             "required": ["codigo"],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "name": "listar_transacoes",
+        "description": (
+            "Lista lançamentos individuais, do mais recente para o mais antigo. "
+            "Use SEMPRE que a pessoa se referir a um lançamento pelo que ele é em vez "
+            "do código — 'o almoço', 'aquele mercado de ontem', 'o último' — para achar "
+            "qual é antes de corrigir ou apagar. Também serve para 'o que eu lancei "
+            "hoje?'."
+        ),
+        # Sem `strict`, como as outras tools de leitura. Não é preferência: a
+        # sexta tool strict do conjunto estoura o orçamento de complexidade da
+        # API com 400 "Schema is too complex." — medido. E aqui custa pouco:
+        # argumento torto numa consulta traz menos linhas, enquanto numa tool
+        # de escrita gravaria errado.
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "busca": {
+                    "type": "string",
+                    "description": "Filtra pela descrição. Omita para trazer os últimos.",
+                },
+                "inicio": {"type": "string", "description": "AAAA-MM-DD."},
+                "fim": {"type": "string", "description": "AAAA-MM-DD."},
+                "limite": {"type": "integer", "description": "Quantos trazer; padrão 10."},
+            },
+            "required": [],
             "additionalProperties": False,
         },
     },
@@ -129,10 +159,10 @@ TOOLS = [
                 "fim": {"type": "string", "description": "AAAA-MM-DD."},
                 "categoria": {
                     "type": "string",
-                    "description": "Restringe a uma categoria. Vazio para todas.",
+                    "description": "Restringe a uma categoria. Omita para todas.",
                 },
             },
-            "required": ["inicio", "fim", "categoria"],
+            "required": ["inicio", "fim"],
             "additionalProperties": False,
         },
     },
@@ -174,14 +204,14 @@ TOOLS = [
             "type": "object",
             "properties": {
                 "valor": {"type": "number"},
-                "categoria": {"type": "string", "description": "Vazio para teto geral."},
+                "categoria": {"type": "string", "description": "Omita para teto geral."},
                 "rotulo": {"type": "string", "description": "Nome, se for um limite avulso."},
                 "dias": {
                     "type": "integer",
-                    "description": "Duração em dias se for temporário; 0 para limite mensal.",
+                    "description": "Duração em dias se for temporário; omita para mensal.",
                 },
             },
-            "required": ["valor", "categoria", "rotulo", "dias"],
+            "required": ["valor"],
             "additionalProperties": False,
         },
     },
@@ -210,7 +240,7 @@ TOOLS = [
                 "categoria": {"type": "string"},
                 "conta": {"type": "string"},
             },
-            "required": ["descricao", "valor", "dia_do_mes", "tipo", "categoria", "conta"],
+            "required": ["descricao", "valor", "dia_do_mes", "tipo"],
             "additionalProperties": False,
         },
     },
@@ -285,8 +315,8 @@ def _registrar(args, contexto, espaco):
 
 
 def _editar(args, contexto, espaco):
-    # 0 e "" são o "não informado" deste schema (ver comentário no input_schema
-    # de editar_transacao): convertidos para None, que é o que o serviço espera.
+    # Campo ausente vira None, que é o que o serviço espera como "não mexe".
+    # O `or None` continua cobrindo o 0/"" que um modelo antigo poderia mandar.
     transacao = services.editar_transacao(
         espaco=espaco,
         codigo=args["codigo"],
@@ -308,6 +338,53 @@ def _excluir(args, contexto, espaco):
         espaco=espaco, codigo=args["codigo"], usuario=contexto.usuario
     )
     return f"Excluído. código={resumo['codigo']} descricao={resumo['descricao']}"
+
+
+def _listar_transacoes(args, contexto, espaco):
+    """Lançamentos individuais, com o código, para o modelo resolver sozinho.
+
+    É o que permite a conversa não ter código nenhum: a pessoa diz "o almoço",
+    o modelo acha aqui e edita pelo código sem nunca mostrá-lo. Sem esta tool,
+    só dava para corrigir o que ainda estivesse na janela curta de histórico.
+
+    O recorte de visibilidade é o mesmo de todo o resto — `visiveis_para` — e
+    não é opcional: sem ele, listar entregaria o gasto pessoal de quem divide
+    o espaço.
+    """
+    from carteira.models import Transacao
+
+    consulta = services.visiveis_para(
+        Transacao.objects.filter(espaco=espaco).select_related("categoria", "conta"),
+        contexto.usuario,
+    )
+
+    busca = (args.get("busca") or "").strip()
+    if busca:
+        consulta = consulta.filter(descricao__icontains=busca)
+    inicio = _data(args.get("inicio"))
+    if inicio:
+        consulta = consulta.filter(data__gte=inicio)
+    fim = _data(args.get("fim"))
+    if fim:
+        consulta = consulta.filter(data__lte=fim)
+
+    # Teto rígido: o resultado vira contexto do modelo, e uma lista sem limite
+    # queimaria a quota da pessoa num "lista tudo".
+    limite = min(max(int(args.get("limite") or 10), 1), 30)
+    achados = list(consulta.order_by("-data", "-id")[:limite])
+
+    if not achados:
+        return "Nenhum lançamento encontrado com esses filtros."
+
+    linhas = []
+    for t in achados:
+        categoria = t.categoria.nome if t.categoria else "sem categoria"
+        linhas.append(
+            f"codigo={t.codigo} data={t.data:%d/%m/%Y} descricao={t.descricao} "
+            f"valor={_dinheiro(t.valor)} categoria={categoria} "
+            f"tipo={t.get_tipo_display()} pago={'sim' if t.pago else 'nao'}"
+        )
+    return "\n".join(linhas)
 
 
 def _consultar_periodo(args, contexto, espaco):
@@ -407,6 +484,7 @@ _MANIPULADORES = {
     "registrar_transacao": _registrar,
     "editar_transacao": _editar,
     "excluir_transacao": _excluir,
+    "listar_transacoes": _listar_transacoes,
     "consultar_periodo": _consultar_periodo,
     "consultar_planejamento": _consultar_planejamento,
     "consultar_limites": _consultar_limites,
@@ -416,6 +494,13 @@ _MANIPULADORES = {
 
 # Tools que só leem. Usado para escolher o `effort`: consultar exige
 # julgamento, registrar é mecânico.
-SOMENTE_LEITURA = frozenset({"consultar_periodo", "consultar_planejamento", "consultar_limites"})
+SOMENTE_LEITURA = frozenset(
+    {
+        "listar_transacoes",
+        "consultar_periodo",
+        "consultar_planejamento",
+        "consultar_limites",
+    }
+)
 
 __all__ = ["SOMENTE_LEITURA", "TOOLS", "executar"]
