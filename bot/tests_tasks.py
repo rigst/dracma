@@ -453,3 +453,49 @@ class HistoricoComToolsTest(BaseTaskTest):
         conteudos = [m["content"] for m in _historico(nova)]
         self.assertIn("pergunta antiga", conteudos)
         self.assertIn("resposta antiga", conteudos)
+
+
+class SemEspacoTest(BaseTaskTest):
+    """Pareado e sem espaço recebia o convite de pareamento para sempre.
+
+    "Sem espaço" caía no mesmo ramo de "não pareado", então a pessoa conectava
+    a conta e mesmo assim toda mensagem voltava com "esta conversa ainda não
+    está ligada a nenhuma conta", sem explicar nada.
+    """
+
+    def setUp(self):
+        super().setUp()
+        # Pelo banco: o `save()` do usuário recriaria o espaço na hora.
+        Usuario.objects.filter(pk=self.usuario.pk).update(espaco=None)
+        self.usuario.refresh_from_db()
+
+    def test_nao_recebe_mais_o_convite_de_pareamento(self):
+        mensagem = self._entrada("gastei 20 de uber")
+        with self._agente(ClienteFalso().responde("ok")):
+            processar_mensagem(mensagem.pk)
+
+        self.assertNotIn("Conectar Telegram", self.canal.ultimo_texto)
+
+    def test_ganha_um_espaco_e_a_mensagem_e_processada(self):
+        mensagem = self._entrada("oi")
+        with self._agente(ClienteFalso().responde("olá")):
+            processar_mensagem(mensagem.pk)
+
+        self.usuario.refresh_from_db()
+        self.assertIsNotNone(self.usuario.espaco_id)
+        mensagem.refresh_from_db()
+        self.assertEqual(mensagem.status, Mensagem.Status.RESPONDIDA)
+
+    def test_quem_nao_pareou_continua_recebendo_o_convite(self):
+        # O outro ramo não pode ter sido perdido no caminho.
+        desconhecida = ContaTelegram.objects.create(chat_id=444000444)
+        mensagem = Mensagem.objects.create(
+            conta=desconhecida,
+            canal="fake",
+            direcao=Mensagem.Direcao.ENTRADA,
+            tipo=Mensagem.Tipo.TEXTO,
+            id_externo="444:1",
+            texto="oi",
+        )
+        processar_mensagem(mensagem.pk)
+        self.assertIn("Conectar Telegram", self.canal.ultimo_texto)

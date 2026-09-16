@@ -60,10 +60,20 @@ def processar_mensagem(self, mensagem_id: int, file_id: str = "", mime_hint: str
 
     # Conversa sem vínculo não tem espaço onde lançar: o caminho é o pareamento.
     usuario = mensagem.usuario or (conta.usuario if conta else None)
-    if usuario is None or usuario.espaco_id is None:
+    if usuario is None:
         if conta is not None:
             _tentar_parear(mensagem, conta, canal)
         return
+
+    if usuario.espaco_id is None:
+        # Pareado e sem espaço não deveria acontecer: todo usuário ganha um no
+        # `save()`. Se acontecer, é conta antiga ou nascida por um caminho que
+        # escapou, e o conserto é o mesmo `save()`. Melhor do que devolver um
+        # recado pedindo à pessoa que faça algo que não resolveria (o portal
+        # não salva o usuário a cada visita), e muito melhor do que o convite
+        # de pareamento repetido para sempre, que era o que ela recebia antes.
+        logger.error("Usuário %s estava pareado e sem espaço; criando um.", usuario.pk)
+        usuario.save()
 
     # `/start` de quem já está conectado não vai para o agente: ele o leria
     # como uma fala qualquer e tentaria achar um gasto em "/start".

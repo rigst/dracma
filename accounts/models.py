@@ -70,6 +70,34 @@ class Usuario(AbstractUser):
     def __str__(self) -> str:
         return self.get_full_name() or self.username
 
+    def save(self, *args, **kwargs):
+        """Ninguém nasce sem espaço, venha de onde vier.
+
+        Antes, quem criava o espaço era o fluxo de cadastro, na confirmação do
+        e-mail. Quem nascia por fora dele (admin, `createsuperuser`, shell)
+        ficava com `espaco=None` e virava uma conta meio quebrada em silêncio:
+        o portal abria vazio, e no Telegram a pessoa parear e ainda assim
+        receber o convite de pareamento de novo a cada mensagem, para sempre,
+        porque `bot.tasks` trata "sem espaço" igual a "não pareado".
+
+        Fica aqui, e não num signal, de propósito. Signal exige import dentro
+        do `ready()` do AppConfig, e nesta frota o `ruff --fix` já apagou um
+        desses por parecer sem uso: o build seguiu verde e a regra morreu
+        calada. `save()` não tem como ser desligado sem alguém ver.
+        """
+        if self.espaco_id is None:
+            from carteira.seeds import semear_categorias
+
+            self.espaco = Espaco.objects.create(nome="Meu espaço")
+            semear_categorias(self.espaco)
+            # `update_fields` é uma lista do que vai ao banco: sem incluir o
+            # campo aqui, o espaço seria criado e o vínculo não seria gravado.
+            campos = kwargs.get("update_fields")
+            if campos is not None:
+                kwargs["update_fields"] = {*campos, "espaco"}
+
+        super().save(*args, **kwargs)
+
     @property
     def quota_tokens(self) -> int:
         if self.is_visitante:
