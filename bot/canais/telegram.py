@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import logging
 import mimetypes
+import time
 
 import httpx
 from django.conf import settings
@@ -27,10 +28,20 @@ from .base import CanalMensagem, MensagemEnviada, MidiaBaixada
 
 logger = logging.getLogger(__name__)
 
-TIMEOUT = httpx.Timeout(20.0, connect=5.0)
+# O `connect` é o orçamento do TCP + handshake TLS. Daqui o normal é ~0,4s;
+# 10s é folga para um handshake lento sem deixar o worker preso.
+TIMEOUT = httpx.Timeout(20.0, connect=10.0)
 
 # Teto da própria plataforma para o texto de uma mensagem.
 MAX_CHARS = 4096
+
+# Uma falha de rede não pode custar a resposta da pessoa. Sem repetir, um
+# handshake TLS que estoura o tempo — coisa que acontece — deixa a fala do
+# agente gravada como erro e a pessoa esperando para sempre por algo que
+# nunca vai chegar. Três tentativas cobrem o blip de segundos sem segurar
+# o worker por muito tempo.
+TENTATIVAS = 3
+ESPERA_BASE = 0.5
 
 
 class TelegramCanal(CanalMensagem):
@@ -55,15 +66,57 @@ class TelegramCanal(CanalMensagem):
 
         A Bot API responde 200 com `{"ok": false}` em alguns casos, então
         conferir o status HTTP não basta: quem manda é o campo `ok`.
+
+        Repete o que é transitório — falha de rede, 429 e 5xx — e desiste na
+        hora do que é definitivo, como o 403 de quem bloqueou o bot ou um 400
+        de payload inválido. Insistir nesses só atrasaria a conclusão que já
+        se tem.
         """
-        resposta = self.cliente.post(f"{self.base}/{metodo}", json=parametros)
-        dados = resposta.json()
-        if not dados.get("ok"):
-            raise TelegramErro(
+        for tentativa in range(1, TENTATIVAS + 1):
+            ultima = tentativa == TENTATIVAS
+            try:
+                resposta = self.cliente.post(f"{self.base}/{metodo}", json=parametros)
+            except httpx.HTTPError as exc:
+                if ultima:
+                    raise
+                espera = ESPERA_BASE * 2 ** (tentativa - 1)
+                logger.info(
+                    "%s falhou na rede (%s); repetindo em %.1fs [%d/%d]",
+                    metodo,
+                    exc,
+                    espera,
+                    tentativa,
+                    TENTATIVAS,
+                )
+                time.sleep(espera)
+                continue
+
+            dados = resposta.json()
+            if dados.get("ok"):
+                return dados.get("result") or {}
+
+            erro = TelegramErro(
                 dados.get("error_code", resposta.status_code),
                 dados.get("description", resposta.text[:500]),
+                (dados.get("parameters") or {}).get("retry_after"),
             )
-        return dados.get("result") or {}
+            if ultima or not erro.transitorio:
+                raise erro
+
+            # No 429 quem manda é o `retry_after` do Telegram: chutar menos que
+            # ele só gasta outra tentativa para levar o mesmo 429 de volta.
+            espera = erro.espera_s or ESPERA_BASE * 2 ** (tentativa - 1)
+            logger.info(
+                "%s recusado (%s); repetindo em %.1fs [%d/%d]",
+                metodo,
+                erro.codigo,
+                espera,
+                tentativa,
+                TENTATIVAS,
+            )
+            time.sleep(espera)
+
+        raise AssertionError("inalcançável: o laço sempre volta ou levanta")
 
     # -- envio --------------------------------------------------------------
 
@@ -131,9 +184,11 @@ class TelegramCanal(CanalMensagem):
 class TelegramErro(Exception):
     """Resposta com `ok: false`."""
 
-    def __init__(self, codigo: int, descricao: str):
+    def __init__(self, codigo: int, descricao: str, retry_after: int | None = None):
         self.codigo = codigo
         self.descricao = descricao
+        # Só o 429 traz isto, em `parameters.retry_after`.
+        self.espera_s = retry_after
         super().__init__(f"{codigo}: {descricao}")
 
     @property
@@ -144,6 +199,11 @@ class TelegramErro(Exception):
         conta em vez de tentar de novo a cada rodada do beat.
         """
         return self.codigo == 403
+
+    @property
+    def transitorio(self) -> bool:
+        """Vale repetir: excesso de chamadas (429) ou problema do lado deles (5xx)."""
+        return self.codigo == 429 or self.codigo >= 500
 
 
 def identificador(mensagem: dict) -> str:
