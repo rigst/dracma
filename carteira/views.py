@@ -22,7 +22,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from accounts import espacos
-from zap.console import historico
+from bot.console import historico
 
 from . import graficos, rateios, services
 from .forms import (
@@ -151,7 +151,7 @@ def painel(request):
             # ver o número na mesma tela é o ponto.
             "falas": historico(request.user, limite=40),
             # Abre o diálogo de conexão quando a pessoa chega por um link de
-            # e-mail ou pelo convite do WhatsApp.
+            # e-mail ou pelo convite do Telegram.
             "abrir_conectar": request.GET.get("conectar") == "1",
         }
     )
@@ -441,7 +441,7 @@ def novo_limite(request):
             "form": form,
             "titulo": "Novo limite",
             "acao": "carteira:novo_limite",
-            "ajuda": "A Dracma avisa no WhatsApp quando o gasto se aproxima do limite.",
+            "ajuda": "A Dracma avisa no Telegram quando o gasto se aproxima do limite.",
         },
     )
 

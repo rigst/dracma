@@ -43,7 +43,7 @@ class Espaco(models.Model):
 
 
 class Usuario(AbstractUser):
-    """Usuário do portal e do WhatsApp.
+    """Usuário do portal e do Telegram.
 
     O modelo é customizado desde a primeira migration: trocar `AUTH_USER_MODEL`
     depois do primeiro migrate exige cirurgia no banco.

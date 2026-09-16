@@ -692,7 +692,7 @@ dialog::backdrop { background: rgba(23, 18, 14, .55); }
   letter-spacing: .3em; margin: .4rem 0;
   color: var(--acento-forte); word-break: break-all;
 }
-.numero-bot { font-family: var(--mono); letter-spacing: .04em; }
+.conta-bot { font-family: var(--mono); letter-spacing: .04em; }
 
 /* Confirmação de aceite (app `legal`) ------------------------------------ */
 

@@ -1,8 +1,8 @@
 """
 Domínio financeiro: contas, categorias, transações, recorrentes e limites.
 
-Esta camada não conhece o WhatsApp nem a Claude. É a dependência de mão única
-que torna o simulador possível e os testes baratos: `zap` e `ai` chamam
+Esta camada não conhece o Telegram nem a Claude. É a dependência de mão única
+que torna o simulador possível e os testes baratos: `bot` e `ai` chamam
 `carteira`; `carteira` não importa nenhum dos dois.
 """
 
@@ -395,8 +395,8 @@ class Alerta(models.Model):
     # Período ao qual o alerta se refere, no formato AAAA-MM ou AAAA-MM-DD.
     referencia = models.CharField("referência", max_length=12)
     enviado_em = models.DateTimeField("enviado em", auto_now_add=True)
-    # Quando a janela de 24h estava fechada e não havia template configurado, o
-    # alerta é registrado como adiado em vez de enviado.
+    # Quando ninguém do espaço estava alcançável (sem Telegram conectado, ou
+    # com o bot bloqueado), o alerta é registrado como adiado em vez de enviado.
     adiado = models.BooleanField("adiado", default=False)
 
     class Meta:

@@ -1,4 +1,4 @@
-"""Alertas proativos: dedupe, janela de 24h e conteúdo."""
+"""Alertas proativos: dedupe, alcance e conteúdo."""
 
 from __future__ import annotations
 
@@ -19,8 +19,8 @@ from carteira.tasks import (
     resumo_semanal,
     verificar_limites,
 )
-from zap.canais.fake import FakeCanal
-from zap.models import JanelaAtendimento, NumeroWhatsApp
+from bot.canais.fake import FakeCanal
+from bot.models import ContaTelegram
 
 
 class BaseAlertaTest(TestCase):
@@ -30,20 +30,13 @@ class BaseAlertaTest(TestCase):
         self.usuario = Usuario.objects.create_user(
             username="ana", email="ana@exemplo.com", password="x", espaco=self.espaco
         )
-        self.numero = NumeroWhatsApp.objects.create(
-            numero="5511999998888", usuario=self.usuario, verificado_em=timezone.now()
+        self.conta = ContaTelegram.objects.create(
+            chat_id=987654321, usuario=self.usuario, verificado_em=timezone.now()
         )
         self.canal = FakeCanal()
-        patch = mock.patch("zap.janela.obter_canal", return_value=self.canal)
+        patch = mock.patch("bot.envio.obter_canal", return_value=self.canal)
         patch.start()
         self.addCleanup(patch.stop)
-        self._abrir_janela()
-
-    def _abrir_janela(self, horas_atras=0):
-        JanelaAtendimento.objects.update_or_create(
-            numero=self.numero,
-            defaults={"ultimo_inbound_em": timezone.now() - timedelta(hours=horas_atras)},
-        )
 
     def _gastar(self, valor, categoria="Delivery", autor=None):
         # `autor` importa: lançamento é pessoal por padrão, e o consumo do
@@ -118,10 +111,9 @@ class LimiteAlertaTest(BaseAlertaTest):
         parceiro = Usuario.objects.create_user(
             username="bia", email="bia@exemplo.com", password="x", espaco=self.espaco
         )
-        outro = NumeroWhatsApp.objects.create(
-            numero="5511888887777", usuario=parceiro, verificado_em=timezone.now()
+        ContaTelegram.objects.create(
+            chat_id=222000222, usuario=parceiro, verificado_em=timezone.now()
         )
-        JanelaAtendimento.objects.create(numero=outro, ultimo_inbound_em=timezone.now())
 
         services.criar_limite(espaco=self.espaco, valor="300", categoria="Delivery")
         # Dividido ao meio: R$ 250 para cada, de um limite de R$ 300.
@@ -142,21 +134,31 @@ class LimiteAlertaTest(BaseAlertaTest):
         parceiro = Usuario.objects.create_user(
             username="bia", email="bia@exemplo.com", password="x", espaco=self.espaco
         )
-        outro = NumeroWhatsApp.objects.create(
-            numero="5511888887777", usuario=parceiro, verificado_em=timezone.now()
+        ContaTelegram.objects.create(
+            chat_id=222000222, usuario=parceiro, verificado_em=timezone.now()
         )
-        JanelaAtendimento.objects.create(numero=outro, ultimo_inbound_em=timezone.now())
 
         services.criar_limite(espaco=self.espaco, valor="300", categoria="Delivery")
         self._gastar("250")  # pessoal, do self.usuario
         verificar_limites()
         self.assertEqual(len(self.canal.enviadas), 1)
-        self.assertEqual(self.canal.enviadas[0]["destino"], self.numero.numero)
+        self.assertEqual(self.canal.enviadas[0]["destino"], str(self.conta.chat_id))
 
 
-class JanelaFechadaTest(BaseAlertaTest):
-    def test_sem_template_o_alerta_e_adiado_e_nao_sai(self):
-        self._abrir_janela(horas_atras=30)
+class BotBloqueadoTest(BaseAlertaTest):
+    """O que sobrou de "o alerta não pode sair".
+
+    No WhatsApp era a janela de 24h da Meta. No Telegram é só um caso: a pessoa
+    bloqueou o bot. O alerta continua sendo registrado como adiado — ele conta
+    como "já decidido neste período" e não repete a cada hora.
+    """
+
+    def _bloquear(self):
+        self.conta.bloqueado_em = timezone.now()
+        self.conta.save(update_fields=["bloqueado_em"])
+
+    def test_conta_bloqueada_nao_recebe_e_o_alerta_fica_adiado(self):
+        self._bloquear()
         services.criar_limite(espaco=self.espaco, valor="300", categoria="Delivery")
         self._gastar("250")
 
@@ -164,27 +166,22 @@ class JanelaFechadaTest(BaseAlertaTest):
         self.assertEqual(self.canal.enviadas, [])
         self.assertTrue(Alerta.objects.get().adiado)
 
-    @override_settings(WHATSAPP_TEMPLATE_LIMITE="aviso_limite")
-    def test_com_template_o_alerta_sai_como_template(self):
-        self._abrir_janela(horas_atras=30)
-        services.criar_limite(espaco=self.espaco, valor="300", categoria="Delivery")
-        self._gastar("250")
-
-        self.assertEqual(verificar_limites(), 1)
-        enviada = self.canal.enviadas[-1]
-        self.assertEqual(enviada["tipo"], "template")
-        self.assertEqual(enviada["template"], "aviso_limite")
-        self.assertIn("Delivery", enviada["parametros"])
-
     def test_alerta_adiado_nao_repete_na_proxima_rodada(self):
-        # Ele conta como "já decidido neste período": insistir a cada hora numa
-        # entrega que a Meta recusa aproxima o número de ser bloqueado.
-        self._abrir_janela(horas_atras=30)
+        self._bloquear()
         services.criar_limite(espaco=self.espaco, valor="300", categoria="Delivery")
         self._gastar("250")
         verificar_limites()
         verificar_limites()
         self.assertEqual(Alerta.objects.count(), 1)
+
+    def test_sem_bloqueio_o_alerta_sai_sem_consultar_janela_nenhuma(self):
+        # O ganho da migração: não há inbound recente, e mesmo assim sai.
+        services.criar_limite(espaco=self.espaco, valor="300", categoria="Delivery")
+        self._gastar("250")
+
+        self.assertEqual(verificar_limites(), 1)
+        self.assertIn("Delivery", self.canal.ultimo_texto)
+        self.assertFalse(Alerta.objects.get().adiado)
 
 
 class VencimentoTest(BaseAlertaTest):
@@ -266,9 +263,9 @@ class ProjecaoTest(BaseAlertaTest):
         self.assertGreater(projetar_recorrentes(), 0)
 
 
-class SemNumeroTest(TestCase):
-    def test_espaco_sem_numero_verificado_nao_quebra(self):
-        # Quem só usa o portal não tem número: a task não pode estourar.
+class SemContaTest(TestCase):
+    def test_espaco_sem_telegram_conectado_nao_quebra(self):
+        # Quem só usa o portal não conectou o Telegram: a task não pode estourar.
         espaco = Espaco.objects.create(nome="Só portal")
         semear_categorias(espaco)
         dono = Usuario.objects.create_user(

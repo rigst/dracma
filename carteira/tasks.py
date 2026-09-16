@@ -1,13 +1,13 @@
 """Tasks proativas: é aqui que o produto deixa de ser um CRUD.
 
-Toda mensagem daqui é INICIADA por nós, e não é resposta a nada — então cada
-envio passa por duas guardas:
+Toda mensagem daqui é INICIADA por nós, e não é resposta a nada. No Telegram
+isso é simplesmente permitido — some a janela de 24h da Meta, que obrigava
+cada envio proativo a escolher entre texto livre, template aprovado e adiar.
 
-1. A janela de 24h da Meta (`zap.janela.notificar`), que decide entre texto
-   livre, template aprovado ou adiar.
-2. O registro em `Alerta`, com unique_together, para o mesmo aviso não sair de
-   novo a cada rodada. Sem ele, a verificação horária de limites mandaria "você
-   passou de 80%" toda hora até o fim do mês.
+Resta uma guarda, e é a que de fato importa: o registro em `Alerta`, com
+unique_together, para o mesmo aviso não sair de novo a cada rodada. Sem ele, a
+verificação horária de limites mandaria "você passou de 80%" toda hora até o
+fim do mês.
 """
 
 from __future__ import annotations
@@ -32,8 +32,8 @@ def _dinheiro(valor) -> str:
     return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
-def _numeros_do(espaco, destinatario=None):
-    """Números verificados a quem o aviso se destina.
+def _contas_do(espaco, destinatario=None):
+    """Conversas alcançáveis a quem o aviso se destina.
 
     Sem `destinatario`, todo mundo do espaço: num casal, quem estourou o limite
     de delivery pode não ser quem o criou.
@@ -41,11 +41,14 @@ def _numeros_do(espaco, destinatario=None):
     COM `destinatario`, só ele — e é isso que impede um lembrete de conta
     pessoal ("Presente de aniversário vence amanhã, R$ 200") de ser transmitido
     justamente para quem não devia ver aquele lançamento.
-    """
-    from zap.models import NumeroWhatsApp
 
-    consulta = NumeroWhatsApp.objects.filter(
-        usuario__espaco=espaco, verificado_em__isnull=False
+    Quem bloqueou o bot fica de fora: o Telegram recusaria com 403 de qualquer
+    forma, e sem o filtro seria uma chamada de rede inútil por rodada do beat.
+    """
+    from bot.models import ContaTelegram
+
+    consulta = ContaTelegram.objects.filter(
+        usuario__espaco=espaco, verificado_em__isnull=False, bloqueado_em__isnull=True
     ).select_related("usuario")
     if destinatario is not None:
         consulta = consulta.filter(usuario=destinatario)
@@ -58,7 +61,6 @@ def _avisar(
     chave: str,
     referencia: str,
     texto: str,
-    parametros=None,
     destinatario=None,
 ) -> bool:
     """Envia uma vez só. Devolve True se de fato saiu para alguém.
@@ -66,7 +68,7 @@ def _avisar(
     O `Alerta` é criado ANTES do envio: se duas rodadas do beat correrem juntas,
     a segunda bate no IntegrityError e desiste, em vez de mandar em duplicata.
     """
-    from zap import janela
+    from bot import envio
 
     try:
         # `atomic` próprio: sem o savepoint, o IntegrityError capturado deixa a
@@ -79,25 +81,18 @@ def _avisar(
     except IntegrityError:
         return False
 
-    template = janela.template_para(tipo)
     enviou = False
-    adiou = False
 
-    for numero in _numeros_do(espaco, destinatario):
-        decisao, _ = janela.notificar(
-            numero, texto, template=template, parametros=parametros or [texto]
-        )
-        if decisao is janela.Decisao.ADIAR:
-            adiou = True
-        else:
-            enviou = True
+    for conta in _contas_do(espaco, destinatario):
+        alcancou, _ = envio.notificar(conta, texto)
+        enviou = enviou or alcancou
 
     if not enviou:
         # Sem ninguém alcançado, o alerta fica marcado como adiado — ele conta
         # como "já decidido neste período" e não repete a cada hora, mas o
         # registro diz que a pessoa não foi avisada.
         Alerta.objects.filter(pk=alerta.pk).update(adiado=True)
-        logger.info("Alerta %s/%s adiado (janela fechada: %s).", tipo, chave, adiou)
+        logger.info("Alerta %s/%s não alcançou ninguém; marcado como adiado.", tipo, chave)
 
     return enviou
 
@@ -143,7 +138,6 @@ def _avisar_limite(limite, membro) -> int:
                 f"limite:{limite.pk}:{membro.pk}",
                 referencia,
                 texto,
-                [alvo, _dinheiro(consumo["gasto"]), _dinheiro(limite.valor)],
                 destinatario=membro,
             )
         )
@@ -161,7 +155,6 @@ def _avisar_limite(limite, membro) -> int:
                 f"limite:{limite.pk}:{membro.pk}",
                 referencia,
                 texto,
-                [alvo, str(consumo["percentual"]), _dinheiro(consumo["restante"])],
                 destinatario=membro,
             )
         )
@@ -210,7 +203,6 @@ def lembrar_vencimentos() -> int:
             f"transacao:{transacao.pk}",
             f"{transacao.data:%Y-%m-%d}",
             texto,
-            [transacao.descricao, _dinheiro(transacao.valor), quando],
             # Conta pessoal só é lembrada a quem a lançou.
             destinatario=None if transacao.compartilhada else transacao.autor,
         ):
@@ -223,16 +215,16 @@ def lembrar_vencimentos() -> int:
 def resumo_semanal() -> int:
     """O caminho do dinheiro dos últimos 7 dias.
 
-    Sem template: é conteúdo, não aviso urgente. Fora da janela de 24h ele é
-    simplesmente adiado — mandar por template utility uma mensagem que ninguém
-    pediu é o caminho para a Meta reclassificar o número.
+    É conteúdo, não aviso urgente, e no Telegram sai como qualquer outra
+    mensagem. A contenção aqui não é da plataforma, é de bom senso: um resumo
+    por semana, por pessoa, e o `Alerta` garante que não saia duas vezes.
     """
     hoje = timezone.localdate()
     inicio = hoje - timedelta(days=7)
     enviados = 0
 
     # Um resumo POR PESSOA, e não um por espaço: o total do espaço somaria o
-    # gasto pessoal de cada um e entregaria esse gasto aos outros pelo número.
+    # gasto pessoal de cada um e entregaria esse gasto aos outros no Telegram.
     for espaco in Espaco.objects.all():
         for membro in espaco.membros.all():
             resumo = services.resumo_periodo(espaco, inicio, hoje, usuario=membro)

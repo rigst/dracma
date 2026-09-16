@@ -437,27 +437,25 @@ class AgenteTest(BaseCasalTest):
 
 class AlertaProativoTest(BaseCasalTest):
     """Os alertas saem por iniciativa nossa: um erro aqui não é tela quebrada,
-    é o gasto pessoal de alguém chegando no WhatsApp de outra pessoa."""
+    é o gasto pessoal de alguém chegando no Telegram de outra pessoa."""
 
     def setUp(self):
         super().setUp()
         from unittest import mock
 
-        from zap.canais.fake import FakeCanal
-        from zap.models import JanelaAtendimento, NumeroWhatsApp
+        from bot.canais.fake import FakeCanal
+        from bot.models import ContaTelegram
 
         self.canal = FakeCanal()
-        patch = mock.patch("zap.janela.obter_canal", return_value=self.canal)
+        patch = mock.patch("bot.envio.obter_canal", return_value=self.canal)
         patch.start()
         self.addCleanup(patch.stop)
 
-        self.numeros = {}
-        for pessoa, numero in ((self.ana, "5511999998888"), (self.bia, "5511888887777")):
-            n = NumeroWhatsApp.objects.create(
-                numero=numero, usuario=pessoa, verificado_em=timezone.now()
+        self.contas = {}
+        for pessoa, chat_id in ((self.ana, 111000111), (self.bia, 222000222)):
+            self.contas[pessoa] = ContaTelegram.objects.create(
+                chat_id=chat_id, usuario=pessoa, verificado_em=timezone.now()
             )
-            JanelaAtendimento.objects.create(numero=n, ultimo_inbound_em=timezone.now())
-            self.numeros[pessoa] = n
 
     def _destinos(self):
         return {e["destino"] for e in self.canal.enviadas}
@@ -475,7 +473,7 @@ class AlertaProativoTest(BaseCasalTest):
         )
         lembrar_vencimentos()
 
-        self.assertEqual(self._destinos(), {self.numeros[self.ana].numero})
+        self.assertEqual(self._destinos(), {str(self.contas[self.ana].chat_id)})
         self.assertIn("Presente de aniversário", self.canal.ultimo_texto)
 
     def test_vencimento_compartilhado_avisa_os_dois(self):
@@ -501,10 +499,10 @@ class AlertaProativoTest(BaseCasalTest):
 
         por_destino = {e["destino"]: e["texto"] for e in self.canal.enviadas}
         # Ana: 500 pessoais + metade dos 100 da casa. Bia: só a metade dela.
-        self.assertIn("R$ 550,00", por_destino[self.numeros[self.ana].numero])
-        self.assertIn("R$ 50,00", por_destino[self.numeros[self.bia].numero])
+        self.assertIn("R$ 550,00", por_destino[str(self.contas[self.ana].chat_id)])
+        self.assertIn("R$ 50,00", por_destino[str(self.contas[self.bia].chat_id)])
         # O total da Bia não pode conter o gasto pessoal da Ana.
-        self.assertNotIn("R$ 550,00", por_destino[self.numeros[self.bia].numero])
+        self.assertNotIn("R$ 550,00", por_destino[str(self.contas[self.bia].chat_id)])
 
     def test_alerta_de_limite_vai_so_para_quem_gastou(self):
         # O percentual é o número de quem olha: mandá-lo a todos entregaria o
@@ -515,7 +513,7 @@ class AlertaProativoTest(BaseCasalTest):
         self._lancar(self.ana, "500", "Presente caro", False, categoria="Presentes")
 
         self.assertEqual(verificar_limites(), 1)
-        self.assertEqual(self._destinos(), {self.numeros[self.ana].numero})
+        self.assertEqual(self._destinos(), {str(self.contas[self.ana].chat_id)})
         self.assertIn("passou do limite", self.canal.ultimo_texto)
 
     def test_alerta_de_limite_compartilhado_vai_para_os_dois(self):

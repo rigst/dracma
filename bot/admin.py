@@ -1,13 +1,14 @@
 from django.contrib import admin
 from unfold.admin import ModelAdmin
 
-from .models import CodigoPareamento, JanelaAtendimento, Mensagem, Midia, NumeroWhatsApp
+from .models import CodigoPareamento, ContaTelegram, Mensagem, Midia
 
 
-@admin.register(NumeroWhatsApp)
-class NumeroWhatsAppAdmin(ModelAdmin):
-    list_display = ("numero", "usuario", "verificado_em", "criado_em")
-    search_fields = ("numero",)
+@admin.register(ContaTelegram)
+class ContaTelegramAdmin(ModelAdmin):
+    list_display = ("chat_id", "username", "usuario", "verificado_em", "bloqueado_em", "criado_em")
+    list_filter = ("verificado_em", "bloqueado_em")
+    search_fields = ("chat_id", "username", "primeiro_nome")
 
 
 @admin.register(Mensagem)
@@ -16,8 +17,8 @@ class MensagemAdmin(ModelAdmin):
 
     list_display = ("criada_em", "direcao", "tipo", "canal", "status", "resumo")
     list_filter = ("direcao", "tipo", "canal", "status")
-    search_fields = ("texto", "transcricao", "wamid")
-    list_select_related = ("numero", "usuario")
+    search_fields = ("texto", "transcricao", "id_externo")
+    list_select_related = ("conta", "usuario")
     readonly_fields = [campo.name for campo in Mensagem._meta.fields]
 
     @admin.display(description="conteúdo")
@@ -35,15 +36,6 @@ class MensagemAdmin(ModelAdmin):
 class MidiaAdmin(ModelAdmin):
     list_display = ("mensagem", "mime_type", "tamanho", "criada_em")
     list_filter = ("mime_type",)
-
-
-@admin.register(JanelaAtendimento)
-class JanelaAtendimentoAdmin(ModelAdmin):
-    list_display = ("numero", "ultimo_inbound_em", "aberta")
-
-    @admin.display(boolean=True, description="aberta")
-    def aberta(self, obj):
-        return obj.aberta
 
 
 @admin.register(CodigoPareamento)

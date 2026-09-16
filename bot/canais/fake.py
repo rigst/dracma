@@ -12,31 +12,20 @@ class FakeCanal(CanalMensagem):
         self.enviadas: list[dict] = []
         self.midias: dict[str, MidiaBaixada] = {}
         self.falhar = False
+        self.bloquear = False
 
     def enviar_texto(self, destino, texto: str) -> MensagemEnviada:
+        if self.bloquear:
+            return MensagemEnviada(
+                entregue=False, erro="Forbidden: bot was blocked by the user", bloqueado=True
+            )
         if self.falhar:
             return MensagemEnviada(entregue=False, erro="falha simulada")
         self.enviadas.append({"destino": str(destino), "tipo": "texto", "texto": texto})
         return MensagemEnviada(id_externo=f"fake-{len(self.enviadas)}")
 
-    def enviar_template(self, destino, template: str, parametros: list[str]) -> MensagemEnviada:
-        if self.falhar:
-            return MensagemEnviada(entregue=False, erro="falha simulada")
-        self.enviadas.append(
-            {
-                "destino": str(destino),
-                "tipo": "template",
-                "template": template,
-                "parametros": list(parametros),
-            }
-        )
-        return MensagemEnviada(id_externo=f"fake-{len(self.enviadas)}")
-
-    def baixar_midia(self, media_id: str) -> MidiaBaixada:
-        return self.midias[media_id]
-
-    def suporta_template(self) -> bool:
-        return True
+    def baixar_midia(self, file_id: str, mime_hint: str = "") -> MidiaBaixada:
+        return self.midias[file_id]
 
     # -- auxiliares de teste ------------------------------------------------
 

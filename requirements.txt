@@ -10,7 +10,7 @@ redis==8.1.0
 python-dotenv==1.2.2
 # IA (Anthropic / Claude)
 anthropic==0.121.0
-# Transcrição dos áudios do WhatsApp, local, na fila `midia`. Requer ffmpeg no
+# Transcrição dos áudios do Telegram, local, na fila `midia`. Requer ffmpeg no
 # sistema. Modelo `small` em int8: ~1,5 GB de RAM e ~6x tempo real em CPU.
 faster-whisper==1.2.0
 # `requests` é importado por faster_whisper/utils.py mas NÃO consta nos
@@ -18,7 +18,7 @@ faster-whisper==1.2.0
 # passa e o import estoura em runtime, dentro da task — declarado aqui para o
 # venv limpo do lock subir.
 requests==2.32.5
-# Chamadas HTTP à Graph API da Meta (envio e download de mídia).
+# Chamadas HTTP à Bot API do Telegram (envio e download de mídia).
 httpx==0.28.1
 # App `legal`: renderiza as políticas em Markdown e sanitiza o HTML por
 # allowlist antes de publicar.

@@ -70,7 +70,7 @@ def duracao_segundos(caminho: Path) -> float:
 
 
 def para_wav(origem: Path) -> Path:
-    """Converte o .ogg/OPUS do WhatsApp para WAV 16 kHz mono.
+    """Converte o .oga/OPUS do Telegram para WAV 16 kHz mono.
 
     O faster-whisper lê ogg direto via PyAV, mas converter antes com ffmpeg
     torna o comportamento previsível e é o formato que o modelo espera — sem
@@ -112,7 +112,7 @@ def transcrever(caminho: str | Path) -> str:
         segmentos, _info = obter_modelo().transcribe(
             str(wav),
             language=settings.WHISPER_IDIOMA,
-            # O VAD corta silêncio e respiração, que em áudio de WhatsApp é
+            # O VAD corta silêncio e respiração, que em áudio de Telegram é
             # boa parte do arquivo: menos áudio para o modelo, mesma frase.
             vad_filter=True,
         )

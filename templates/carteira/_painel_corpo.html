@@ -4,16 +4,16 @@ mexe no saldo, na rosca, nos limites e nas próximas contas ao mesmo tempo, e
 atualizar só a tabela deixaria o resto da tela mentindo.
 {% endcomment %}
 
-{% if whatsapp_habilitado and not whatsapp_conectado %}
+{% if telegram_habilitado and not telegram_conectado %}
 <div class="painel convite">
   <div>
-    <h3>Conecte seu WhatsApp</h3>
+    <h3>Conecte seu Telegram</h3>
     <p class="nota nota--larga" style="margin-top:.2rem">
       É onde a Dracma trabalha melhor: você conta o gasto por áudio ou foto do
       comprovante na hora, e ela avisa antes de um limite estourar.
     </p>
   </div>
-  <button class="botao" hx-get="{% url 'zap:conectar' %}" hx-target="#dialogo-corpo">
+  <button class="botao" hx-get="{% url 'bot:conectar' %}" hx-target="#dialogo-corpo">
     Conectar
   </button>
 </div>
