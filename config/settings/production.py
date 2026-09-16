@@ -66,6 +66,14 @@ SECURE_HSTS_PRELOAD = True
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
+# Explícito, e igual ao que o nginx manda, embora o nginx descarte este aqui
+# (`proxy_hide_header`) para o navegador não receber dois. Vale declarar: é o
+# que sobra se o app um dia for servido sem aquele nginx na frente, e deixa os
+# dois lados concordando à vista de quem lê.
+#
+# `same-origin` e não `strict-origin-when-cross-origin`: a URL aqui carrega
+# código de lançamento, e cross-origin não precisa nem da origem.
+SECURE_REFERRER_POLICY = "same-origin"
 X_FRAME_OPTIONS = "DENY"
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 

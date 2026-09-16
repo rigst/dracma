@@ -9,7 +9,7 @@ server {
     # ainda têm JS/CSS inline; mesmo assim bloqueia scripts/conexões de
     # origens externas (exfiltração) — só fontes do Google e fotos da Pexels.
     add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://images.pexels.com; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'" always;
-    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Referrer-Policy "same-origin" always;
     add_header Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()" always;
     add_header X-Content-Type-Options "nosniff" always;
 
@@ -29,8 +29,14 @@ server {
     # location DESCARTA todos os herdados do server. Omitir um aqui não deixa
     # o valor do server valer; deixa a resposta do admin sem ele.
     location /admin/ {
+        # O Django manda o Referrer-Policy dele em toda resposta. Sem isto,
+        # chegavam dois cabeçalhos com valores diferentes ao navegador. O
+        # nginx é a fonte única porque é o único que também cobre /static/ e
+        # /media/, que não passam pelo app.
+        proxy_hide_header Referrer-Policy;
+
         add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://images.pexels.com; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'" always;
-        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+        add_header Referrer-Policy "same-origin" always;
         add_header Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()" always;
         add_header X-Content-Type-Options "nosniff" always;
 
@@ -50,6 +56,10 @@ server {
         alias /var/www/dracma/media/;
     }
     location / {
+        # Ver o comentário em /admin/: o nginx é a fonte única do
+        # Referrer-Policy, e o do app é descartado aqui.
+        proxy_hide_header Referrer-Policy;
+
         proxy_pass http://127.0.0.1:8015;
         proxy_set_header Host $http_host;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;

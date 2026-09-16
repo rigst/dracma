@@ -41,6 +41,39 @@ def _csp(bloco: str) -> str:
     return achado.group(1)
 
 
+class ReferrerPolicyTest(SimpleTestCase):
+    """Um cabeçalho só, e o mesmo valor em todo lugar.
+
+    O Django manda o `Referrer-Policy` dele em toda resposta do app e o nginx
+    mandava o seu, com valor diferente: o navegador recebia dois. O nginx é a
+    fonte única porque é o único que também cobre /static/ e /media/, que não
+    passam pelo app.
+    """
+
+    def setUp(self):
+        self.texto = CONFIG.read_text(encoding="utf-8")
+
+    def test_um_valor_so_no_arquivo_inteiro(self):
+        valores = set(re.findall(r'add_header Referrer-Policy "([^"]+)"', self.texto))
+        self.assertEqual(valores, {"same-origin"})
+
+    def test_bate_com_o_do_django(self):
+        from django.conf import settings as cfg
+
+        producao = pathlib.Path(cfg.BASE_DIR) / "config" / "settings" / "production.py"
+        declarado = re.search(
+            r'SECURE_REFERRER_POLICY = "([^"]+)"', producao.read_text(encoding="utf-8")
+        )
+        self.assertIsNotNone(declarado, "production.py não declara SECURE_REFERRER_POLICY")
+        self.assertEqual(declarado.group(1), "same-origin")
+
+    def test_toda_rota_que_faz_proxy_descarta_o_do_app(self):
+        """Sem `proxy_hide_header`, o do Django volta a somar com o do nginx."""
+        for abertura in ("location / {", "location /admin/ {"):
+            with self.subTest(location=abertura):
+                self.assertIn("proxy_hide_header Referrer-Policy;", _bloco(self.texto, abertura))
+
+
 class CspDoAdminTest(SimpleTestCase):
     """O admin precisa de 'unsafe-eval'; o portal não pode ter.
 
