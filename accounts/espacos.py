@@ -226,13 +226,14 @@ def sair_do_espaco(usuario):
         por_nome = {normalizar(c.nome): c for c in novo.categorias.all()}
         contas = {}
         for t in pessoais.select_related("categoria", "conta"):
-            if t.conta_id and t.conta_id not in contas:
-                contas[t.conta_id] = Conta.objects.create(
-                    espaco=novo, nome=t.conta.nome, tipo=t.conta.tipo
+            antiga = t.conta
+            if antiga is not None and antiga.pk not in contas:
+                contas[antiga.pk] = Conta.objects.create(
+                    espaco=novo, nome=antiga.nome, tipo=antiga.tipo
                 )
             t.espaco = novo
             t.categoria = por_nome.get(normalizar(t.categoria.nome)) if t.categoria else None
-            t.conta = contas.get(t.conta_id)
+            t.conta = contas[antiga.pk] if antiga is not None else None
             t.conta_destino = None
             t.save(update_fields=["espaco", "categoria", "conta", "conta_destino"])
 

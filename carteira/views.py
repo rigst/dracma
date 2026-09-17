@@ -30,8 +30,8 @@ from .forms import (
     ContaForm,
     DivisaoPadraoForm,
     EntrarNoEspacoForm,
-    NomeDoEspacoForm,
     LimiteForm,
+    NomeDoEspacoForm,
     RecorrenteForm,
     TransacaoForm,
 )

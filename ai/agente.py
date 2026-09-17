@@ -19,6 +19,7 @@ from datetime import date
 from django.conf import settings
 from django.utils import timezone
 
+from accounts.models import Espaco, Usuario
 from accounts.quota import registrar_consumo, tem_quota
 from carteira.models import Categoria, Conta, Origem
 
@@ -37,8 +38,8 @@ class SemQuota(Exception):
 class Contexto:
     """Tudo que as tools precisam saber sobre quem está falando."""
 
-    espaco: object
-    usuario: object = None
+    espaco: Espaco
+    usuario: Usuario | None = None
     hoje: date = field(default_factory=timezone.localdate)
     origem: str = Origem.TEXTO
 
@@ -204,7 +205,7 @@ def _como_dicionario(bloco) -> dict:
         return bloco
     if hasattr(bloco, "model_dump"):
         return bloco.model_dump(exclude_none=True)
-    if dataclasses.is_dataclass(bloco):
+    if dataclasses.is_dataclass(bloco) and not isinstance(bloco, type):
         return dataclasses.asdict(bloco)
     return {k: v for k, v in vars(bloco).items() if not k.startswith("_")}
 
@@ -218,9 +219,7 @@ def _sem_tool_use_orfao(mensagens: list[dict]) -> list[dict]:
     while mensagens:
         ultima = mensagens[-1]
         blocos = ultima["content"]
-        tem_tool_use = isinstance(blocos, list) and any(
-            b.get("type") == "tool_use" for b in blocos
-        )
+        tem_tool_use = isinstance(blocos, list) and any(b.get("type") == "tool_use" for b in blocos)
         if ultima["role"] == "assistant" and tem_tool_use:
             mensagens.pop()
             continue

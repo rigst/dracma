@@ -11,10 +11,10 @@ from django.urls import reverse
 from django.utils import timezone
 
 from accounts.models import Espaco, Usuario
-from carteira.seeds import semear_categorias
 from bot import onboarding
 from bot.canais.fake import FakeCanal
 from bot.models import CodigoPareamento, ContaTelegram, Mensagem
+from carteira.seeds import semear_categorias
 
 BOT = "DracmaBot"
 

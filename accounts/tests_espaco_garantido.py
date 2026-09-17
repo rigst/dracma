@@ -20,16 +20,12 @@ from carteira.models import Categoria
 
 class NascimentoTest(TestCase):
     def test_criado_pelo_shell_ganha_espaco(self):
-        usuario = Usuario.objects.create_user(
-            username="leo", email="leo@exemplo.com", password="x"
-        )
+        usuario = Usuario.objects.create_user(username="leo", email="leo@exemplo.com", password="x")
         self.assertIsNotNone(usuario.espaco)
 
     def test_o_espaco_ja_vem_com_categorias(self):
         """Sem elas, o primeiro lançamento cairia em 'sem categoria'."""
-        usuario = Usuario.objects.create_user(
-            username="leo", email="leo@exemplo.com", password="x"
-        )
+        usuario = Usuario.objects.create_user(username="leo", email="leo@exemplo.com", password="x")
         self.assertTrue(Categoria.objects.filter(espaco=usuario.espaco).exists())
 
     def test_superusuario_tambem(self):
@@ -47,9 +43,7 @@ class NascimentoTest(TestCase):
         self.assertEqual(Espaco.objects.count(), 1)
 
     def test_salvar_de_novo_nao_cria_espaco_novo(self):
-        usuario = Usuario.objects.create_user(
-            username="leo", email="leo@exemplo.com", password="x"
-        )
+        usuario = Usuario.objects.create_user(username="leo", email="leo@exemplo.com", password="x")
         primeiro = usuario.espaco_id
         usuario.first_name = "Leo"
         usuario.save()
@@ -64,9 +58,7 @@ class UpdateFieldsTest(TestCase):
         Sem incluir "espaco" ali, o espaço seria criado e o vínculo não seria
         gravado: o usuário voltaria do banco sem espaço e com um órfão solto.
         """
-        usuario = Usuario.objects.create_user(
-            username="leo", email="leo@exemplo.com", password="x"
-        )
+        usuario = Usuario.objects.create_user(username="leo", email="leo@exemplo.com", password="x")
         Usuario.objects.filter(pk=usuario.pk).update(espaco=None)
 
         recarregado = Usuario.objects.get(pk=usuario.pk)

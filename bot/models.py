@@ -158,9 +158,7 @@ class Mensagem(models.Model):
     # Chave de idempotência. O `message_id` do Telegram só é único DENTRO de
     # uma conversa, então sozinho ele colidiria entre usuários; o que guardamos
     # é "<chat_id>:<message_id>", ver bot.webhook.identificador().
-    id_externo = models.CharField(
-        "id externo", max_length=128, unique=True, null=True, blank=True
-    )
+    id_externo = models.CharField("id externo", max_length=128, unique=True, null=True, blank=True)
     texto = models.TextField("texto", blank=True)
     # Transcrição do áudio, quando houver. Fica separada do `texto` para o log
     # continuar mostrando o que chegou de fato.

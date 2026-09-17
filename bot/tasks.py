@@ -24,7 +24,7 @@ from .webhook import comando_start
 
 logger = logging.getLogger(__name__)
 
-ORIGENS = {
+ORIGENS: dict[str, Origem] = {
     Mensagem.Tipo.TEXTO: Origem.TEXTO,
     Mensagem.Tipo.AUDIO: Origem.AUDIO,
     Mensagem.Tipo.IMAGEM: Origem.IMAGEM,
@@ -75,6 +75,14 @@ def processar_mensagem(self, mensagem_id: int, file_id: str = "", mime_hint: str
         logger.error("Usuário %s estava pareado e sem espaço; criando um.", usuario.pk)
         usuario.save()
 
+    espaco = usuario.espaco
+    if espaco is None:
+        # O `save()` acima cria o espaço e grava o vínculo, então este ramo é
+        # o campo anulável do modelo, e não um estado que o fluxo produza.
+        # Seguir sem espaço só moveria o erro para dentro do agente.
+        logger.error("Usuário %s segue sem espaço depois do save(); desistindo.", usuario.pk)
+        return
+
     # `/start` de quem já está conectado não vai para o agente: ele o leria
     # como uma fala qualquer e tentaria achar um gasto em "/start".
     if conta is not None and comando_start(mensagem.texto) is not None:
@@ -97,7 +105,7 @@ def processar_mensagem(self, mensagem_id: int, file_id: str = "", mime_hint: str
     try:
         resposta = responder(
             Contexto(
-                espaco=usuario.espaco,
+                espaco=espaco,
                 usuario=usuario,
                 origem=ORIGENS.get(mensagem.tipo, Origem.TEXTO),
             ),

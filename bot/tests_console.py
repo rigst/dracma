@@ -9,9 +9,9 @@ from django.urls import reverse
 
 from accounts.models import Espaco, Usuario
 from ai.fakes import ClienteFalso
+from bot.models import Mensagem
 from carteira.models import Origem, Transacao
 from carteira.seeds import semear_categorias
-from bot.models import Mensagem
 
 
 class BaseConsoleTest(TestCase):

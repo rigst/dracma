@@ -34,9 +34,7 @@ class BaseListarTest(TestCase):
         self.hoje = timezone.localdate()
 
     def _contexto(self, usuario=None):
-        return Contexto(
-            espaco=self.espaco, usuario=usuario or self.ana, origem=Origem.TEXTO
-        )
+        return Contexto(espaco=self.espaco, usuario=usuario or self.ana, origem=Origem.TEXTO)
 
     def _lancar(self, descricao, valor, autor=None, compartilhada=False, dias_atras=0):
         from carteira import services

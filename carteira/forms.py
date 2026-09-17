@@ -10,12 +10,23 @@ from __future__ import annotations
 
 from datetime import date
 from decimal import Decimal
+from typing import TYPE_CHECKING, cast
 
 from django import forms
 from django.utils import timezone
 
 from . import rateios, services
 from .models import Categoria, Conta, TipoTransacao
+
+# `RateioMixin` não é um formulário: os campos por pessoa nascem no __init__ do
+# formulário que o herda, e é de lá que vêm `fields`, `add_error` e `self[...]`.
+# Em tempo de execução a base é `object`, exatamente como antes; declarar
+# `forms.Form` só para o mypy é o que lhe permite resolver esses três nomes sem
+# espalhar `# type: ignore` por todo o mixin.
+if TYPE_CHECKING:
+    _BaseDoMixin = forms.Form
+else:
+    _BaseDoMixin = object
 
 
 class DataInput(forms.DateInput):
@@ -69,16 +80,16 @@ class _ComEspaco(forms.Form):
         if espaco is None:
             return
         if "categoria" in self.fields:
-            self.fields["categoria"].queryset = Categoria.objects.filter(
-                espaco=espaco, ativa=True
-            ).order_by("nome")
+            campo_categoria = cast(forms.ModelChoiceField, self.fields["categoria"])
+            campo_categoria.queryset = Categoria.objects.filter(espaco=espaco, ativa=True).order_by(
+                "nome"
+            )
         if "conta" in self.fields:
-            self.fields["conta"].queryset = Conta.objects.filter(
-                espaco=espaco, ativa=True
-            ).order_by("nome")
+            campo_conta = cast(forms.ModelChoiceField, self.fields["conta"])
+            campo_conta.queryset = Conta.objects.filter(espaco=espaco, ativa=True).order_by("nome")
 
 
-class RateioMixin:
+class RateioMixin(_BaseDoMixin):
     """Campos de divisão montados a partir dos membros do espaço.
 
     Os campos por pessoa nascem em `__init__` porque dependem de quem está no
@@ -224,7 +235,7 @@ class DivisaoPadraoForm(forms.Form):
             yield membro, self[f"pct_{membro.pk}"]
 
     def clean(self):
-        dados = super().clean()
+        dados = super().clean() or {}
         if dados.get("modo") != "percentual":
             return dados
 
@@ -255,7 +266,7 @@ class TransacaoForm(RateioMixin, _ComEspaco):
         max_length=140,
         widget=forms.TextInput(attrs={"placeholder": "Mercado, Uber, salário…"}),
     )
-    data = forms.DateField(
+    data = forms.DateField(  # type: ignore[assignment]  # ver nota acima
         label="Data",
         widget=DataInput(),
         # Aceita o ISO que o campo nativo manda e o formato brasileiro, para o
@@ -291,7 +302,7 @@ class TransacaoForm(RateioMixin, _ComEspaco):
         return self.cleaned_data["compartilhada"] == "1"
 
     def clean(self):
-        dados = super().clean()
+        dados = super().clean() or {}
         self._validar_rateio(dados)
         return dados
 
@@ -330,7 +341,7 @@ class LimiteForm(_ComEspaco):
     )
 
     def clean(self):
-        dados = super().clean()
+        dados = super().clean() or {}
         # Um limite avulso sem nome vira "geral" na listagem e fica
         # indistinguível do teto do mês.
         if dados.get("dias") and not dados.get("categoria") and not dados.get("rotulo"):
@@ -398,7 +409,7 @@ class AcertoForm(forms.Form):
         self.espaco = espaco
 
     def clean(self):
-        dados = super().clean()
+        dados = super().clean() or {}
         if self.espaco is None:
             return dados
 
@@ -467,7 +478,7 @@ class ContaForm(_ComEspaco):
         from .models import TipoConta
 
         super().__init__(*args, **kwargs)
-        self.fields["tipo"].choices = TipoConta.choices
+        cast(forms.ChoiceField, self.fields["tipo"]).choices = TipoConta.choices
 
     def clean_nome(self):
         nome = self.cleaned_data["nome"].strip()

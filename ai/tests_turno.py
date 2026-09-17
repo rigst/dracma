@@ -29,13 +29,14 @@ class BaseTurnoTest(TestCase):
         self.usuario = Usuario.objects.create_user(
             username="ana", email="ana@exemplo.com", password="x", espaco=self.espaco
         )
-        self.contexto = Contexto(
-            espaco=self.espaco, usuario=self.usuario, hoje=date(2026, 9, 16)
-        )
+        self.contexto = Contexto(espaco=self.espaco, usuario=self.usuario, hoje=date(2026, 9, 16))
 
     def _tipos(self, turno):
         return [
-            (m["role"], [b["type"] for b in m["content"]] if isinstance(m["content"], list) else "texto")
+            (
+                m["role"],
+                [b["type"] for b in m["content"]] if isinstance(m["content"], list) else "texto",
+            )
             for m in turno
         ]
 
@@ -44,8 +45,13 @@ class TranscriptTest(BaseTurnoTest):
     def test_registra_e_guarda_a_prova_da_escrita(self):
         cliente = (
             ClienteFalso()
-            .chama("registrar_transacao", valor=20, descricao="Uber", tipo="despesa",
-                   categoria="Transporte")
+            .chama(
+                "registrar_transacao",
+                valor=20,
+                descricao="Uber",
+                tipo="despesa",
+                categoria="Transporte",
+            )
             .responde("Uber de R$ 20,00 registrado ✅")
         )
         r = responder(self.contexto, "gastei 20 de uber", cliente=cliente)
@@ -69,8 +75,13 @@ class TranscriptTest(BaseTurnoTest):
     def test_o_resultado_da_tool_vai_junto(self):
         cliente = (
             ClienteFalso()
-            .chama("registrar_transacao", valor=20, descricao="Uber", tipo="despesa",
-                   categoria="Transporte")
+            .chama(
+                "registrar_transacao",
+                valor=20,
+                descricao="Uber",
+                tipo="despesa",
+                categoria="Transporte",
+            )
             .responde("ok")
         )
         r = responder(self.contexto, "gastei 20 de uber", cliente=cliente)
@@ -88,8 +99,13 @@ class TranscriptTest(BaseTurnoTest):
 
         cliente = (
             ClienteFalso()
-            .chama("registrar_transacao", valor=20, descricao="Uber", tipo="despesa",
-                   categoria="Transporte")
+            .chama(
+                "registrar_transacao",
+                valor=20,
+                descricao="Uber",
+                tipo="despesa",
+                categoria="Transporte",
+            )
             .responde("ok")
         )
         r = responder(self.contexto, "gastei 20 de uber", cliente=cliente)
@@ -102,8 +118,13 @@ class ReplayTest(BaseTurnoTest):
         # um ajuste. O modelo tem de ver que a escrita já aconteceu.
         cliente = (
             ClienteFalso()
-            .chama("registrar_transacao", valor=20, descricao="Uber", tipo="despesa",
-                   categoria="Transporte")
+            .chama(
+                "registrar_transacao",
+                valor=20,
+                descricao="Uber",
+                tipo="despesa",
+                categoria="Transporte",
+            )
             .responde("Uber de R$ 20,00 registrado ✅")
         )
         primeiro = responder(self.contexto, "gastei 20 de uber", cliente=cliente)
@@ -113,7 +134,9 @@ class ReplayTest(BaseTurnoTest):
         responder(self.contexto, "ajusta o uber para 22", historico=historico, cliente=segundo)
 
         enviadas = segundo.ultima_chamada["messages"]
-        blocos = [b["type"] for m in enviadas if isinstance(m["content"], list) for b in m["content"]]
+        blocos = [
+            b["type"] for m in enviadas if isinstance(m["content"], list) for b in m["content"]
+        ]
         self.assertIn("tool_use", blocos)
         self.assertIn("tool_result", blocos)
 
@@ -124,8 +147,10 @@ class HigieneTest(BaseTurnoTest):
         nada, o que importava dela já virou lançamento."""
         cliente = ClienteFalso().responde("li o comprovante")
         conteudo = [
-            {"type": "image", "source": {"type": "base64", "media_type": "image/png",
-                                         "data": "A" * 5000}},
+            {
+                "type": "image",
+                "source": {"type": "base64", "media_type": "image/png", "data": "A" * 5000},
+            },
             {"type": "text", "text": "quanto foi?"},
         ]
         r = responder(self.contexto, conteudo, cliente=cliente)
@@ -135,7 +160,7 @@ class HigieneTest(BaseTurnoTest):
         """O teto de iterações corta o laço no meio. Um `tool_use` sem o
         `tool_result` correspondente faz a API recusar o histórico com 400."""
         cliente = ClienteFalso()
-        for i in range(8):
+        for _ in range(8):
             cliente.chama("consultar_limites")
         r = responder(self.contexto, "e aí?", cliente=cliente)
 
@@ -147,10 +172,6 @@ class HigieneTest(BaseTurnoTest):
     def test_historico_truncado_nao_comeca_por_tool_result(self):
         # Garante que o que sai daqui é montável: a API exige que a conversa
         # comece por uma fala do usuário.
-        cliente = (
-            ClienteFalso()
-            .chama("consultar_limites")
-            .responde("nenhum limite")
-        )
+        cliente = ClienteFalso().chama("consultar_limites").responde("nenhum limite")
         r = responder(self.contexto, "meus limites?", cliente=cliente)
         self.assertEqual(r.turno[0]["role"], "assistant")

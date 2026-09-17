@@ -7,8 +7,11 @@ personalidade virar defeito.
 
 from __future__ import annotations
 
-from carteira import vozes
+import itertools
+
 from django.test import SimpleTestCase
+
+from carteira import vozes
 
 
 class EscolhaTest(SimpleTestCase):
@@ -25,7 +28,7 @@ class EscolhaTest(SimpleTestCase):
         # que o `passo` existe para evitar.
         for chave in ("limite:1:1", "limite:2:1", "semanal:9"):
             frases = [vozes.escolher(vozes.ESTOUROU, chave, mes) for mes in range(1, 13)]
-            for anterior, seguinte in zip(frases, frases[1:], strict=False):
+            for anterior, seguinte in itertools.pairwise(frases):
                 self.assertNotEqual(anterior, seguinte, chave)
 
     def test_percorre_todas_as_frases(self):

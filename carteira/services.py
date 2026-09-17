@@ -29,8 +29,6 @@ from django.db.models import (
 )
 from django.db.models.functions import Coalesce
 
-_DINHEIRO = DecimalField(max_digits=12, decimal_places=2)
-
 from .models import (
     Categoria,
     Conta,
@@ -41,6 +39,8 @@ from .models import (
     Transacao,
     gerar_codigo_transacao,
 )
+
+_DINHEIRO = DecimalField(max_digits=12, decimal_places=2)
 
 # Teto do parcelamento. 36x cobre o que o varejo brasileiro pratica, e o limite
 # existe porque cada parcela é uma linha: um "1000x" digitado errado encheria a
@@ -583,9 +583,12 @@ def consumo_do_limite(limite: Limite, referencia: date | None = None, usuario=No
     corrente. Misturar os dois faria o presente de aniversário estourar o
     orçamento de mercado.
     """
-    if limite.temporario:
-        inicio, fim = limite.inicio, limite.fim
-    else:
+    # As duas datas são anuláveis no modelo (o teto mensal não usa nenhuma
+    # delas) e `definir_limite` grava o par junto, então um limite avulso tem
+    # sempre as duas. A condição única cobre o mensal e um avulso truncado no
+    # banco pela mesma porta: cai na janela do mês.
+    inicio, fim = limite.inicio, limite.fim
+    if not (limite.temporario and inicio and fim):
         inicio, fim = limites_do_mes(referencia)
 
     gasto = total_gasto(limite.espaco, inicio, fim, categoria=limite.categoria, usuario=usuario)

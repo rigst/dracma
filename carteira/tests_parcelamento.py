@@ -161,8 +161,10 @@ class MesTest(BaseParcelaTest):
 class RotuloTest(BaseParcelaTest):
     def test_mostra_a_posicao_da_parcela(self):
         self._comprar()
-        self.assertEqual([t.rotulo for t in self._parcelas],
-                         ["Miçangas (1/3)", "Miçangas (2/3)", "Miçangas (3/3)"])
+        self.assertEqual(
+            [t.rotulo for t in self._parcelas],
+            ["Miçangas (1/3)", "Miçangas (2/3)", "Miçangas (3/3)"],
+        )
 
     def test_a_vista_nao_ganha_sufixo(self):
         t = self._comprar(parcelas=1)

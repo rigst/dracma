@@ -335,9 +335,9 @@ def _registrar(args, contexto, espaco):
         f"quem_ve={quem_ve}"
     )
     if transacao.parcelada:
-        irmas = transacao.espaco.transacoes.filter(
-            grupo_parcela=transacao.grupo_parcela
-        ).order_by("parcela")
+        irmas = transacao.espaco.transacoes.filter(grupo_parcela=transacao.grupo_parcela).order_by(
+            "parcela"
+        )
         linha += (
             f" parcelas={transacao.total_parcelas}"
             f" valor_da_parcela={_dinheiro(transacao.valor)}"

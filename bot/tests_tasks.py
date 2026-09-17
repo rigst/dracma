@@ -13,14 +13,14 @@ from django.utils import timezone
 
 from accounts.models import Espaco, Usuario
 from ai.fakes import ClienteFalso
-from carteira.models import Origem, Transacao
-from carteira.seeds import semear_categorias
+from bot import envio
 from bot.canais.base import MidiaBaixada
 from bot.canais.fake import FakeCanal
 from bot.conteudo import montar
-from bot.models import CodigoPareamento, Mensagem, Midia, ContaTelegram
+from bot.models import CodigoPareamento, ContaTelegram, Mensagem, Midia
 from bot.tasks import processar_mensagem
-from bot import envio
+from carteira.models import Origem, Transacao
+from carteira.seeds import semear_categorias
 
 PNG_1x1 = base64.b64decode(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
@@ -353,10 +353,7 @@ class HistoricoComToolsTest(BaseTaskTest):
         )
         self.assertIsNotNone(saida.turno)
         tipos = [
-            b["type"]
-            for m in saida.turno
-            if isinstance(m["content"], list)
-            for b in m["content"]
+            b["type"] for m in saida.turno if isinstance(m["content"], list) for b in m["content"]
         ]
         self.assertIn("tool_use", tipos)
         self.assertIn("tool_result", tipos)
@@ -389,17 +386,12 @@ class HistoricoComToolsTest(BaseTaskTest):
         historico = _historico(seguinte)
 
         tipos = [
-            b["type"]
-            for m in historico
-            if isinstance(m["content"], list)
-            for b in m["content"]
+            b["type"] for m in historico if isinstance(m["content"], list) for b in m["content"]
         ]
         self.assertIn("tool_use", tipos)
         self.assertIn("tool_result", tipos)
         # E a fala do usuário aparece UMA vez só.
-        self.assertEqual(
-            sum(1 for m in historico if m["content"] == "gastei 20 de uber"), 1
-        )
+        self.assertEqual(sum(1 for m in historico if m["content"] == "gastei 20 de uber"), 1)
 
     def test_historico_comeca_sempre_pelo_usuario(self):
         # A janela pode cair logo depois de uma mensagem do roteiro de

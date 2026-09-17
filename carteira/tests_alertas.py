@@ -10,6 +10,8 @@ from django.test import TestCase, override_settings
 from django.utils import timezone
 
 from accounts.models import Espaco, Usuario
+from bot.canais.fake import FakeCanal
+from bot.models import ContaTelegram
 from carteira import services
 from carteira.models import Alerta, TipoTransacao
 from carteira.seeds import semear_categorias
@@ -19,8 +21,6 @@ from carteira.tasks import (
     resumo_semanal,
     verificar_limites,
 )
-from bot.canais.fake import FakeCanal
-from bot.models import ContaTelegram
 
 
 class BaseAlertaTest(TestCase):
@@ -196,7 +196,7 @@ class VencimentoTest(BaseAlertaTest):
         )
 
     def test_avisa_o_que_vence_hoje(self):
-        transacao = self._conta_para(timezone.localdate())
+        self._conta_para(timezone.localdate())
         self.assertEqual(lembrar_vencimentos(), 1)
         texto = self.canal.ultimo_texto
         self.assertIn("vence hoje", texto)

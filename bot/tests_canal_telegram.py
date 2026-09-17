@@ -61,7 +61,7 @@ class RepeticaoTest(TestCase):
 
     def test_handshake_timeout_repetido_ate_entregar(self):
         # É exatamente a falha que aconteceu em produção.
-        canal, cliente = self._canal(
+        canal, _ = self._canal(
             httpx.ConnectTimeout("_ssl.c:983: The handshake operation timed out"), ok()
         )
         self.assertTrue(canal.enviar_texto(99, "oi").entregue)
@@ -77,7 +77,7 @@ class RepeticaoTest(TestCase):
         self.assertEqual(cliente.post.call_count, 3)
 
     def test_429_respeita_o_retry_after_do_telegram(self):
-        canal, cliente = self._canal(falha(429, "Too Many Requests", retry_after=7), ok())
+        canal, _ = self._canal(falha(429, "Too Many Requests", retry_after=7), ok())
 
         self.assertTrue(canal.enviar_texto(99, "oi").entregue)
         self.dorme.target.sleep.assert_called_with(7)

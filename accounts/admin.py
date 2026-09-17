@@ -10,7 +10,7 @@ class UsuarioAdmin(UserAdmin, ModelAdmin):
     list_display = ("username", "email", "espaco", "is_visitante", "ultimo_acesso", "is_active")
     list_filter = ("is_visitante", "is_active", "is_staff")
     fieldsets = (
-        *UserAdmin.fieldsets,
+        *(UserAdmin.fieldsets or ()),
         ("Dracma", {"fields": ("espaco", "is_visitante", "ultimo_acesso")}),
     )
 
