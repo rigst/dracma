@@ -23,7 +23,7 @@ httpx==0.28.1
 # App `legal`: renderiza as políticas em Markdown e sanitiza o HTML por
 # allowlist antes de publicar.
 markdown==3.10.3
-nh3==0.3.6
+nh3==0.3.7
 # QR code do pareamento, em SVG inline. Python puro e sem dependências, então
 # combina com a regra do projeto de não ter bundler: o SVG sai do template do
 # mesmo jeito que os gráficos.
