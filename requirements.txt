@@ -30,7 +30,7 @@ nh3==0.3.6
 segno==1.6.6
 # Produção
 gunicorn==26.2.0
-psycopg2-binary==2.9.12
+psycopg2-binary==2.9.13
 django-redis==6.0.0
 # Monitoramento de erros (ativo só com SENTRY_DSN definido)
 sentry-sdk==2.68.1
