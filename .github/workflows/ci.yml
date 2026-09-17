@@ -11,7 +11,7 @@ jobs:
   ci:
     # SHA e não @v1: a tag é ponteiro móvel, e assim o Dependabot abre PR
     # revisável quando o CI central muda.
-    uses: rigst/ci/.github/workflows/python-django.yml@03a24a7f0eb19ccea2eb5a70b909128fc41a41dd # v1
+    uses: rigst/ci/.github/workflows/python-django.yml@2b481558bbdc44c8e7700f9fe267a94b2e2dbb09 # v1
     # Explícito em vez de `secrets: inherit`: o workflow chamado recebe só
     # o que precisa.
     secrets:
@@ -24,16 +24,19 @@ jobs:
       source-paths: "accounts ai bot carteira config core legal"
       postgres: false
 
-      # Projeto novo: sobe com as etapas ainda não medidas tolerando falha e
-      # vai zerando até `soft-fail: ""`, na ordem do RUNBOOK.md §4 do rigst/ci.
+      # Nada tolerado: toda etapa bloqueia. O caminho foi o do RUNBOOK.md §4
+      # do rigst/ci, medindo o passivo antes de fechar o portão.
       #
       # ruff, mypy, pytest, bandit e pip-audit saíram daqui já na primeira
       # subida, medidos nesta máquina contra as mesmas configurações do
-      # pipeline: 0 achados de ruff, 0 de mypy, 522 testes passando, nada de
-      # severidade alta no bandit e nenhuma vulnerabilidade conhecida depois
-      # da subida do requests. As que ficam dependem de navegador e de Node,
-      # que não rodam igual aqui — o passivo delas se mede no primeiro run.
-      soft-fail: "licencas,frontend,layout,a11y,diff"
+      # pipeline. As quatro que dependem de navegador e de Node subiram
+      # toleradas no run 35273160297, que é o que mediu o passivo: licenças
+      # e layout já estavam limpas, a11y só reprovava porque /termos/ e
+      # /privacidade/ davam 404 sem o comando de preparação, e o frontend
+      # trazia 12 `button` sem `type` (mais um aviso de ESLint). Tudo isso
+      # está consertado, então nada fica tolerado: etapa em soft-fail é
+      # etapa que não segura nada, e o passivo cresce sem ninguém ver.
+      soft-fail: ""
 
       # Valores fictícios só para os settings de produção carregarem no job
       # `django` (check --deploy). Nada aqui toca serviço real.
@@ -59,6 +62,10 @@ jobs:
       run-frontend: true
       frontend-paths: "static"
       template-paths: "templates"
+      # Explícito, e igual ao resto da frota: todo achado de Stylelint entra
+      # como aviso porque a etapa lê o arquivo inteiro, e o que reprova é
+      # ESLint de severidade 2 e template estruturalmente quebrado.
+      frontend-fail-on: erro
 
       # Rotas públicas: sem login, sem dado de ninguém.
       run-layout: true
@@ -68,6 +75,11 @@ jobs:
         /termos/
         /privacidade/
       run-a11y: true
+      # Sem isto /termos/ e /privacidade/ respondem 404: os documentos legais
+      # são versionados em legal/documentos/ e só existem no banco depois de
+      # publicados. O axe media a página de erro, e o que reprova não é
+      # acessibilidade, é a rota vazia. Mesmo comando do layout.
+      a11y-setup-command: python manage.py importar_documentos_legais --publicar
       a11y-paths: |
         /login/
         /termos/
@@ -81,8 +93,8 @@ jobs:
       # DESLIGADO até o repositório ter o SONAR_TOKEN: sem ele o scanner morre
       # com "Not authorized" e derruba o CI inteiro. Para ligar, crie o projeto
       # `rigst_dracma` no SonarCloud, grave o token em Settings > Secrets and
-      # variables > Actions e troque a linha abaixo pela que está comentada —
-      # a guarda do dependabot é necessária porque o GitHub não entrega os
+      # variables > Actions e troque a linha abaixo pela que está comentada.
+      # A guarda do dependabot é necessária porque o GitHub não entrega os
       # secrets do Actions àquele ator, e sem ela toda PR dele falharia.
       #
       #   run-sonar: ${{ github.actor != 'dependabot[bot]' }}

@@ -15,7 +15,7 @@
     raiz.dataset.theme = novo;
     try {
       localStorage.setItem("tema", novo);
-    } catch (e) {
+    } catch {
       /* navegação privada: o tema vale só para esta página */
     }
   });

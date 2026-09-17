@@ -31,12 +31,12 @@
         </td>
         <td class="acoes-celula">
           {% if not t.pago %}
-          <button class="ligacao" hx-post="{% url 'carteira:alternar_pago' t.codigo %}"
+          <button type="button" class="ligacao" hx-post="{% url 'carteira:alternar_pago' t.codigo %}"
                   hx-target="#painel-corpo" title="Dar baixa">pago</button>
           {% endif %}
-          <button class="ligacao" hx-get="{% url 'carteira:editar_transacao' t.codigo %}"
+          <button type="button" class="ligacao" hx-get="{% url 'carteira:editar_transacao' t.codigo %}"
                   hx-target="#dialogo-corpo">editar</button>
-          <button class="ligacao ligacao--perigo"
+          <button type="button" class="ligacao ligacao--perigo"
                   hx-post="{% url 'carteira:excluir_transacao' t.codigo %}"
                   hx-target="#painel-corpo"
                   hx-confirm="Apagar “{{ t.rotulo }}”?">apagar</button>

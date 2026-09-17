@@ -11,7 +11,7 @@ jobs:
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.head_branch == 'main' &&
       contains(fromJSON('["push", "workflow_dispatch"]'), github.event.workflow_run.event)
-    uses: rigst/ci/.github/workflows/deploy-django.yml@e9b97c2b3e00865c68cc34747de67b18507afadc  # v1
+    uses: rigst/ci/.github/workflows/deploy-django.yml@2b481558bbdc44c8e7700f9fe267a94b2e2dbb09  # v1
     secrets:
       CD_SSH_KEY: ${{ secrets.CD_SSH_KEY }}
     with:

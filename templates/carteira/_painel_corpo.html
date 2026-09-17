@@ -13,7 +13,7 @@ atualizar só a tabela deixaria o resto da tela mentindo.
       comprovante na hora, e ela avisa antes de um limite estourar.
     </p>
   </div>
-  <button class="botao" hx-get="{% url 'bot:conectar' %}" hx-target="#dialogo-corpo">
+  <button type="button" class="botao" hx-get="{% url 'bot:conectar' %}" hx-target="#dialogo-corpo">
     Conectar
   </button>
 </div>
@@ -85,7 +85,7 @@ atualizar só a tabela deixaria o resto da tela mentindo.
     <p class="nota">Nenhuma conta cadastrada.</p>
     {% endfor %}
     <p style="margin-top:.9rem">
-      <button class="botao botao--fantasma" hx-get="{% url 'carteira:nova_conta' %}"
+      <button type="button" class="botao botao--fantasma" hx-get="{% url 'carteira:nova_conta' %}"
               hx-target="#dialogo-corpo">Nova conta</button>
     </p>
   </div>
@@ -94,7 +94,7 @@ atualizar só a tabela deixaria o resto da tela mentindo.
 <div class="titulo-secao">
   <h2>Limites</h2>
   <div class="acoes">
-    <button class="botao botao--fantasma" hx-get="{% url 'carteira:novo_limite' %}"
+    <button type="button" class="botao botao--fantasma" hx-get="{% url 'carteira:novo_limite' %}"
             hx-target="#dialogo-corpo">Novo limite</button>
   </div>
 </div>
@@ -113,7 +113,7 @@ atualizar só a tabela deixaria o resto da tela mentindo.
       R$ {{ c.gasto|floatformat:2 }} de R$ {{ c.limite.valor|floatformat:2 }}
       {% if c.estourado %}· estourou{% else %}· restam R$ {{ c.restante|floatformat:2 }}{% endif %}
       {% if c.limite.temporario %}· até {{ c.fim|date:"d/m" }}{% endif %}
-      <button class="ligacao" hx-post="{% url 'carteira:excluir_limite' c.limite.pk %}"
+      <button type="button" class="ligacao" hx-post="{% url 'carteira:excluir_limite' c.limite.pk %}"
               hx-target="#painel-corpo" hx-confirm="Remover este limite?">remover</button>
     </p>
   </div>
@@ -125,7 +125,7 @@ atualizar só a tabela deixaria o resto da tela mentindo.
 <div class="titulo-secao">
   <h2>Todo mês</h2>
   <div class="acoes">
-    <button class="botao botao--fantasma" hx-get="{% url 'carteira:novo_recorrente' %}"
+    <button type="button" class="botao botao--fantasma" hx-get="{% url 'carteira:novo_recorrente' %}"
             hx-target="#dialogo-corpo">Novo recorrente</button>
   </div>
 </div>
@@ -141,7 +141,7 @@ atualizar só a tabela deixaria o resto da tela mentindo.
       <strong class="{% if r.tipo == 'receita' %}entrada{% else %}saida{% endif %}">
         R$ {{ r.valor|floatformat:2 }}
       </strong>
-      <button class="ligacao" hx-post="{% url 'carteira:excluir_recorrente' r.pk %}"
+      <button type="button" class="ligacao" hx-post="{% url 'carteira:excluir_recorrente' r.pk %}"
               hx-target="#painel-corpo" hx-confirm="Remover este recorrente?">remover</button>
     </span>
   </p>
@@ -194,7 +194,7 @@ atualizar só a tabela deixaria o resto da tela mentindo.
         {{ q.quem_recebeu.get_short_name|default:q.quem_recebeu.username }}
         <span class="nota" style="margin:0">· {{ q.criado_em|date:"d/m" }}</span>
       </span>
-      <button class="ligacao ligacao--perigo"
+      <button type="button" class="ligacao ligacao--perigo"
               hx-post="{% url 'carteira:desfazer_acerto' q.pk %}"
               hx-target="#painel-corpo"
               hx-confirm="Desfazer este acerto?">desfazer</button>
@@ -232,7 +232,7 @@ atualizar só a tabela deixaria o resto da tela mentindo.
 <div class="titulo-secao">
   <h2>Lançamentos</h2>
   <div class="acoes">
-    <button class="botao botao--fantasma" hx-get="{% url 'carteira:compartilhar' %}"
+    <button type="button" class="botao botao--fantasma" hx-get="{% url 'carteira:compartilhar' %}"
             hx-target="#dialogo-corpo">
       {% if compartilhado %}Quem divide{% else %}Compartilhar{% endif %}
     </button>

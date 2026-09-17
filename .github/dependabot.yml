@@ -1,0 +1,22 @@
+version: 2
+
+updates:
+  # O ci.yml chama rigst/ci fixado em SHA. Sem esta entrada, o pin congela o
+  # pipeline compartilhado nesta versão para sempre: o Dependabot é o que
+  # devolve o fluxo de atualização, agora como PR que alguém revisa.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: ci
+
+  # requirements.txt é totalmente fixado (==), então atualização de segurança
+  # de dependência só chega se alguém propuser. O pip-audit no CI acusa a
+  # vulnerabilidade; esta entrada abre o PR que a corrige.
+  - package-ecosystem: pip
+    directory: "/"
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: deps
