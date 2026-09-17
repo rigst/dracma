@@ -15,6 +15,11 @@ ExecStart=/var/www/dracma/venv/bin/gunicorn config.wsgi:application \
     --timeout 300 \
     --access-logfile /var/www/dracma/logs/gunicorn.access.log \
     --error-logfile /var/www/dracma/logs/gunicorn.error.log
+# O CD recarrega em vez de reiniciar: SIGHUP troca os workers sem derrubar o
+# socket de escuta, então não há janela de 502. Sem esta linha o systemd não
+# sabe recarregar um Type=simple e o `systemctl reload` do deploy falha na hora
+# — depois do merge e do pip install, com o processo antigo ainda no ar.
+ExecReload=/bin/kill -s HUP $MAINPID
 Restart=always
 RestartSec=5
 KillSignal=SIGQUIT
