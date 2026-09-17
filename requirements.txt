@@ -17,7 +17,7 @@ faster-whisper==1.2.0
 # Requires do pacote (conferido em 14/09/2026 com `pip show`). O `pip check`
 # passa e o import estoura em runtime, dentro da task, declarado aqui para o
 # venv limpo do lock subir.
-requests==2.32.5
+requests==2.33.0
 # Chamadas HTTP à Bot API do Telegram (envio e download de mídia).
 httpx==0.28.1
 # App `legal`: renderiza as políticas em Markdown e sanitiza o HTML por
