@@ -12,7 +12,7 @@ python-dotenv==1.2.2
 anthropic==0.121.0
 # Transcrição dos áudios do Telegram, local, na fila `midia`. Requer ffmpeg no
 # sistema. Modelo `small` em int8: ~1,5 GB de RAM e ~6x tempo real em CPU.
-faster-whisper==1.2.0
+faster-whisper==1.2.1
 # `requests` é importado por faster_whisper/utils.py mas NÃO consta nos
 # Requires do pacote (conferido em 14/09/2026 com `pip show`). O `pip check`
 # passa e o import estoura em runtime, dentro da task, declarado aqui para o
