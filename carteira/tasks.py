@@ -231,38 +231,50 @@ def resumo_semanal() -> int:
 
     # Um resumo POR PESSOA, e não um por espaço: o total do espaço somaria o
     # gasto pessoal de cada um e entregaria esse gasto aos outros no Telegram.
-    for espaco in Espaco.objects.all():
+    # prefetch: sem ele é uma consulta de membros por espaço, dentro do laço.
+    for espaco in Espaco.objects.prefetch_related("membros"):
         for membro in espaco.membros.all():
             resumo = services.resumo_periodo(espaco, inicio, hoje, usuario=membro)
             if not resumo.despesas and not resumo.receitas:
                 continue
-
-            linhas = [
-                f"📊 Seus últimos 7 dias ({inicio:%d/%m} a {hoje:%d/%m}):",
-                "",
-                f"Entrou: {_dinheiro(resumo.receitas)}",
-                f"Saiu: {_dinheiro(resumo.despesas)}",
-            ]
-            maior = resumo.maior_categoria
-            if maior:
-                nome, valor, percentual = maior
-                linhas.append("")
-                linhas.append(f"Maior gasto: {nome}, {_dinheiro(valor)} ({percentual}%).")
-
-            # O tom segue o saldo: elogiar uma semana no vermelho soaria
-            # deboche, e lamentar uma no azul, falta de atenção.
-            frases = vozes.MES_NO_AZUL if resumo.saldo >= 0 else vozes.MES_NO_VERMELHO
-            linhas.append("")
-            linhas.append(vozes.escolher(frases, f"semanal:{membro.pk}", hoje.isocalendar().week))
 
             if _avisar(
                 espaco,
                 Alerta.Tipo.RESUMO,
                 f"semanal:{membro.pk}",
                 f"{hoje:%Y-%m-%d}",
-                "\n".join(linhas),
+                _texto_do_resumo(resumo, membro, inicio, hoje),
                 destinatario=membro,
             ):
                 enviados += 1
 
     return enviados
+
+
+def _texto_do_resumo(resumo, membro, inicio, hoje) -> str:
+    """A mensagem em si, separada de quem decide a quem mandar.
+
+    Sai do laço porque são duas responsabilidades: lá se escolhe o destinatário
+    e se evita o envio repetido; aqui se escreve o texto. Juntas, era preciso
+    ler o laço inteiro para responder "o que a pessoa recebe?".
+    """
+    linhas = [
+        f"📊 Seus últimos 7 dias ({inicio:%d/%m} a {hoje:%d/%m}):",
+        "",
+        f"Entrou: {_dinheiro(resumo.receitas)}",
+        f"Saiu: {_dinheiro(resumo.despesas)}",
+    ]
+
+    maior = resumo.maior_categoria
+    if maior:
+        nome, valor, percentual = maior
+        linhas.append("")
+        linhas.append(f"Maior gasto: {nome}, {_dinheiro(valor)} ({percentual}%).")
+
+    # O tom segue o saldo: elogiar uma semana no vermelho soaria deboche, e
+    # lamentar uma no azul, falta de atenção.
+    frases = vozes.MES_NO_AZUL if resumo.saldo >= 0 else vozes.MES_NO_VERMELHO
+    linhas.append("")
+    linhas.append(vozes.escolher(frases, f"semanal:{membro.pk}", hoje.isocalendar().week))
+
+    return "\n".join(linhas)

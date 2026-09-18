@@ -29,6 +29,11 @@ else:
     _BaseDoMixin = object
 
 
+# O rótulo do rateio igualitário, que aparece em três formulários. Mudar o
+# texto num só deixaria a mesma opção com dois nomes na mesma tela.
+IGUAL_ENTRE_TODOS = "Igual entre todos"
+
+
 class DataInput(forms.DateInput):
     """`<input type="date">` que de fato mostra o valor.
 
@@ -89,6 +94,19 @@ class _ComEspaco(forms.Form):
             campo_conta.queryset = Conta.objects.filter(espaco=espaco, ativa=True).order_by("nome")
 
 
+def _erro_do_total(modo: str, total, esperado) -> str | None:
+    """A frase de erro quando a soma não fecha, ou None quando fecha.
+
+    Fora do formulário porque é aritmética pura: dá para ler a regra dos dois
+    modos lado a lado, sem passar pelo ramo que decide se há rateio.
+    """
+    if modo == "percentual" and abs(total - Decimal(100)) > Decimal("0.01"):
+        return f"As porcentagens somam {total}%, e precisam somar 100%."
+    if modo == "valor" and esperado is not None and total != esperado:
+        return f"As partes somam R$ {total:.2f} e o lançamento é de R$ {esperado:.2f}."
+    return None
+
+
 class RateioMixin(_BaseDoMixin):
     """Campos de divisão montados a partir dos membros do espaço.
 
@@ -103,12 +121,12 @@ class RateioMixin(_BaseDoMixin):
             return
 
         padrao = rateios.padrao_do_espaco(espaco)
-        rotulo_padrao = "Como sempre" if padrao else "Igual entre todos"
+        rotulo_padrao = "Como sempre" if padrao else IGUAL_ENTRE_TODOS
         self.fields["modo_rateio"] = forms.ChoiceField(
             label="Como dividir",
             choices=[
                 ("padrao", rotulo_padrao),
-                ("igual", "Igual entre todos"),
+                ("igual", IGUAL_ENTRE_TODOS),
                 ("percentual", "Por porcentagem"),
                 ("valor", "Por valor"),
             ],
@@ -183,18 +201,10 @@ class RateioMixin(_BaseDoMixin):
             )
             return
 
-        total = sum(partes.values())
-        if modo == "percentual" and abs(total - Decimal(100)) > Decimal("0.01"):
-            self.add_error(primeiro, f"As porcentagens somam {total}%, e precisam somar 100%.")
+        erro = _erro_do_total(modo, sum(partes.values()), dados.get("valor"))
+        if erro:
+            self.add_error(primeiro, erro)
             return
-        if modo == "valor":
-            esperado = dados.get("valor")
-            if esperado is not None and total != esperado:
-                self.add_error(
-                    primeiro,
-                    f"As partes somam R$ {total:.2f} e o lançamento é de R$ {esperado:.2f}.",
-                )
-                return
 
         self._partes = partes
 
@@ -204,7 +214,7 @@ class DivisaoPadraoForm(forms.Form):
 
     modo = forms.ChoiceField(
         label="Divisão padrão",
-        choices=[("igual", "Igual entre todos"), ("percentual", "Por porcentagem")],
+        choices=[("igual", IGUAL_ENTRE_TODOS), ("percentual", "Por porcentagem")],
         initial="igual",
         widget=forms.RadioSelect,
     )

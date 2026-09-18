@@ -33,7 +33,10 @@ LOCK_FILE=/tmp/dracma_cd_deploy.lock
 # Versão realmente instalada no venv, ou "ausente". Consultar a metadata em vez
 # de `gunicorn --version` não depende do formato de saída do CLI.
 versao_instalada() {
-  "$VENV/bin/python" -c "import importlib.metadata as m; print(m.version('$1'))" 2>/dev/null \
+  # O $1 vai para dentro de um programa Python, e não fica à vista de quem lê a
+  # linha. A variável nomeada diz o que ele é sem precisar contar argumentos.
+  local pacote="$1"
+  "$VENV/bin/python" -c "import importlib.metadata as m; print(m.version('$pacote'))" 2>/dev/null \
     || echo ausente
 }
 

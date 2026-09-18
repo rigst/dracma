@@ -358,7 +358,9 @@ a:hover { color: var(--acento); }
    Avisos
    ========================================================================== */
 
-.avisos { max-width: var(--largura); margin: 1rem auto 0; padding: 0 1.25rem; list-style: none; }
+/* display: block porque <output> é inline por padrão, e sem isto o
+   max-width e o margin auto não valeriam. */
+.avisos { display: block; max-width: var(--largura); margin: 1rem auto 0; padding: 0 1.25rem; }
 .aviso {
   padding: .7rem .9rem; margin-bottom: .5rem;
   border: 1px solid var(--borda-forte); border-left-width: 4px;
@@ -758,6 +760,11 @@ dialog::backdrop { background: rgba(23, 18, 14, .55); }
   color: var(--texto-suave); margin-bottom: .3rem;
 }
 .quem-ve input[type="radio"] { width: auto; }
+/* O fieldset chega com borda, padding e margem do navegador, e a <legend> com
+   padding lateral e posicionamento próprios. Zerados aqui, o bloco desenha
+   exatamente como o .campo de antes. */
+fieldset.quem-ve { border: 0; padding: 0; margin: 0 0 1rem; min-width: 0; }
+.quem-ve > legend.rotulo-grupo { padding: 0; float: none; width: auto; }
 
 .pessoal {
   font-size: .68rem; letter-spacing: .1em; text-transform: uppercase;

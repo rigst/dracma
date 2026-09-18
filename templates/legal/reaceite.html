@@ -22,10 +22,10 @@
                     <h2>{{ documento.titulo }}</h2>
                     {% include "legal/_registro.html" %}
                 </header>
-                <div class="legal-corpo legal-corpo--rolagem" tabindex="0" role="region"
+                <section class="legal-corpo legal-corpo--rolagem" tabindex="0"
                      aria-label="{{ documento.titulo }}: texto completo">
-                    {{ documento.corpo_html|safe }}
-                </div>
+                    {{ documento.corpo_seguro }}
+                </section>
             </section>
         {% endfor %}
 

@@ -12,7 +12,7 @@ Pré-pintura: lê o tema salvo ANTES do primeiro paint. Sem isto, quem usa o tem
 escuro vê um lampejo de mármore em toda navegação.
 {% endcomment %}
 <script>
-(function(){try{var t=localStorage.getItem('tema');if(t)document.documentElement.dataset.theme=t;}catch(e){}})();
+(function(){try{var t=localStorage.getItem('tema');if(t)document.documentElement.dataset.theme=t;}catch(e){/* navegação privada: fica o tema do sistema */}})();
 </script>
 </head>
 <body>
@@ -49,9 +49,14 @@ escuro vê um lampejo de mármore em toda navegação.
 </header>
 {% endblock %}
 
-<ul class="avisos" id="avisos" role="status" aria-live="polite">
-  {% for m in messages %}<li class="aviso aviso--{{ m.tags|default:'info' }}">{{ m }}</li>{% endfor %}
-</ul>
+{% comment %}
+O elemento output já traz role=status e aria-live=polite embutidos, então os
+dois atributos saem daqui. Deixou de ser uma lista porque output não pode
+conter item de lista, e a lista existia só para pendurar o role.
+{% endcomment %}
+<output class="avisos" id="avisos">
+  {% for m in messages %}<p class="aviso aviso--{{ m.tags|default:'info' }}">{{ m }}</p>{% endfor %}
+</output>
 
 <main id="conteudo" class="conteudo">
   {% block content %}{% endblock %}

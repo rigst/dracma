@@ -52,7 +52,7 @@
       <tbody>
         {% for membro, campo in form_divisao.campos_por_pessoa %}
         <tr>
-          <td>{{ membro.get_short_name|default:membro.username }}</td>
+          <th scope="row">{{ membro.get_short_name|default:membro.username }}</th>
           <td class="num">{{ campo }} %</td>
         </tr>
         {% endfor %}

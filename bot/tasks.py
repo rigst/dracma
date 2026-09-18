@@ -39,6 +39,41 @@ SEM_QUOTA = (
 JA_CONECTADO = "Você já está conectado 💜 Pode mandar seus gastos que eu registro."
 
 
+def _remetente(mensagem, conta, canal):
+    """Quem falou e em que espaço, ou (None, None) quando não há onde lançar.
+
+    Separado do fluxo principal porque é a única parte que ainda pode DESVIAR a
+    mensagem para outro caminho (o pareamento) em vez de processá-la, e misturar
+    isso com o processamento obrigava a ler os dois para entender qualquer um.
+    """
+    # Conversa sem vínculo não tem espaço onde lançar: o caminho é o pareamento.
+    usuario = mensagem.usuario or (conta.usuario if conta else None)
+    if usuario is None:
+        if conta is not None:
+            _tentar_parear(mensagem, conta, canal)
+        return None, None
+
+    if usuario.espaco_id is None:
+        # Pareado e sem espaço não deveria acontecer: todo usuário ganha um no
+        # `save()`. Se acontecer, é conta antiga ou nascida por um caminho que
+        # escapou, e o conserto é o mesmo `save()`. Melhor do que devolver um
+        # recado pedindo à pessoa que faça algo que não resolveria (o portal
+        # não salva o usuário a cada visita), e muito melhor do que o convite
+        # de pareamento repetido para sempre, que era o que ela recebia antes.
+        logger.error("Usuário %s estava pareado e sem espaço; criando um.", usuario.pk)
+        usuario.save()
+
+    espaco = usuario.espaco
+    if espaco is None:
+        # O `save()` acima cria o espaço e grava o vínculo, então este ramo é o
+        # campo anulável do modelo, e não um estado que o fluxo produza. Seguir
+        # sem espaço só moveria o erro para dentro do agente.
+        logger.error("Usuário %s segue sem espaço depois do save(); desistindo.", usuario.pk)
+        return None, None
+
+    return usuario, espaco
+
+
 @shared_task(bind=True, max_retries=3)
 def processar_mensagem(self, mensagem_id: int, file_id: str = "", mime_hint: str = "") -> None:
     try:
@@ -58,29 +93,8 @@ def processar_mensagem(self, mensagem_id: int, file_id: str = "", mime_hint: str
 
     conta = mensagem.conta
 
-    # Conversa sem vínculo não tem espaço onde lançar: o caminho é o pareamento.
-    usuario = mensagem.usuario or (conta.usuario if conta else None)
-    if usuario is None:
-        if conta is not None:
-            _tentar_parear(mensagem, conta, canal)
-        return
-
-    if usuario.espaco_id is None:
-        # Pareado e sem espaço não deveria acontecer: todo usuário ganha um no
-        # `save()`. Se acontecer, é conta antiga ou nascida por um caminho que
-        # escapou, e o conserto é o mesmo `save()`. Melhor do que devolver um
-        # recado pedindo à pessoa que faça algo que não resolveria (o portal
-        # não salva o usuário a cada visita), e muito melhor do que o convite
-        # de pareamento repetido para sempre, que era o que ela recebia antes.
-        logger.error("Usuário %s estava pareado e sem espaço; criando um.", usuario.pk)
-        usuario.save()
-
-    espaco = usuario.espaco
-    if espaco is None:
-        # O `save()` acima cria o espaço e grava o vínculo, então este ramo é
-        # o campo anulável do modelo, e não um estado que o fluxo produza.
-        # Seguir sem espaço só moveria o erro para dentro do agente.
-        logger.error("Usuário %s segue sem espaço depois do save(); desistindo.", usuario.pk)
+    usuario, espaco = _remetente(mensagem, conta, canal)
+    if usuario is None or espaco is None:
         return
 
     # `/start` de quem já está conectado não vai para o agente: ele o leria

@@ -102,6 +102,58 @@ jobs:
       run-sonar: ${{ github.actor != 'dependabot[bot]' }}
       sonar-project-key: rigst_dracma
       sonar-organization: rigst
+      # As exceções ficam AQUI, e não marcadas como "Safe" na interface do
+      # SonarCloud: assim são versionadas, aparecem no diff de quem mexer no
+      # arquivo apontado, e somem junto com ele. Marcação na interface não
+      # aparece em PR nenhuma. Cada uma foi conferida uma a uma em 18/09/2026,
+      # quando o passivo inicial de 50 achados foi tratado; o que dava para
+      # consertar foi consertado, e o que sobrou está abaixo com o motivo.
+      #
+      # e1  S4502, csrf_exempt no webhook do Telegram. Não há sessão nem cookie
+      #     no caminho: quem chama é a Bot API, e a autenticação é o segredo em
+      #     X-Telegram-Bot-Api-Secret-Token, conferido na primeira linha da
+      #     view (bot.webhook.token_valido). CSRF protege navegador com sessão,
+      #     que não é o caso, e exigi-lo aqui só faria o Telegram levar 403.
+      # e2  S2208, `from .base import *` nos settings. É a forma canônica de
+      #     settings em camadas no Django: listar nome por nome faria toda
+      #     configuração nova precisar de duas edições, e a que faltasse
+      #     sumiria em silêncio.
+      # e3  S5332, http:// no provisionar.sh. São duas linhas: o bloco de
+      #     nginx que responde ao desafio ACME (que é http por definição do
+      #     protocolo, e existe justamente para emitir o certificado) e um
+      #     curl em 127.0.0.1 conferindo se o gunicorn subiu, antes de existir
+      #     TLS.
+      # e4  S5247, {% autoescape off %} nos dois templates de e-mail. O corpo
+      #     sai como texto puro; com escape ativo, um "&" em link viraria
+      #     "&amp;" na caixa de entrada de quem recebe.
+      # e5  S6845, tabindex no bloco rolável dos documentos legais. É o
+      #     contrário de um problema: um container com rolagem precisa receber
+      #     foco para poder ser rolado pelo teclado (WCAG 2.1.1). Sem o
+      #     tabindex, quem não usa mouse não alcança o fim do texto que está
+      #     sendo pedido para aceitar.
+      # e6  LinksIdenticalTextsDifferentTargets em legal/documento.html. Os
+      #     dois links estão em ramos opostos de um {% if %}: nunca aparecem
+      #     juntos na mesma página. O analisador lê o template como HTML e não
+      #     avalia as tags do Django.
+      # e7  S1192, o verbose_name "criado em" repetido nos models. Uma
+      #     constante para rótulo de campo do Django é pior do que o problema:
+      #     afasta o texto do campo que o usa e não é o que se lê em nenhum
+      #     projeto Django.
       sonar-args: >-
         -Dsonar.qualitygate.wait=true
         -Dsonar.coverage.exclusions=**/migrations/**,**/tests_*.py,**/tests.py,**/fakes.py,**/*.js,**/*.html
+        -Dsonar.issue.ignore.multicriteria=e1,e2,e3,e4,e5,e6,e7
+        -Dsonar.issue.ignore.multicriteria.e1.ruleKey=python:S4502
+        -Dsonar.issue.ignore.multicriteria.e1.resourceKey=bot/views.py
+        -Dsonar.issue.ignore.multicriteria.e2.ruleKey=python:S2208
+        -Dsonar.issue.ignore.multicriteria.e2.resourceKey=config/settings/*.py
+        -Dsonar.issue.ignore.multicriteria.e3.ruleKey=shell:S5332
+        -Dsonar.issue.ignore.multicriteria.e3.resourceKey=deploy/provisionar.sh
+        -Dsonar.issue.ignore.multicriteria.e4.ruleKey=Web:S5247
+        -Dsonar.issue.ignore.multicriteria.e4.resourceKey=templates/registration/*_email.html
+        -Dsonar.issue.ignore.multicriteria.e5.ruleKey=Web:S6845
+        -Dsonar.issue.ignore.multicriteria.e5.resourceKey=templates/legal/*aceite.html
+        -Dsonar.issue.ignore.multicriteria.e6.ruleKey=Web:LinksIdenticalTextsDifferentTargetsCheck
+        -Dsonar.issue.ignore.multicriteria.e6.resourceKey=templates/legal/documento.html
+        -Dsonar.issue.ignore.multicriteria.e7.ruleKey=python:S1192
+        -Dsonar.issue.ignore.multicriteria.e7.resourceKey=**/models.py

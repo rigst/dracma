@@ -112,23 +112,7 @@ def responder(
         # tool_result precisam voltar numa ÚNICA mensagem de usuário,
         # espalhá-los em mensagens separadas ensina o modelo a parar de chamar
         # ferramentas em paralelo.
-        resultados = []
-        for bloco in resposta.content:
-            if bloco.type != "tool_use":
-                continue
-            usadas.append(bloco.name)
-            logger.info("tool %s args=%s", bloco.name, bloco.input)
-            saida = tools.executar(bloco.name, dict(bloco.input), contexto)
-            resultados.append(
-                {
-                    "type": "tool_result",
-                    "tool_use_id": bloco.id,
-                    "content": saida,
-                    "is_error": saida.startswith("ERRO:"),
-                }
-            )
-
-        mensagens.append({"role": "user", "content": resultados})
+        mensagens.append({"role": "user", "content": _executar_tools(resposta, contexto, usadas)})
 
     # Teto batido. Não é para acontecer com um agente deste tamanho; se
     # acontecer, é uma tool falhando em laço, melhor cortar do que queimar a
@@ -191,6 +175,34 @@ def _conteudo_serializavel(conteudo):
             blocos.append(dados)
 
     return blocos
+
+
+def _executar_tools(resposta, contexto: Contexto, usadas: list[str]) -> list[dict]:
+    """Roda as ferramentas pedidas e devolve os `tool_result` correspondentes.
+
+    Devolve uma lista porque TODOS os resultados precisam voltar numa ÚNICA
+    mensagem de usuário: espalhá-los em mensagens separadas ensina o modelo a
+    parar de chamar ferramentas em paralelo.
+
+    `usadas` é alimentada aqui, e não devolvida, porque quem chama precisa da
+    lista acumulada ao longo de todas as iteracões, não só desta.
+    """
+    resultados = []
+    for bloco in resposta.content:
+        if bloco.type != "tool_use":
+            continue
+        usadas.append(bloco.name)
+        logger.info("tool %s args=%s", bloco.name, bloco.input)
+        saida = tools.executar(bloco.name, dict(bloco.input), contexto)
+        resultados.append(
+            {
+                "type": "tool_result",
+                "tool_use_id": bloco.id,
+                "content": saida,
+                "is_error": saida.startswith("ERRO:"),
+            }
+        )
+    return resultados
 
 
 def _como_dicionario(bloco) -> dict:

@@ -26,6 +26,7 @@ from datetime import timedelta
 from django.conf import settings
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.safestring import SafeString, mark_safe
 
 logger = logging.getLogger(__name__)
 
@@ -131,8 +132,12 @@ def gerar_codigo(usuario):
     )
 
 
-def qr_svg(conteudo: str) -> str:
-    """QR em SVG inline.
+def qr_svg(conteudo: str) -> SafeString:
+    """QR em SVG inline, pronto para o template.
+
+    Marcado como seguro aqui, e não com um `|safe` na tela: o SVG é gerado pelo
+    segno a partir de um link que este módulo monta, sem nada digitado por
+    ninguém. Dizer isso no template obrigaria quem lê a vir até aqui conferir.
 
     É o que resolve o desktop: a pessoa está no computador e precisa levar o
     link para o celular. Sem cor fixa: as classes deixam o CSS pintar, então o
@@ -154,7 +159,7 @@ def qr_svg(conteudo: str) -> str:
         svgclass="qr",
         lineclass="qr-linha",
     )
-    return buffer.getvalue().decode()
+    return mark_safe(buffer.getvalue().decode())  # SVG do segno, sem entrada de usuário
 
 
 def avancar(conta, canal=None) -> bool:

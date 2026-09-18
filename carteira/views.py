@@ -19,7 +19,7 @@ from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_GET, require_POST
 
 from accounts import espacos
 from bot.console import historico
@@ -117,7 +117,14 @@ def _consumos(espaco, usuario, hoje=None):
     return sorted(consumos, key=lambda c: -c["percentual"])
 
 
+# Os dois fragmentos desenhados por mais de uma view. O nome do arquivo repetido
+# à mão é o tipo de coisa que diverge no dia em que um deles for renomeado.
+TEMPLATE_COMPARTILHAR = "carteira/_compartilhar.html"
+TEMPLATE_FORM_TRANSACAO = "carteira/_form_transacao.html"
+
+
 @login_required
+@require_GET
 def painel(request):
     espaco = _espaco(request)
     hoje = timezone.localdate()
@@ -219,6 +226,7 @@ def _consulta_transacoes(request, espaco):
 
 
 @login_required
+@require_GET
 def transacoes(request):
     """Fragmento da tabela. Responde aos filtros sem recarregar a página."""
     espaco = _espaco(request)
@@ -310,7 +318,7 @@ def nova_transacao(request):
 
     return render(
         request,
-        "carteira/_form_transacao.html",
+        TEMPLATE_FORM_TRANSACAO,
         {
             "form": form,
             "titulo": "Novo lançamento",
@@ -369,7 +377,7 @@ def editar_transacao(request, codigo):
 
     return render(
         request,
-        "carteira/_form_transacao.html",
+        TEMPLATE_FORM_TRANSACAO,
         {
             "form": form,
             "titulo": f"Lançamento {alvo.codigo}",
@@ -531,6 +539,7 @@ def nova_conta(request):
 
 
 @login_required
+@require_GET
 def exportar(request):
     """CSV do período. A política de privacidade promete portabilidade; esta é
     a porta."""
@@ -632,7 +641,7 @@ def compartilhar(request):
 
     return render(
         request,
-        "carteira/_compartilhar.html",
+        TEMPLATE_COMPARTILHAR,
         _contexto_compartilhar(request, espaco, form=form),
     )
 
@@ -691,7 +700,7 @@ def divisao_padrao(request):
 
     return render(
         request,
-        "carteira/_compartilhar.html",
+        TEMPLATE_COMPARTILHAR,
         _contexto_compartilhar(request, espaco, form_divisao=form),
     )
 
@@ -714,7 +723,7 @@ def renomear_espaco(request):
 
     return render(
         request,
-        "carteira/_compartilhar.html",
+        TEMPLATE_COMPARTILHAR,
         _contexto_compartilhar(request, espaco, form_nome=form),
     )
 

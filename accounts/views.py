@@ -121,6 +121,7 @@ def cadastrar(request):
     return render(request, "registration/cadastro.html", {"form": form})
 
 
+@require_GET
 def cadastro_enviado(request):
     _cadastro_ativo()
     return render(request, "registration/cadastro_enviado.html")
@@ -130,11 +131,11 @@ def cadastro_enviado(request):
 def confirmar_email(request, uidb64, token):
     """Valida o link e ativa a conta, autenticando o usuário."""
     _cadastro_ativo()
-    Usuario = get_user_model()
+    modelo_usuario = get_user_model()
     try:
         uid = force_str(urlsafe_base64_decode(uidb64))
-        usuario = Usuario.objects.get(pk=uid)
-    except (TypeError, ValueError, OverflowError, Usuario.DoesNotExist):
+        usuario = modelo_usuario.objects.get(pk=uid)
+    except (TypeError, ValueError, OverflowError, modelo_usuario.DoesNotExist):
         usuario = None
 
     if (

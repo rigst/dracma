@@ -122,6 +122,33 @@ def definir_padrao(espaco, percentuais: dict | None) -> None:
 # ---------------------------------------------------------------------------
 
 
+def _divisao_padrao(transacao, membros) -> dict:
+    """A divisão configurada para o espaço, reconciliada com quem está nele.
+
+    Está separada do `aplicar` porque é o único modo que precisa reconciliar
+    duas coisas que mudam por fora: o padrão gravado e a lista de membros de
+    hoje. Os outros três modos são uma chamada cada.
+    """
+    percentuais = padrao_do_espaco(transacao.espaco)
+    if not percentuais:
+        return dividir_igual(transacao.valor, membros)
+
+    # O padrão pode ter sido configurado antes de alguém entrar ou sair. Quem
+    # não está mais no espaço perde a parte, e o que sobra é repartido mantendo
+    # a PROPORÇÃO entre quem ficou: 70/20/10 sem o terceiro vira 77,78/22,22, e
+    # não um erro de "não soma 100%".
+    restantes = {p: v for p, v in percentuais.items() if p in membros}
+
+    # Quem entrou depois do padrão ainda não tem parte; sem esta saída ficaria
+    # de fora de todo lançamento em vez de dividir.
+    novos = [p for p in membros if p not in restantes]
+    if novos or not restantes:
+        return dividir_igual(transacao.valor, membros)
+
+    pessoas = sorted(restantes, key=lambda p: p.pk)
+    return _distribuir(transacao.valor, [restantes[p] for p in pessoas], pessoas)
+
+
 def aplicar(transacao, modo: str = "padrao", partes: dict | None = None):
     """Grava o rateio de um lançamento. Devolve {pessoa: valor}.
 
@@ -139,23 +166,7 @@ def aplicar(transacao, modo: str = "padrao", partes: dict | None = None):
         return {}
 
     if modo == "padrao":
-        percentuais = padrao_do_espaco(transacao.espaco)
-        if percentuais:
-            # O padrão pode ter sido configurado antes de alguém entrar ou sair.
-            # Quem não está mais no espaço perde a parte, e o que sobra é
-            # repartido mantendo a PROPORÇÃO entre quem ficou, 70/20/10 sem o
-            # terceiro vira 77,78/22,22, e não um erro de "não soma 100%".
-            restantes = {p: v for p, v in percentuais.items() if p in membros}
-            # Quem entrou depois do padrão ainda não tem parte; sem isto ficaria
-            # de fora de todo lançamento em vez de dividir.
-            novos = [p for p in membros if p not in restantes]
-            if novos or not restantes:
-                divisao = dividir_igual(transacao.valor, membros)
-            else:
-                pessoas = sorted(restantes, key=lambda p: p.pk)
-                divisao = _distribuir(transacao.valor, [restantes[p] for p in pessoas], pessoas)
-        else:
-            divisao = dividir_igual(transacao.valor, membros)
+        divisao = _divisao_padrao(transacao, membros)
     elif modo == "igual":
         divisao = dividir_igual(transacao.valor, membros)
     elif modo == "percentual":

@@ -26,7 +26,7 @@ from django.http import (
 from django.shortcuts import redirect, render
 from django.template.loader import render_to_string
 from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_GET, require_POST
 
 from accounts.limites import excedeu_limite
 from legal.utils import ip_do_request
@@ -37,6 +37,11 @@ from .models import ContaTelegram, Mensagem
 from .webhook import extrair_mensagens, token_valido
 
 logger = logging.getLogger(__name__)
+
+
+# Para onde tudo volta: este app não tem tela própria de conversa, ela mora no
+# painel da carteira.
+PAINEL = "carteira:painel"
 
 
 @csrf_exempt
@@ -118,7 +123,7 @@ def console(request):
         return render(request, "bot/_falas.html", {"falas": [pergunta, resposta]})
 
     # A conversa mora no painel; não há tela separada para ela.
-    return redirect("carteira:painel")
+    return redirect(PAINEL)
 
 
 # ---------------------------------------------------------------------------
@@ -127,6 +132,7 @@ def console(request):
 
 
 @login_required
+@require_GET
 def conectar(request):
     """Instruções de configuração.
 
@@ -171,13 +177,13 @@ def enviar_instrucoes(request):
     """
     if not request.user.email:
         messages.error(request, "Sua conta não tem e-mail cadastrado.")
-        return redirect("carteira:painel")
+        return redirect(PAINEL)
 
     # O envio é gratuito para quem dispara e custa reputação de domínio se
     # virar rajada.
     if excedeu_limite(f"instrucoes:{ip_do_request(request)}", limite=5, janela_s=3600):
         messages.error(request, "Muitos envios deste endereço. Tente daqui a pouco.")
-        return redirect("carteira:painel")
+        return redirect(PAINEL)
 
     codigo = onboarding.gerar_codigo(request.user)
     corpo = render_to_string(
@@ -203,7 +209,7 @@ def enviar_instrucoes(request):
         messages.success(request, f"Instruções enviadas para {request.user.email}.")
     else:
         messages.error(request, "Não consegui enviar o e-mail agora. Tente de novo.")
-    return redirect("carteira:painel")
+    return redirect(PAINEL)
 
 
 @login_required
@@ -219,4 +225,4 @@ def desconectar(request):
     )
     if atualizados:
         messages.info(request, "Telegram desconectado.")
-    return redirect("carteira:painel")
+    return redirect(PAINEL)

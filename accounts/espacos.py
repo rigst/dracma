@@ -63,7 +63,6 @@ def entrar_com_codigo(usuario, codigo: str):
       pares duplicados de tudo.
     - **O espaço antigo é apagado** depois da mudança, se ficar sem ninguém.
     """
-    from carteira.models import Categoria, Conta, Limite, Recorrente, Transacao
 
     from .models import ConviteEspaco
 
@@ -91,7 +90,7 @@ def entrar_com_codigo(usuario, codigo: str):
         _tornar_historico_pessoal(destino, destino.membros.first())
 
     if origem is not None:
-        _mudar_de_espaco(usuario, origem, destino, Categoria, Conta, Limite, Recorrente, Transacao)
+        _mudar_de_espaco(usuario, origem, destino)
 
     usuario.espaco = destino
     usuario.save(update_fields=["espaco"])
@@ -118,7 +117,8 @@ def _tornar_historico_pessoal(espaco, dono):
     logger.info("Histórico de %s virou pessoal de %s.", espaco, dono)
 
 
-def _mudar_de_espaco(usuario, origem, destino, Categoria, Conta, Limite, Recorrente, Transacao):
+def _mudar_de_espaco(usuario, origem, destino):
+    from carteira.models import Categoria, Conta, Limite, Recorrente, Transacao
     from carteira.services import normalizar
 
     # Mapa de categorias por nome normalizado: "Alimentação" e "alimentacao"
@@ -140,7 +140,9 @@ def _mudar_de_espaco(usuario, origem, destino, Categoria, Conta, Limite, Recorre
         return por_nome[chave]
 
     nomes_ocupados = {normalizar(c.nome) for c in Conta.objects.filter(espaco=destino)}
-    contas_no_destino = {}
+    # A chave aceita None de propósito: quem consulta passa `t.conta_id`, que é
+    # nulo num lançamento sem conta, e a resposta certa nesse caso é None.
+    contas_no_destino: dict[int | None, Conta] = {}
     for conta in Conta.objects.filter(espaco=origem):
         chave = normalizar(conta.nome)
         if chave in nomes_ocupados:

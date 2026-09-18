@@ -30,6 +30,11 @@ from carteira.models import TipoTransacao
 
 _TIPOS = [TipoTransacao.DESPESA, TipoTransacao.RECEITA]
 
+# O formato que o modelo precisa devolver, repetido em toda descrição de data.
+# É contrato com a API: escrito à mão em seis lugares, diverge no dia em que um
+# deles for ajustado, e o erro só aparece como data recusada em produção.
+_DATA_ISO = "AAAA-MM-DD."
+
 TOOLS = [
     {
         "name": "registrar_transacao",
@@ -57,7 +62,7 @@ TOOLS = [
                     "type": "string",
                     "description": "Conta ou cartão usado. Omita se a pessoa não disse.",
                 },
-                "data": {"type": "string", "description": "AAAA-MM-DD. Omita para hoje."},
+                "data": {"type": "string", "description": f"{_DATA_ISO} Omita para hoje."},
                 "pago": {"type": "boolean", "description": "False se ainda vai pagar."},
                 "parcelas": {
                     "type": "integer",
@@ -108,7 +113,7 @@ TOOLS = [
                 "descricao": {"type": "string"},
                 "categoria": {"type": "string"},
                 "conta": {"type": "string"},
-                "data": {"type": "string", "description": "AAAA-MM-DD."},
+                "data": {"type": "string", "description": _DATA_ISO},
             },
             "required": ["codigo"],
             "additionalProperties": False,
@@ -154,8 +159,8 @@ TOOLS = [
                     "type": "string",
                     "description": "Filtra pela descrição. Omita para trazer os últimos.",
                 },
-                "inicio": {"type": "string", "description": "AAAA-MM-DD."},
-                "fim": {"type": "string", "description": "AAAA-MM-DD."},
+                "inicio": {"type": "string", "description": _DATA_ISO},
+                "fim": {"type": "string", "description": _DATA_ISO},
                 "limite": {"type": "integer", "description": "Quantos trazer; padrão 10."},
             },
             "required": [],
@@ -172,8 +177,8 @@ TOOLS = [
         "input_schema": {
             "type": "object",
             "properties": {
-                "inicio": {"type": "string", "description": "AAAA-MM-DD."},
-                "fim": {"type": "string", "description": "AAAA-MM-DD."},
+                "inicio": {"type": "string", "description": _DATA_ISO},
+                "fim": {"type": "string", "description": _DATA_ISO},
                 "categoria": {
                     "type": "string",
                     "description": "Restringe a uma categoria. Omita para todas.",

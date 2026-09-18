@@ -89,7 +89,7 @@
     function aplicar() {
       // Sem radio na tela (espaço de uma pessoa), não há o que dividir.
       bloco.hidden = !(daCasa && daCasa.checked);
-      colunas(bloco, modo ? modo.value : "padrao");
+      colunas(bloco, modo?.value ?? "padrao");
     }
 
     raiz.querySelectorAll('input[name="compartilhada"]').forEach(function (opcao) {

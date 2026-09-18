@@ -9,6 +9,7 @@ apontar para linhas que podem mudar.
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
+from django.utils.safestring import mark_safe
 
 from .utils import calcular_sha256, renderizar_markdown
 
@@ -99,6 +100,17 @@ class DocumentoLegal(models.Model):
     def editavel(self):
         """Só rascunho sem aceite pode ser alterado."""
         return self.status == StatusDocumento.RASCUNHO and not self.tem_aceites
+
+    @property
+    def corpo_seguro(self):
+        """O HTML publicado, marcado como seguro para o template.
+
+        O `|safe` que isto substitui vivia em três templates, longe de qualquer
+        pista de que o texto foi sanitizado. Aqui a afirmação fica a um método
+        de distância do `publicar()`, que é quem chama o nh3: quem mexer na
+        sanitização lê esta linha no caminho.
+        """
+        return mark_safe(self.corpo_html)  # sanitizado por allowlist no publicar()
 
     def html_preview(self):
         """Render do rascunho, sem congelar nada, para a pré-visualização."""
