@@ -121,6 +121,7 @@ def _consumos(espaco, usuario, hoje=None):
 # à mão é o tipo de coisa que diverge no dia em que um deles for renomeado.
 TEMPLATE_COMPARTILHAR = "carteira/_compartilhar.html"
 TEMPLATE_FORM_TRANSACAO = "carteira/_form_transacao.html"
+TEMPLATE_FORM_SIMPLES = "carteira/_form_simples.html"
 
 
 @login_required
@@ -445,7 +446,7 @@ def novo_limite(request):
         form = LimiteForm(espaco=espaco)
     return render(
         request,
-        "carteira/_form_simples.html",
+        TEMPLATE_FORM_SIMPLES,
         {
             "form": form,
             "titulo": "Novo limite",
@@ -488,7 +489,7 @@ def novo_recorrente(request):
         form = RecorrenteForm(espaco=espaco)
     return render(
         request,
-        "carteira/_form_simples.html",
+        TEMPLATE_FORM_SIMPLES,
         {
             "form": form,
             "titulo": "Novo recorrente",
@@ -523,7 +524,7 @@ def nova_conta(request):
         form = ContaForm(espaco=espaco)
     return render(
         request,
-        "carteira/_form_simples.html",
+        TEMPLATE_FORM_SIMPLES,
         {
             "form": form,
             "titulo": "Nova conta",

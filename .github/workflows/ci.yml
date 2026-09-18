@@ -135,6 +135,14 @@ jobs:
       #     dois links estão em ramos opostos de um {% if %}: nunca aparecem
       #     juntos na mesma página. O analisador lê o template como HTML e não
       #     avalia as tags do Django.
+      # e8  S107, os 16 parâmetros de `registrar_transacao`. A regra existe
+      #     contra lista posicional longa, que se lê contando vírgulas e se
+      #     erra trocando a ordem. Todos os 16 aqui são KEYWORD-ONLY (vêm
+      #     depois de um `*`), com default, e toda chamada os nomeia: não há
+      #     ordem para errar. É o ponto único de escrita do domínio, chamado
+      #     pelas telas e pelas ferramentas da IA; empacotá-los num dataclass
+      #     só moveria os mesmos 16 nomes para outro arquivo, e faria as duas
+      #     pontas construírem um objeto intermediário para desmontá-lo aqui.
       # e7  S1192, o verbose_name "criado em" repetido nos models. Uma
       #     constante para rótulo de campo do Django é pior do que o problema:
       #     afasta o texto do campo que o usa e não é o que se lê em nenhum
@@ -142,7 +150,7 @@ jobs:
       sonar-args: >-
         -Dsonar.qualitygate.wait=true
         -Dsonar.coverage.exclusions=**/migrations/**,**/tests_*.py,**/tests.py,**/fakes.py,**/*.js,**/*.html
-        -Dsonar.issue.ignore.multicriteria=e1,e2,e3,e4,e5,e6,e7
+        -Dsonar.issue.ignore.multicriteria=e1,e2,e3,e4,e5,e6,e7,e8
         -Dsonar.issue.ignore.multicriteria.e1.ruleKey=python:S4502
         -Dsonar.issue.ignore.multicriteria.e1.resourceKey=bot/views.py
         -Dsonar.issue.ignore.multicriteria.e2.ruleKey=python:S2208
@@ -157,3 +165,5 @@ jobs:
         -Dsonar.issue.ignore.multicriteria.e6.resourceKey=templates/legal/documento.html
         -Dsonar.issue.ignore.multicriteria.e7.ruleKey=python:S1192
         -Dsonar.issue.ignore.multicriteria.e7.resourceKey=**/models.py
+        -Dsonar.issue.ignore.multicriteria.e8.ruleKey=python:S107
+        -Dsonar.issue.ignore.multicriteria.e8.resourceKey=carteira/services.py
