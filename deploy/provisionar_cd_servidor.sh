@@ -54,6 +54,20 @@ for unidade in "${SERVICOS_RESTART[@]}"; do
     || erro "unidade $unidade não instalada. Rode antes: sudo $DIR/deploy/provisionar.sh"
 done
 
+# A árvore do sudoers precisa estar válida ANTES, senão a checagem do fim não
+# consegue distinguir "este script quebrou" de "já estava quebrado". Foi o que
+# aconteceu na primeira execução: o bloco novo passou sozinho no visudo, a
+# árvore reprovou, e a mensagem acusou o script de um estrago que não era dele.
+if ! visudo -cq 2>/dev/null; then
+  echo "ERRO: o /etc/sudoers JÁ estava inválido antes deste script." >&2
+  echo "Nada foi alterado. O que o visudo aponta:" >&2
+  echo >&2
+  visudo -c 2>&1 | sed 's/^/  /' >&2
+  echo >&2
+  echo "Conserte o arquivo apontado acima e rode este script de novo." >&2
+  exit 1
+fi
+
 passo "1/4 Árvore gravável pelo grupo $GRUPO"
 # O setgid nos diretórios é o que faz durar: sem ele, o primeiro diretório que
 # o deploy criar (um __pycache__, uma pasta nova de app) nasce no grupo dele e
@@ -131,13 +145,17 @@ install -m 0440 -o root -g root "$CANDIDATO" "$SUDOERS"
 # E confere a árvore inteira depois, porque o teste acima valida um arquivo
 # isolado. Se algo estiver errado agora, desfaz enquanto o sudo desta sessão
 # ainda funciona.
-if ! visudo -cq; then
+if ! visudo -cq 2>/dev/null; then
+  motivo="$(visudo -c 2>&1 || true)"
   if [[ -s $COPIA ]]; then
     install -m 0440 -o root -g root "$COPIA" "$SUDOERS"
   else
     rm -f "$SUDOERS"
   fi
-  erro "o /etc/sudoers ficou inválido e foi revertido. Nada mudou no sudo."
+  echo "ERRO: o /etc/sudoers ficou inválido e foi revertido. Nada mudou no sudo." >&2
+  echo "O que o visudo apontou, com o arquivo novo no lugar:" >&2
+  printf '%s\n' "$motivo" | sed 's/^/  /' >&2
+  exit 1
 fi
 echo "  $SUDOERS instalado e validado."
 
