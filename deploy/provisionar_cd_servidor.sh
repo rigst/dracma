@@ -59,12 +59,24 @@ done
 # aconteceu na primeira execução: o bloco novo passou sozinho no visudo, a
 # árvore reprovou, e a mensagem acusou o script de um estrago que não era dele.
 if ! visudo -cq 2>/dev/null; then
+  diagnostico="$(visudo -c 2>&1 || true)"
   echo "ERRO: o /etc/sudoers JÁ estava inválido antes deste script." >&2
   echo "Nada foi alterado. O que o visudo aponta:" >&2
   echo >&2
-  visudo -c 2>&1 | sed 's/^/  /' >&2
+  printf '%s\n' "$diagnostico" | sed 's/^/  /' >&2
   echo >&2
-  echo "Conserte o arquivo apontado acima e rode este script de novo." >&2
+  # "bad permissions" tem conserto único, e é o achado mais comum aqui: o sudo
+  # IGNORA em silêncio todo arquivo de /etc/sudoers.d que não esteja em 0440,
+  # então o que aquele arquivo configura não está valendo desde que o modo
+  # mudou, sem nada no log. Vale dizer o comando em vez de deixar procurar.
+  if printf '%s' "$diagnostico" | grep -q "bad permissions"; then
+    echo "O sudo ignora, calado, arquivo com modo errado: o que está nele não" >&2
+    echo "vale hoje. Para consertar:" >&2
+    echo >&2
+    printf '%s\n' "$diagnostico" | awk -F: '/bad permissions/ {print "  sudo chmod 0440 " $1}' >&2
+    echo >&2
+  fi
+  echo "Conserte o que está acima e rode este script de novo." >&2
   exit 1
 fi
 
