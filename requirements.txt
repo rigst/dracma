@@ -7,9 +7,9 @@
 Django==6.1.1
 celery==5.6.3
 redis==8.1.0
-python-dotenv==1.2.2
+python-dotenv==1.2.3
 # IA (Anthropic / Claude)
-anthropic==0.121.0
+anthropic==1.5.0
 # Transcrição dos áudios do Telegram, local, na fila `midia`. Requer ffmpeg no
 # sistema. Modelo `small` em int8: ~1,5 GB de RAM e ~6x tempo real em CPU.
 faster-whisper==1.2.1
@@ -17,7 +17,7 @@ faster-whisper==1.2.1
 # Requires do pacote (conferido em 14/09/2026 com `pip show`). O `pip check`
 # passa e o import estoura em runtime, dentro da task, declarado aqui para o
 # venv limpo do lock subir.
-requests==2.33.0
+requests==2.34.2
 # Chamadas HTTP à Bot API do Telegram (envio e download de mídia).
 httpx==0.28.1
 # App `legal`: renderiza as políticas em Markdown e sanitiza o HTML por
@@ -31,9 +31,9 @@ segno==1.6.6
 # Produção
 gunicorn==26.2.0
 psycopg2-binary==2.9.13
-django-redis==6.0.0
+django-redis==7.0.0
 # Monitoramento de erros (ativo só com SENTRY_DSN definido)
-sentry-sdk==2.68.1
+sentry-sdk==2.69.1
 # Tema do admin.
 django-unfold==0.106.1
 # O pip entra aqui como qualquer outra dependência, e não como ferramenta à
