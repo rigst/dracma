@@ -10,6 +10,9 @@ updates:
       interval: weekly
     commit-message:
       prefix: ci
+    groups:
+      actions:
+        patterns: ["*"]
 
   # requirements.txt é totalmente fixado (==), então atualização de segurança
   # de dependência só chega se alguém propuser. O pip-audit no CI acusa a
@@ -20,3 +23,16 @@ updates:
       interval: weekly
     commit-message:
       prefix: deps
+    # Agrupadas numa PR só. O motivo é o requirements.lock: o Dependabot mexe
+    # no requirements.txt e não sabe regerar o lock, então o job `lock` reprova
+    # toda PR dele até alguém rodar o gerar_lock.py na branch. Uma PR por
+    # dependência multiplica esse trabalho manual pelo número de pacotes, e foi
+    # o que aconteceu na primeira semana deste repo: cinco PRs, cinco locks
+    # para regerar, cada merge invalidando o lock das outras quatro.
+    #
+    # `applies-to: version-updates` de propósito: atualização de SEGURANÇA
+    # continua vindo sozinha, que é quando dá para ler a PR e decidir na hora.
+    groups:
+      producao:
+        applies-to: version-updates
+        patterns: ["*"]
