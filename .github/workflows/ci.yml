@@ -90,15 +90,16 @@ jobs:
       run-lock: true
       run-e2e: false
 
-      # DESLIGADO até o repositório ter o SONAR_TOKEN: sem ele o scanner morre
-      # com "Not authorized" e derruba o CI inteiro. Para ligar, crie o projeto
-      # `rigst_dracma` no SonarCloud, grave o token em Settings > Secrets and
-      # variables > Actions e troque a linha abaixo pela que está comentada.
-      # A guarda do dependabot é necessária porque o GitHub não entrega os
-      # secrets do Actions àquele ator, e sem ela toda PR dele falharia.
+      # Desligado nas PRs do Dependabot: o GitHub não entrega os secrets do
+      # Actions a esse ator, e sem o SONAR_TOKEN o scanner falha com
+      # "Not authorized", travando toda atualização de dependência.
       #
-      #   run-sonar: ${{ github.actor != 'dependabot[bot]' }}
-      run-sonar: false
+      # A Análise Automática do SonarCloud foi DESLIGADA no projeto ao ligar
+      # isto. Ela vem ativa quando o repositório é importado, e as duas não
+      # convivem: com ela ligada o scanner do CI recusa a análise dizendo que
+      # já existe uma automática. Ela também nunca recebe o coverage.xml, então
+      # o gate media o projeto sem cobertura nenhuma.
+      run-sonar: ${{ github.actor != 'dependabot[bot]' }}
       sonar-project-key: rigst_dracma
       sonar-organization: rigst
       sonar-args: >-
