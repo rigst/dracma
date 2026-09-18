@@ -1,5 +1,12 @@
 # Dracma
 
+[![CI](https://github.com/rigst/dracma/actions/workflows/ci.yml/badge.svg)](https://github.com/rigst/dracma/actions/workflows/ci.yml)
+[![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=rigst_dracma&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=rigst_dracma)
+[![Cobertura](https://sonarcloud.io/api/project_badges/measure?project=rigst_dracma&metric=coverage)](https://sonarcloud.io/summary/new_code?id=rigst_dracma)
+[![Licença: AGPL v3](https://img.shields.io/badge/licen%C3%A7a-AGPL--3.0-blue.svg)](LICENSE)
+[![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/)
+[![Django 6](https://img.shields.io/badge/django-6.1-092E20.svg)](https://www.djangoproject.com/)
+
 Assistente financeira pessoal com IA que vive no **Telegram**, com portal web
 complementar. Você conta um gasto por texto, áudio, foto de comprovante ou PDF;
 ela entende, categoriza, registra e avisa **antes** de o limite estourar.
@@ -174,9 +181,29 @@ baixado na primeira transcrição, para `WHISPER_CACHE_DIR`, que fica **fora** d
 
 ### Testes
 
+O `requirements.txt` tem só o que produção executa, então o pytest **não** está
+no venv do projeto. Rode a suíte de um ambiente separado, com as mesmas versões
+que o CI fixa, enxergando as dependências do venv de produção:
+
 ```bash
-./venv/bin/python -m pytest
+python3.12 -m venv /tmp/venv-teste
+/tmp/venv-teste/bin/pip install pytest==9.1.1 pytest-django==4.14.0 pytest-cov==7.1.0
+echo "$PWD/venv/lib/python3.12/site-packages" \
+  > /tmp/venv-teste/lib/python3.12/site-packages/_projeto.pth
+/tmp/venv-teste/bin/pytest
 ```
+
+O `.pth` é o que evita instalar tudo duas vezes (o faster-whisper sozinho
+passa de 500 MB) e garante que o teste roda contra as versões que estão de
+fato no ar. O mesmo ambiente serve para `mypy`, `liccheck` e `pip-audit`.
+
+Em máquina de desenvolvimento, onde o venv é descartável, `pip install
+pytest pytest-django pytest-cov` direto nele resolve igual.
+
+A suíte sobe sem Postgres e sem Redis: o `pytest.ini` aponta para os settings
+de desenvolvimento, que usam SQLite e Celery eager. E os settings de produção
+não servem para teste, porque o `SECURE_SSL_REDIRECT` transforma todo request
+do cliente de teste em 301.
 
 Sem chamar a API da Anthropic nem a do Telegram: `ai/fakes.py` tem um cliente
 Claude falso e `bot/canais/fake.py` um canal que acumula em memória.
@@ -279,7 +306,7 @@ git clone https://github.com/rigst/dracma.git /var/www/dracma
 cd /var/www/dracma
 python3.12 -m venv venv
 ./venv/bin/pip install -r requirements.txt
-cp .env.example .env && chmod 600 .env   # e preencha (ver abaixo)
+cp .env.example .env && chmod 640 .env   # e preencha (ver abaixo)
 
 # 4. Primeira carga
 ./venv/bin/python manage.py migrate
@@ -300,10 +327,35 @@ a config definitiva referencia o `fullchain.pem`, e instalada antes de ele
 existir o `nginx -t` falha e o nginx nem recarrega. Emitido o certificado, ele
 troca pela definitiva e testa o domínio de ponta a ponta.
 
-E no GitHub: criar `rigst/dracma`, adicionar os secrets `CODECOV_TOKEN`,
-`SONAR_TOKEN` e `CD_SSH_KEY`, e a chave do usuário `deploy` no servidor com
-`command=` forçado apontando para `deploy/cd-deploy.sh` (RUNBOOK §7 do
-`rigst/ci`).
+### Ligando o deploy contínuo
+
+Dois scripts, nesta ordem, e nenhum dos dois pede nada interativo:
+
+```bash
+# 1. Gera o par de chaves, grava a privada como secret CD_SSH_KEY do
+#    repositório, autoriza a pública no usuário "deploy" presa a um comando
+#    forçado, TESTA a chave e destrói a cópia local. Rode como você, sem sudo:
+#    ele precisa do seu `gh` autenticado.
+/var/www/dracma/deploy/provisionar_cd.sh
+
+# 2. Prepara o servidor: árvore gravável pelo grupo www-data (com setgid),
+#    .env legível pelo grupo, o repositório no safe.directory do "deploy" e o
+#    bloco deste app no /etc/sudoers.d/deploy-cd, validado antes e depois.
+sudo /var/www/dracma/deploy/provisionar_cd_servidor.sh
+```
+
+Os dois são idempotentes e conferem o resultado no fim. O teste de chave do
+primeiro usa um SHA vazio: o `cd-deploy.sh` recusa o formato antes de tocar no
+git, então a resposta prova que a chave autentica e que o comando forçado
+chega ao script certo, sem implantar nada.
+
+Falta só o `SONAR_TOKEN` no repositório, que sai do SonarCloud. Ao criar o
+projeto lá, **desligue a Análise Automática**: ela vem ativa na importação,
+recusa o scanner do CI quando os dois coexistem, e nunca recebe o
+`coverage.xml`, e o gate mediria o projeto como se ele não tivesse teste.
+
+O `CODECOV_TOKEN` é opcional: sem ele o envio simplesmente não acontece, e não
+derruba o build. A cobertura deste projeto é publicada no SonarCloud.
 
 ### Recursos alocados
 
@@ -326,9 +378,12 @@ se o markdown de uma versão já publicada mudar, o `cd-deploy.sh` para: o
 repositório e o texto que as pessoas aceitaram estariam discordando. O conserto
 é criar uma versão nova em `legal/documentos/`, não editar a antiga.
 
-**O CI sobe com `soft-fail`.** `ci.yml` começa tolerando falha em
-`mypy,bandit,pip-audit`, na ordem do RUNBOOK §4. Zerar isso é a última etapa,
-depois que o resto estiver verde.
+**O `reload` do CD depende de uma linha na unidade.** O `cd-deploy.sh` prefere
+`systemctl reload` para não ter janela de 502, e o systemd não sabe recarregar
+um `Type=simple` sem `ExecReload=` na unit. Sem ela o deploy falha **depois**
+do merge e do `pip install`, com o processo antigo ainda no ar. Já está no
+`deploy/systemd/dracma.service`; quem reinstalar a unidade à mão precisa
+mantê-la.
 
 ### Antes de ligar o Telegram
 
