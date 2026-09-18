@@ -26,10 +26,14 @@ passo() { echo; echo "── $* ──"; }
 [[ -x $DIR/venv/bin/gunicorn ]] || erro "venv incompleto em $DIR/venv."
 [[ -f $DIR/.env ]] || erro "$DIR/.env não existe."
 
-# O .env tem segredos e é lido pelo systemd como root; qualquer coisa mais
-# aberta que 600 deixa a chave da API legível por outros usuários da máquina.
-chmod 600 "$DIR/.env"
+# O .env tem segredos. 640, e não 600: o cd-deploy.sh roda o `manage.py` como
+# o usuário "deploy", e o config/settings/base.py chama load_dotenv() a partir
+# do cwd. Em 600 o dotenv não lê nada e não reclama, e o deploy morre dizendo
+# que falta SECRET_KEY, que é a pista errada. Quem entra com o 640 é o grupo
+# www-data: o servidor web que já serve este app, e o deploy. Para o resto da
+# máquina continua ilegível. Mesmo modo do dojo e do sistema_trilhas.
 chown rod:www-data "$DIR/.env"
+chmod 640 "$DIR/.env"
 
 passo "Unidades systemd"
 install -m 644 "$DIR"/deploy/systemd/${APP}*.service /etc/systemd/system/

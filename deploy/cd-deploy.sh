@@ -6,6 +6,13 @@ set -euo pipefail
 # que precisa de sudo é o reload/restart no fim e o backup pré-migração, este
 # último como "rod" (sudoers próprio de "deploy", nunca o de "rod").
 
+# Arquivo criado pelo deploy sai gravável pelo grupo. Sem isto o umask padrão
+# (022) faz o `git merge` e o `collectstatic` deixarem para trás arquivos
+# `deploy:www-data` 644, que o rod não consegue mais editar direto: acontece no
+# dojo, e o contorno de lá é editar num temporário e mover por cima. O setgid
+# dos diretórios cuida do grupo; o umask cuida da permissão.
+umask 002
+
 APP_DIR=/var/www/dracma
 FETCH_URL=https://github.com/rigst/dracma.git   # HTTPS anônimo — repo público, sem credencial
 VENV=/var/www/dracma/venv
@@ -67,7 +74,8 @@ main() {
     # 08/09/2026: o backup só roda quando o diff traz migração, e até ali
     # nenhuma tinha entrado por CD.
     #
-    # Depende desta linha no sudoers do deploy (visudo -f /etc/sudoers.d/deploy):
+    # Depende desta linha no /etc/sudoers.d/deploy-cd, que o
+    # deploy/provisionar_cd_servidor.sh escreve:
     #   deploy ALL=(rod) NOPASSWD: /var/www/dracma/deploy/backup_postgres.sh
     # Falhar aqui é o comportamento certo: migração sem backup não deve subir.
     sudo -n -u rod "$BACKUP_SCRIPT"
