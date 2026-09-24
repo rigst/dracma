@@ -9,7 +9,7 @@ celery==5.6.3
 redis==8.1.0
 python-dotenv==1.2.3
 # IA (Anthropic / Claude)
-anthropic==1.5.0
+anthropic==1.7.0
 # Transcrição dos áudios do Telegram, local, na fila `midia`. Requer ffmpeg no
 # sistema. Modelo `small` em int8: ~1,5 GB de RAM e ~6x tempo real em CPU.
 faster-whisper==1.2.1
@@ -33,9 +33,9 @@ gunicorn==26.2.0
 psycopg2-binary==2.9.13
 django-redis==7.0.0
 # Monitoramento de erros (ativo só com SENTRY_DSN definido)
-sentry-sdk==2.69.1
+sentry-sdk==2.69.2
 # Tema do admin.
-django-unfold==0.106.1
+django-unfold==0.107.0
 # O pip entra aqui como qualquer outra dependência, e não como ferramenta à
 # parte: é o que o CD executa a cada deploy, e sem estar declarado envelhece
 # sem que nada avise. Não use `pip install --upgrade pip` no deploy.
