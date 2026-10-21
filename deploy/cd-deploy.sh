@@ -93,7 +93,7 @@ main() {
   # idempotente sob retry.
   local gunicorn_antes gunicorn_depois
   gunicorn_antes="$(versao_instalada gunicorn)"
-  "$VENV/bin/pip" install -r requirements.txt
+  "$VENV/bin/pip" install --require-hashes -r requirements.lock
   gunicorn_depois="$(versao_instalada gunicorn)"
 
   eval "export $EXTRA_ENV"
