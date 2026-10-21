@@ -3,6 +3,9 @@
 server {
     server_name dracma.stolben.com;
 
+    # Registros de acesso: guarda de 6 meses (ver /etc/logrotate.d/stolben-acesso).
+    access_log /var/log/nginx/acesso/dracma.access.log acesso_stolben;
+
     client_max_body_size 20M;
 
     # Headers de segurança. O CSP admite 'unsafe-inline' porque os templates
