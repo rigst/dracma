@@ -11,7 +11,7 @@ jobs:
   ci:
     # SHA e não @v1: a tag é ponteiro móvel, e assim o Dependabot abre PR
     # revisável quando o CI central muda.
-    uses: rigst/ci/.github/workflows/python-django.yml@2b481558bbdc44c8e7700f9fe267a94b2e2dbb09 # v1
+    uses: rigst/ci/.github/workflows/python-django.yml@f556f2f1bc80ccb43fa31947b076a771f791a368 # v1
     # Explícito em vez de `secrets: inherit`: o workflow chamado recebe só
     # o que precisa.
     secrets:
