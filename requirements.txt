@@ -18,6 +18,11 @@ faster-whisper==1.2.1
 # passa e o import estoura em runtime, dentro da task, declarado aqui para o
 # venv limpo do lock subir.
 requests==2.34.2
+# transitiva de faster-whisper (via huggingface-hub, que pede filelock>=3.10.0):
+# CVE-2026-112907/112908/112909/112910/112911/112912/112913/112915/112934/
+# 112935/112936/112938/112939/112940. A 4.0.0 que o lock trazia tem as 14; a
+# 4.2.1 é a menor versão que corrige todas (a 4.0.9 só fecha a 112936).
+filelock==4.2.1
 # Chamadas HTTP à Bot API do Telegram (envio e download de mídia).
 httpx==0.28.1
 # App `legal`: renderiza as políticas em Markdown e sanitiza o HTML por
