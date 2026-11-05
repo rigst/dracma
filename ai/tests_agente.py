@@ -6,6 +6,7 @@ from datetime import date
 from decimal import Decimal
 
 from django.test import TestCase, override_settings
+from django.utils import timezone
 
 from accounts.models import Espaco, Usuario
 from ai import tools
@@ -335,6 +336,12 @@ class ToolsTest(BaseAgenteTest):
         self.assertIn("R$ 200,00", saida)
 
     def test_criar_recorrente_ja_projeta(self):
+        # `hoje` do dia real, e não o 14/09/2026 fixo da base: a regra nasce
+        # com `inicio` = data real (default do model), e a projeção pula
+        # vencimento anterior ao início. Com a data fixa, o teste passou a
+        # falhar sozinho a partir de 31/10/2026, quando o dia 30 de setembro e
+        # o de outubro ficaram antes do início.
+        self.contexto.hoje = timezone.localdate()
         tools.executar(
             "criar_recorrente",
             {

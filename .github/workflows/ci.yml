@@ -20,9 +20,12 @@ jobs:
     with:
       python-version: "3.12"
       django-settings-module: config.settings.production
-      test-settings-module: config.settings.development
+      # Suíte em PostgreSQL, como produção: config/settings/test.py é o de
+      # development com o banco trocado. O CI central sobe postgres:16 com
+      # usuário/senha/banco `postgres` (ver test-env abaixo).
+      test-settings-module: config.settings.test
       source-paths: "accounts ai bot carteira config core legal"
-      postgres: false
+      postgres: true
 
       # Nada tolerado: toda etapa bloqueia. O caminho foi o do RUNBOOK.md §4
       # do rigst/ci, medindo o passivo antes de fechar o portão.
@@ -52,9 +55,17 @@ jobs:
         REDIS_URL=redis://localhost:6379/6
         CACHE_REDIS_URL=redis://localhost:6379/4
         SESSION_REDIS_URL=redis://localhost:6379/5
+      # O test-env vence o django-env na mesma chave: o job `django`
+      # (check --deploy) continua com os DB_* de dracma acima, e a suíte usa
+      # o Postgres descartável do CI.
       test-env: |
         ALLOWED_HOSTS=localhost,127.0.0.1,testserver
         SIGNUP_ENABLED=True
+        DB_NAME=postgres
+        DB_USER=postgres
+        DB_PASSWORD=postgres
+        DB_HOST=localhost
+        DB_PORT=5432
 
       run-diff-quality: true
       diff-quality-fail-on: erro
