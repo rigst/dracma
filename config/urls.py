@@ -5,9 +5,12 @@ from django.contrib.auth import views as auth_views
 from django.urls import include, path
 
 from accounts import views as accounts_views
+from core.healthz import healthz
 from legal import views as legal_views
 
 urlpatterns = [
+    # Sonda do smoke-test do CD: banco, cache e broker; 200 ou 503.
+    path("healthz/", healthz, name="healthz"),
     path("admin/", admin.site.urls),
     path("login/", accounts_views.Entrar.as_view(), name="login"),
     path("logout/", auth_views.LogoutView.as_view(), name="logout"),
