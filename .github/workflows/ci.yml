@@ -7,11 +7,19 @@ on:
 
 permissions: { contents: read }
 
+# Push novo no mesmo PR cancela a rodada anterior: ninguém lê o resultado de
+# um commit que já foi substituído, e o e2e/a11y/layout ocupam minutos de
+# runner. Na main não cancela: cada push vira deploy e precisa do próprio
+# veredito (o CD pende do CI concluído com sucesso).
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   ci:
     # SHA e não @v1: a tag é ponteiro móvel, e assim o Dependabot abre PR
     # revisável quando o CI central muda.
-    uses: rigst/ci/.github/workflows/python-django.yml@f556f2f1bc80ccb43fa31947b076a771f791a368 # v1
+    uses: rigst/ci/.github/workflows/python-django.yml@f1555ef63695d56a1ff350ff92985bc90187aad2 # v1
     # Explícito em vez de `secrets: inherit`: o workflow chamado recebe só
     # o que precisa.
     secrets:
