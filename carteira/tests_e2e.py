@@ -2,7 +2,11 @@
 
 Fica sob o marcador `e2e` (fora da suíte padrão pelo pytest.ini); o job `e2e`
 do CI instala o Chromium e roda `-m e2e`. Usa a fixture `page` do
-pytest-playwright, que o pipeline compartilhado já instala.
+pytest-playwright, que só o job `e2e` instala: por isso o Playwright não é
+importado no topo do módulo, senão a coleta da suíte comum quebra. Na mão:
+
+    pip install pytest-playwright && playwright install chromium
+    pytest -m e2e carteira/tests_e2e.py
 
 O que só o navegador prova: o diálogo de lançamento chega por HTMX, abre como
 <dialog> modal, o POST volta pelo mesmo canal e o painel inteiro se refaz com
@@ -13,16 +17,27 @@ from __future__ import annotations
 
 import re
 from decimal import Decimal
+from typing import TYPE_CHECKING
 
 import pytest
-from playwright.sync_api import Page, expect
 
 from accounts.models import Espaco, Usuario
 from carteira.models import Categoria, Conta, Transacao
 from carteira.seeds import semear_categorias
 from legal.models import DocumentoLegal
 
+if TYPE_CHECKING:
+    from playwright.sync_api import Page
+
 pytestmark = [pytest.mark.e2e, pytest.mark.django_db(transaction=True)]
+
+
+def expect(alvo):
+    """`playwright.sync_api.expect`, importado só quando o teste roda."""
+    from playwright.sync_api import expect as _expect
+
+    return _expect(alvo)
+
 
 SENHA = "senha-e2e-bem-comprida-123"
 
