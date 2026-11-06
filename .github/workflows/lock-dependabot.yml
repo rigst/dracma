@@ -14,7 +14,7 @@ permissions:
 jobs:
   lock:
     if: github.event.pull_request.user.login == 'dependabot[bot]'
-    uses: rigst/ci/.github/workflows/lock-dependabot.yml@3e23cc8a87ab0045d80f9053fdb63924afca609a  # v1
+    uses: rigst/ci/.github/workflows/lock-dependabot.yml@40b76b12545d91d09673a5de10ff04ba8fe401bb  # v1
     secrets:
       LOCK_DEPLOY_KEY: ${{ secrets.LOCK_DEPLOY_KEY }}
     with:
