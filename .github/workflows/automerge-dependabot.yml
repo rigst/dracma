@@ -38,9 +38,8 @@ jobs:
       contents: write
       pull-requests: write
       actions: write
-    uses: rigst/ci/.github/workflows/automerge-dependabot.yml@254c0656b373a1ea42985fdfc870b3172b84a24d
+    uses: rigst/ci/.github/workflows/automerge-dependabot.yml@8fae977ec10c548ce7599a04deced95bbadf3c17
     with:
       head-branch: ${{ github.event.workflow_run.head_branch || inputs.head-branch }}
       head-sha: ${{ github.event.workflow_run.head_sha || '' }}
       seco: ${{ github.event_name == 'workflow_dispatch' && inputs.seco }}
-      ci-ref: 254c0656b373a1ea42985fdfc870b3172b84a24d  # o mesmo do `uses:` (job_workflow_sha chega vazio)
