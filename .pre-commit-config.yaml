@@ -9,7 +9,7 @@
 #   pre-commit run --all-files     # opcional: o repo inteiro
 repos:
   - repo: https://github.com/rigst/ci
-    rev: 40b76b12545d91d09673a5de10ff04ba8fe401bb
+    rev: 254c0656b373a1ea42985fdfc870b3172b84a24d
     hooks:
       - id: ruff-ci
       - id: ruff-format-ci
