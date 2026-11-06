@@ -107,7 +107,12 @@ jobs:
       run-licencas: true
       run-sbom: true
       run-lock: true
-      run-e2e: false
+
+      # Ponta a ponta: carteira/tests_e2e.py, sob o marcador `e2e`, que o
+      # pytest.ini tira da suíte padrão. Cobre o que teste de unidade não vê:
+      # login, o diálogo de lançamento que chega por HTMX e o painel que se
+      # refaz depois do POST. Roda no mesmo Postgres descartável dos testes.
+      run-e2e: true
 
       # Desligado nas PRs do Dependabot: o GitHub não entrega os secrets do
       # Actions a esse ator, e sem o SONAR_TOKEN o scanner falha com
