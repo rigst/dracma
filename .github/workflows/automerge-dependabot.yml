@@ -38,7 +38,7 @@ jobs:
       contents: write
       pull-requests: write
       actions: write
-    uses: rigst/ci/.github/workflows/automerge-dependabot.yml@8fae977ec10c548ce7599a04deced95bbadf3c17
+    uses: rigst/ci/.github/workflows/automerge-dependabot.yml@fb97c893786edc0e1197932e2ee688f988d182de
     with:
       head-branch: ${{ github.event.workflow_run.head_branch || inputs.head-branch }}
       head-sha: ${{ github.event.workflow_run.head_sha || '' }}
